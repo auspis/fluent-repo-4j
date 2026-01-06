@@ -4,18 +4,18 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * Interfaccia funzionale per mappare una riga di ResultSet a un oggetto di dominio.
+ * Functional interface to map a ResultSet row to a domain object.
  *
- * @param <T> il tipo dell'oggetto di dominio
+ * @param <T> the type of the domain object
  */
 @FunctionalInterface
 public interface RowMapper<T> {
     /**
-     * Mappa una riga del ResultSet a un oggetto di tipo T.
+     * Maps a ResultSet row to an object of type T.
      *
-     * @param rs il ResultSet posizionato sulla riga da mappare
-     * @return l'oggetto mappato
-     * @throws SQLException se si verifica un errore durante l'estrazione dei dati
+     * @param rs the ResultSet positioned on the row to map
+     * @return the mapped object
+     * @throws SQLException if an error occurs during data extraction
      */
     T mapRow(ResultSet rs) throws SQLException;
 }

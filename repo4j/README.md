@@ -1,21 +1,22 @@
 # repo4j - JDBC Repository Pattern
 
-Una libreria enterprise-grade per implementare il **Repository Pattern** con JDBC puro, mantenendo un'API pulita e business-focused disaccoppiata dal database.
+An enterprise-grade library for implementing the **Repository Pattern** with pure JDBC, maintaining a clean business-focused API decoupled from the database.
 
-## Caratteristiche
+## Features
 
-✅ **Zero dipendenze Spring** - Base completamente standalone  
-✅ **JDBC Puro** - Niente ORM complexity, pieno controllo  
-✅ **ThreadLocal Connection Management** - La connessione non appare mai in firma ai metodi  
-✅ **Generico BaseRepository** - Eredita una volta, implementa query specifiche  
-✅ **JUnit 6 Ready** - Test completi con H2 in-memory  
-✅ **Enterprise Design** - Disaccoppiamento, Exception handling, RowMapper pattern  
+✅ **Zero Spring dependencies** - Completely standalone base  
+✅ **Pure JDBC** - No ORM complexity, full control  
+✅ **Flexible Connection Management** - ThreadLocal or ScopedValue (Java 21+)  
+✅ **Generic BaseRepository** - Inherit once, implement specific queries  
+✅ **JUnit 6 Ready** - Complete tests with H2 in-memory  
+✅ **Enterprise Design** - Decoupling, Exception handling, RowMapper pattern  
+✅ **Virtual Threads Ready** - ScopedValue support for modern concurrency  
 
 ---
 
 ## Quick Start
 
-### 1. Creare un'entità
+### 1. Create an entity
 
 ```java
 public class User {
@@ -27,7 +28,7 @@ public class User {
 }
 ```
 
-### 2. Creare uno schema nel database
+### 2. Create a database schema
 
 ```sql
 CREATE TABLE users (
@@ -37,12 +38,20 @@ CREATE TABLE users (
 );
 ```
 
-### 3. Implementare il Repository
+### 3. Implement the Repository
 
 ```java
+import io.github.auspis.repo4j.core.provider.ConnectionProvider;
+import io.github.auspis.repo4j.core.provider.ConnectionProviderFactory;
+
 public class UserRepository extends BaseRepository<User, Long> {
     
-    // RowMapper per mappare ResultSet → User
+    // Constructor accepting a ConnectionProvider
+    public UserRepository(ConnectionProvider connectionProvider) {
+        super(connectionProvider);
+    }
+    
+    // RowMapper to map ResultSet → User
     private static final RowMapper<User> USER_MAPPER = rs -> 
         new User(rs.getLong("id"), rs.getString("name"), rs.getString("email"));
 
@@ -92,19 +101,24 @@ public class UserRepository extends BaseRepository<User, Long> {
 }
 ```
 
-### 4. Usare il Repository
+### 4. Use the Repository
+
+#### Option A: ThreadLocal (Traditional approach)
 
 ```java
+import io.github.auspis.repo4j.core.provider.ConnectionProviderFactory;
+
 public static void main(String[] args) throws Exception {
-    // 1. Crea una connessione
+    // 1. Create a connection
     Connection conn = DriverManager.getConnection("jdbc:h2:mem:test", "sa", "");
     
-    // 2. Imposta nel provider (ThreadLocal)
-    ConnectionProvider.setConnection(conn);
+    // 2. Create a ThreadLocal provider
+    ConnectionProvider provider = ConnectionProviderFactory.threadLocal();
+    provider.setConnection(conn);
     
     try {
-        // 3. Usa il repository - ZERO Connection in firma!
-        UserRepository repo = new UserRepository();
+        // 3. Use the repository - ZERO Connection in method signatures!
+        UserRepository repo = new UserRepository(provider);
         
         User newUser = repo.create(new User("John Doe", "john@example.com"));
         System.out.println("Created: " + newUser);
@@ -119,9 +133,39 @@ public static void main(String[] args) throws Exception {
         System.out.println("All users: " + all);
         
     } finally {
-        // 4. Pulisci la connessione
-        ConnectionProvider.close();
+        // 4. Clean up the connection
+        provider.close();
     }
+}
+```
+
+#### Option B: ScopedValue (Java 21+, Virtual Threads)
+
+```java
+import io.github.auspis.repo4j.core.provider.ConnectionProviderFactory;
+import io.github.auspis.repo4j.core.provider.ScopedValueConnectionProvider;
+
+public static void main(String[] args) throws Exception {
+    // 1. Create a connection
+    Connection conn = DriverManager.getConnection("jdbc:h2:mem:test", "sa", "");
+    
+    // 2. Create a ScopedValue provider
+    ScopedValueConnectionProvider provider = 
+        (ScopedValueConnectionProvider) ConnectionProviderFactory.scopedValue();
+    
+    // 3. Execute within a scoped context
+    provider.executeInScope(conn, () -> {
+        UserRepository repo = new UserRepository(provider);
+        
+        User newUser = repo.create(new User("John Doe", "john@example.com"));
+        System.out.println("Created: " + newUser);
+        
+        List<User> all = repo.findAll();
+        System.out.println("All users: " + all);
+    });
+    
+    // Connection automatically unbound after scope exits
+    conn.close();
 }
 ```
 
@@ -129,46 +173,95 @@ public static void main(String[] args) throws Exception {
 
 ## Architecture
 
-### ConnectionProvider (ThreadLocal Wrapper)
+### ConnectionProvider Implementations
 
-Gestisce il ciclo di vita della `Connection` per thread senza esporla ai repository.
+The library provides two connection management strategies following the **Single Responsibility Principle (SRP)**:
+
+#### 1. ThreadLocalConnectionProvider
+- Uses `ThreadLocal` for connection storage
+- Suitable for traditional thread pool scenarios
+- Compatible with all Java versions
+- Each instance has its own isolated ThreadLocal storage
+
+#### 2. ScopedValueConnectionProvider  
+- Uses `ScopedValue` (Java 21+) for connection storage
+- Optimized for virtual threads and structured concurrency
+- Better garbage collection performance
+- Automatic scope binding/unbinding
+
+### Factory Pattern
 
 ```java
-// Imposta la Connection per il thread corrente
-ConnectionProvider.setConnection(connection);
+// Create providers using the factory
+ConnectionProvider threadLocalProvider = ConnectionProviderFactory.threadLocal();
+ConnectionProvider scopedProvider = ConnectionProviderFactory.scopedValue();
 
-// Leggi da qualsiasi metodo del repository
-Connection conn = ConnectionProvider.getConnection();
-
-// Pulisci alla fine
-ConnectionProvider.close();  // chiude la connection
-ConnectionProvider.clear();  // solo rimuove dal ThreadLocal
+// Each call returns a fresh instance with isolated state
 ```
 
-**Vantaggi ThreadLocal:**
-- ✅ Una sola Connection per thread (thread-safe per applicazioni multi-threaded)
-- ✅ Repository non sa della Connection, completamente disaccoppiato
-- ✅ Naturale integrazione con Spring `@Transactional` (Spring popola il ThreadLocal automaticamente)
+### ConnectionProvider Interface
+
+Manages the `Connection` lifecycle without exposing it to repositories.
+
+```java
+public interface ConnectionProvider {
+    void setConnection(Connection connection);
+    Connection getConnection();
+    boolean hasConnection();
+    void clear();  // Remove without closing
+    void close();  // Close and remove
+}
+```
+
+### When to Use Which Provider?
+
+#### Use **ThreadLocalConnectionProvider** when:
+- ✅ Working with traditional thread pools (e.g., Servlet containers)
+- ✅ Need compatibility with older Java versions (pre-21)
+- ✅ Using Spring Framework with `@Transactional` (Spring manages ThreadLocal automatically)
+- ✅ Standard enterprise applications with fixed thread pools
+
+#### Use **ScopedValueConnectionProvider** when:
+- ✅ Working with virtual threads (Java 21+)
+- ✅ Need better garbage collection performance
+- ✅ Implementing structured concurrency patterns
+- ✅ Want explicit scope-based lifecycle management
+- ✅ Building modern reactive/async applications
+
+### Key Advantages
+
+**Architecture Benefits:**
+- ✅ One Connection per thread/scope (thread-safe for multi-threaded applications)
+- ✅ Repository completely decoupled from Connection management
+- ✅ Clean separation of concerns (SRP applied)
+- ✅ Easy testing with dependency injection
+- ✅ No Connection parameters in method signatures
+
+**ScopedValue Benefits (Java 21+):**
+- ✅ Better performance with virtual threads
+- ✅ Reduced memory footprint
+- ✅ Automatic scope cleanup
+- ✅ Immutable binding (safer than ThreadLocal)
 
 ### BaseRepository<T, ID>
 
-Classe astratta con utility methods per CRUD common:
+Abstract class with utility methods for common CRUD operations:
 
-| Metodo | Descrizione |
+| Method | Description |
 |--------|-------------|
-| `create(T)` | INSERT - da implementare |
-| `findById(ID)` | SELECT by ID - da implementare |
-| `findAll()` | SELECT all - da implementare |
-| `update(T)` | UPDATE - da implementare |
-| `delete(ID)` | DELETE - da implementare |
-| `executeQuery(sql, mapper, params)` | Esegui SELECT, ritorna List |
-| `executeQuerySingle(sql, mapper, params)` | Esegui SELECT, ritorna Optional |
-| `executeUpdate(sql, params)` | Esegui INSERT/UPDATE/DELETE |
-| `executeInsertWithGeneratedKey(sql, mapper, params)` | INSERT con PRIMARY KEY generata |
+| `create(T)` | INSERT - to be implemented |
+| `findById(ID)` | SELECT by ID - to be implemented |
+| `findAll()` | SELECT all - to be implemented |
+| `update(T)` | UPDATE - to be implemented |
+| `delete(ID)` | DELETE - to be implemented |
+| `executeQuery(sql, mapper, params)` | Execute SELECT, return List |
+| `executeQuerySingle(sql, mapper, params)` | Execute SELECT, return Optional |
+| `executeUpdate(sql, params)` | Execute INSERT/UPDATE/DELETE |
+| `executeInsertWithGeneratedKey(sql, mapper, params)` | INSERT with generated PRIMARY KEY |
 
 ### RowMapper<T>
 
-Interfaccia funzionale per mappare ResultSet → T:
+Functional interface for mapping ResultSet → T:
 
 ```java
 @FunctionalInterface
@@ -176,7 +269,7 @@ public interface RowMapper<T> {
     T mapRow(ResultSet rs) throws SQLException;
 }
 
-// Usa come lambda:
+// Use as lambda:
 RowMapper<User> userMapper = rs -> new User(
     rs.getLong("id"),
     rs.getString("name"),

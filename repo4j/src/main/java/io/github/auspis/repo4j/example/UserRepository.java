@@ -2,6 +2,7 @@ package io.github.auspis.repo4j.example;
 
 import io.github.auspis.repo4j.core.BaseRepository;
 import io.github.auspis.repo4j.core.RowMapper;
+import io.github.auspis.repo4j.core.provider.ConnectionProvider;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -9,8 +10,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository concreto per l'entità User.
- * Dimostra come estendere BaseRepository e implementare il mapping ResultSet ↔ User.
+ * Concrete repository for the User entity.
+ * Demonstrates how to extend BaseRepository and implement ResultSet ↔ User mapping.
  */
 public class UserRepository extends BaseRepository<User, Long> {
 
@@ -21,7 +22,7 @@ public class UserRepository extends BaseRepository<User, Long> {
     );
 
     /**
-     * Schema della tabella users (eseguire una volta su un nuovo database):
+     * Schema for the users table (execute once on a new database):
      * CREATE TABLE users (
      *     id BIGINT AUTO_INCREMENT PRIMARY KEY,
      *     name VARCHAR(255) NOT NULL,
@@ -30,10 +31,19 @@ public class UserRepository extends BaseRepository<User, Long> {
      */
 
     /**
-     * Crea un nuovo utente nel database.
+     * Constructs a UserRepository with the specified ConnectionProvider.
      *
-     * @param user l'utente da creare
-     * @return l'utente creato con ID generato
+     * @param connectionProvider the provider managing Connection lifecycle
+     */
+    public UserRepository(ConnectionProvider connectionProvider) {
+        super(connectionProvider);
+    }
+
+    /**
+     * Creates a new user in the database.
+     *
+     * @param user the user to create
+     * @return the created user with generated ID
      */
     @Override
     public User create(User user) {
@@ -49,10 +59,10 @@ public class UserRepository extends BaseRepository<User, Long> {
     }
 
     /**
-     * Recupera un utente per ID.
+     * Retrieves a user by ID.
      *
-     * @param id l'ID dell'utente
-     * @return Optional contenente l'utente se trovato
+     * @param id the user ID
+     * @return Optional containing the user if found
      */
     @Override
     public Optional<User> findById(Long id) {
@@ -61,9 +71,9 @@ public class UserRepository extends BaseRepository<User, Long> {
     }
 
     /**
-     * Recupera tutti gli utenti.
+     * Retrieves all users.
      *
-     * @return lista di tutti gli utenti
+     * @return list of all users
      */
     @Override
     public List<User> findAll() {
@@ -72,25 +82,25 @@ public class UserRepository extends BaseRepository<User, Long> {
     }
 
     /**
-     * Aggiorna un utente esistente.
+     * Updates an existing user.
      *
-     * @param user l'utente con i dati aggiornati
-     * @return l'utente aggiornato
+     * @param user the user with updated data
+     * @return the updated user
      */
     @Override
     public User update(User user) {
         String sql = "UPDATE users SET name = ?, email = ? WHERE id = ?";
         int updated = executeUpdate(sql, user.getName(), user.getEmail(), user.getId());
         if (updated == 0) {
-            throw new RuntimeException("Utente con ID " + user.getId() + " non trovato");
+            throw new RuntimeException("User with ID " + user.getId() + " not found");
         }
         return user;
     }
 
     /**
-     * Cancella un utente per ID.
+     * Deletes a user by ID.
      *
-     * @param id l'ID dell'utente da cancellare
+     * @param id the ID of the user to delete
      */
     @Override
     public void delete(Long id) {
@@ -99,10 +109,10 @@ public class UserRepository extends BaseRepository<User, Long> {
     }
 
     /**
-     * Trova un utente per email.
+     * Finds a user by email.
      *
-     * @param email l'email dell'utente
-     * @return Optional contenente l'utente se trovato
+     * @param email the user email
+     * @return Optional containing the user if found
      */
     public Optional<User> findByEmail(String email) {
         String sql = "SELECT id, name, email FROM users WHERE email = ?";
@@ -110,10 +120,10 @@ public class UserRepository extends BaseRepository<User, Long> {
     }
 
     /**
-     * Trova tutti gli utenti con un nome specifico.
+     * Finds all users with a specific name.
      *
-     * @param name il nome da cercare (usa pattern matching)
-     * @return lista di utenti che contengono il nome
+     * @param name the name to search for (uses pattern matching)
+     * @return list of users containing the name
      */
     public List<User> findByNameLike(String name) {
         String sql = "SELECT id, name, email FROM users WHERE name LIKE ? ORDER BY id";

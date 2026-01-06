@@ -1,7 +1,8 @@
 package io.github.auspis.repo4j.example;
 
-import io.github.auspis.repo4j.core.ConnectionProvider;
-import io.github.auspis.repo4j.core.RepositoryException;
+import io.github.auspis.repo4j.core.provider.ConnectionProvider;
+import io.github.auspis.repo4j.core.provider.ConnectionProviderFactory;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,21 +16,22 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test unitari per UserRepository con H2 in-memory database.
+ * Unit tests for UserRepository with H2 in-memory database.
  */
 @DisplayName("UserRepository Tests")
 class UserRepositoryTest {
 
     private UserRepository userRepository;
     private Connection connection;
+    private ConnectionProvider connectionProvider;
 
     @BeforeEach
     void setUp() throws Exception {
-        // Crea H2 in-memory database con DB_CLOSE_DELAY per tenere i dati finché attiva
+        // Create H2 in-memory database with DB_CLOSE_DELAY to keep data while active
         long timestamp = System.currentTimeMillis();
         connection = DriverManager.getConnection("jdbc:h2:mem:test_" + timestamp + ";MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", "");
         
-        // Crea tabella users
+        // Create users table
         try (Statement stmt = connection.createStatement()) {
             stmt.executeUpdate("CREATE TABLE users (" +
                     "id BIGINT AUTO_INCREMENT PRIMARY KEY," +
@@ -38,20 +40,22 @@ class UserRepositoryTest {
                     ")");
         }
         
-        // Imposta la Connection nel provider e crea il repository
-        ConnectionProvider.setConnection(connection);
-        userRepository = new UserRepository();
+        // Set the Connection in the provider and create the repository
+        connectionProvider = ConnectionProviderFactory.threadLocal();
+        connectionProvider.setConnection(connection);
+        userRepository = new UserRepository(connectionProvider);
     }
 
+    @AfterEach
     void tearDown() throws Exception {
-        ConnectionProvider.close();
+        connectionProvider.close();
         if (connection != null && !connection.isClosed()) {
             connection.close();
         }
     }
 
     @Test
-    @DisplayName("Creare un nuovo utente")
+    @DisplayName("Create a new user")
     void testCreate() {
         // Arrange
         User newUser = new User("John Doe", "john@example.com");
@@ -66,7 +70,7 @@ class UserRepositoryTest {
     }
 
     @Test
-    @DisplayName("Trovare un utente per ID")
+    @DisplayName("Find a user by ID")
     void testFindById() {
         // Arrange
         User newUser = new User("Jane Smith", "jane@example.com");
@@ -81,7 +85,7 @@ class UserRepositoryTest {
     }
 
     @Test
-    @DisplayName("Trovare un utente per ID inesistente")
+    @DisplayName("Find a user by non-existent ID")
     void testFindByIdNotFound() {
         // Act
         Optional<User> found = userRepository.findById(999L);
@@ -91,7 +95,7 @@ class UserRepositoryTest {
     }
 
     @Test
-    @DisplayName("Trovare tutti gli utenti")
+    @DisplayName("Find all users")
     void testFindAll() {
         // Arrange
         userRepository.create(new User("User 1", "user1@example.com"));
@@ -106,7 +110,7 @@ class UserRepositoryTest {
     }
 
     @Test
-    @DisplayName("Aggiornare un utente")
+    @DisplayName("Update a user")
     void testUpdate() {
         // Arrange
         User original = userRepository.create(new User("Original", "original@example.com"));
@@ -124,7 +128,7 @@ class UserRepositoryTest {
     }
 
     @Test
-    @DisplayName("Cancellare un utente")
+    @DisplayName("Delete a user")
     void testDelete() {
         // Arrange
         User user = userRepository.create(new User("To Delete", "delete@example.com"));
@@ -138,7 +142,7 @@ class UserRepositoryTest {
     }
 
     @Test
-    @DisplayName("Trovare un utente per email")
+    @DisplayName("Find a user by email")
     void testFindByEmail() {
         // Arrange
         User created = userRepository.create(new User("Email User", "email@example.com"));
@@ -152,7 +156,7 @@ class UserRepositoryTest {
     }
 
     @Test
-    @DisplayName("Trovare utenti per nome (pattern matching)")
+    @DisplayName("Find users by name (pattern matching)")
     void testFindByNameLike() {
         // Arrange
         userRepository.create(new User("Alice", "alice@example.com"));
@@ -169,18 +173,17 @@ class UserRepositoryTest {
     }
 
     @Test
-    @DisplayName("Eccezione quando nessuna Connection è disponibile")
+    @DisplayName("Exception when no Connection is available")
     void testNoConnectionAvailable() {
         // Arrange
-        ConnectionProvider.clear();
-        UserRepository repo = new UserRepository();
+        connectionProvider.clear();
         
         // Act & Assert
-        assertThrows(IllegalStateException.class, repo::findAll);
+        assertThrows(IllegalStateException.class, userRepository::findAll);
     }
 
     @Test
-    @DisplayName("Operazioni multiple nella stessa transazione")
+    @DisplayName("Multiple operations in the same context")
     void testMultipleOperations() {
         // Arrange & Act
         User user1 = userRepository.create(new User("User One", "one@example.com"));

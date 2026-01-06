@@ -1,5 +1,6 @@
 package io.github.auspis.repo4j.core;
 
+import io.github.auspis.repo4j.core.provider.ConnectionProvider;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -9,74 +10,85 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Classe base astratta per repository JDBC puro.
- * Gestisce le operazioni CRUD comuni, con Connection recuperata da ConnectionProvider.
+ * Abstract base class for JDBC repositories.
+ * Manages common CRUD operations with Connection retrieved from the injected ConnectionProvider.
  *
- * @param <T>  il tipo dell'entità gestita dal repository
- * @param <ID> il tipo dell'identificatore univoco
+ * @param <T>  the type of the entity managed by the repository
+ * @param <ID> the type of the unique identifier
  */
 public abstract class BaseRepository<T, ID> {
 
+    private final ConnectionProvider connectionProvider;
+
     /**
-     * Recupera la Connection dal provider.
+     * Constructs a BaseRepository with the specified ConnectionProvider.
      *
-     * @return la Connection del thread corrente
+     * @param connectionProvider the provider managing Connection lifecycle
      */
-    protected final Connection getConnection() {
-        return ConnectionProvider.getConnection();
+    public BaseRepository(ConnectionProvider connectionProvider) {
+        this.connectionProvider = connectionProvider;
     }
 
     /**
-     * Crea un nuovo record nel database.
+     * Retrieves the Connection from the provider.
      *
-     * @param entity l'entità da creare
-     * @return l'entità creata (potenzialmente con ID generato)
-     * @throws RepositoryException se si verifica un errore SQL
+     * @return the Connection for the current context
+     */
+    protected final Connection getConnection() {
+        return connectionProvider.getConnection();
+    }
+
+    /**
+     * Creates a new record in the database.
+     *
+     * @param entity the entity to create
+     * @return the created entity (potentially with generated ID)
+     * @throws RepositoryException if an SQL error occurs
      */
     public abstract T create(T entity);
 
     /**
-     * Recupera un record per ID.
+     * Retrieves a record by ID.
      *
-     * @param id l'identificatore univoco
-     * @return un Optional contenente l'entità se trovata
-     * @throws RepositoryException se si verifica un errore SQL
+     * @param id the unique identifier
+     * @return an Optional containing the entity if found
+     * @throws RepositoryException if an SQL error occurs
      */
     public abstract Optional<T> findById(ID id);
 
     /**
-     * Recupera tutti i record.
+     * Retrieves all records.
      *
-     * @return una lista di tutte le entità
-     * @throws RepositoryException se si verifica un errore SQL
+     * @return a list of all entities
+     * @throws RepositoryException if an SQL error occurs
      */
     public abstract List<T> findAll();
 
     /**
-     * Aggiorna un record esistente.
+     * Updates an existing record.
      *
-     * @param entity l'entità con i dati aggiornati
-     * @return l'entità aggiornata
-     * @throws RepositoryException se si verifica un errore SQL
+     * @param entity the entity with updated data
+     * @return the updated entity
+     * @throws RepositoryException if an SQL error occurs
      */
     public abstract T update(T entity);
 
     /**
-     * Cancella un record per ID.
+     * Deletes a record by ID.
      *
-     * @param id l'identificatore univoco
-     * @throws RepositoryException se si verifica un errore SQL
+     * @param id the unique identifier
+     * @throws RepositoryException if an SQL error occurs
      */
     public abstract void delete(ID id);
 
     /**
-     * Helper per eseguire una query SELECT e mappare il risultato a una lista di entità.
+     * Helper to execute a SELECT query and map the result to a list of entities.
      *
-     * @param sql        la query SQL
-     * @param mapper     il RowMapper per mappare i risultati
-     * @param parameters i parametri della query (in ordine)
-     * @return lista di entità mappate
-     * @throws RepositoryException se si verifica un errore SQL
+     * @param sql        the SQL query
+     * @param mapper     the RowMapper to map results
+     * @param parameters the query parameters (in order)
+     * @return list of mapped entities
+     * @throws RepositoryException if an SQL error occurs
      */
     protected final List<T> executeQuery(String sql, RowMapper<T> mapper, Object... parameters) {
         List<T> result = new ArrayList<>();
@@ -88,19 +100,19 @@ public abstract class BaseRepository<T, ID> {
                 }
             }
         } catch (SQLException e) {
-            throw new RepositoryException("Errore durante l'esecuzione della query: " + sql, e);
+            throw new RepositoryException("Error executing query: " + sql, e);
         }
         return result;
     }
 
     /**
-     * Helper per eseguire una query SELECT e mappare un singolo risultato.
+     * Helper to execute a SELECT query and map a single result.
      *
-     * @param sql        la query SQL
-     * @param mapper     il RowMapper per mappare il risultato
-     * @param parameters i parametri della query (in ordine)
-     * @return Optional contenente l'entità mappata se presente
-     * @throws RepositoryException se si verifica un errore SQL
+     * @param sql        the SQL query
+     * @param mapper     the RowMapper to map the result
+     * @param parameters the query parameters (in order)
+     * @return Optional containing the mapped entity if present
+     * @throws RepositoryException if an SQL error occurs
      */
     protected final Optional<T> executeQuerySingle(String sql, RowMapper<T> mapper, Object... parameters) {
         try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
@@ -111,36 +123,36 @@ public abstract class BaseRepository<T, ID> {
                 }
             }
         } catch (SQLException e) {
-            throw new RepositoryException("Errore durante l'esecuzione della query: " + sql, e);
+            throw new RepositoryException("Error executing query: " + sql, e);
         }
         return Optional.empty();
     }
 
     /**
-     * Helper per eseguire un INSERT, UPDATE o DELETE.
+     * Helper to execute an INSERT, UPDATE, or DELETE.
      *
-     * @param sql        la query SQL
-     * @param parameters i parametri della query (in ordine)
-     * @return il numero di righe affette
-     * @throws RepositoryException se si verifica un errore SQL
+     * @param sql        the SQL query
+     * @param parameters the query parameters (in order)
+     * @return the number of affected rows
+     * @throws RepositoryException if an SQL error occurs
      */
     protected final int executeUpdate(String sql, Object... parameters) {
         try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
             setParameters(stmt, parameters);
             return stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RepositoryException("Errore durante l'esecuzione dell'update: " + sql, e);
+            throw new RepositoryException("Error executing update: " + sql, e);
         }
     }
 
     /**
-     * Helper per eseguire un INSERT con generazione di chiave primaria.
+     * Helper to execute an INSERT with generated key retrieval.
      *
-     * @param sql        la query SQL
-     * @param mapper     il RowMapper per mappare la chiave generata
-     * @param parameters i parametri della query (in ordine)
-     * @return la chiave generata mappata
-     * @throws RepositoryException se si verifica un errore SQL
+     * @param sql        the SQL query
+     * @param mapper     the RowMapper to map the generated key
+     * @param parameters the query parameters (in order)
+     * @return the generated key mapped
+     * @throws RepositoryException if an SQL error occurs
      */
     protected final <K> K executeInsertWithGeneratedKey(String sql, RowMapper<K> mapper, Object... parameters) {
         try (PreparedStatement stmt = getConnection().prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
@@ -150,20 +162,20 @@ public abstract class BaseRepository<T, ID> {
                 if (generatedKeys.next()) {
                     return mapper.mapRow(generatedKeys);
                 } else {
-                    throw new RepositoryException("Nessuna chiave generata");
+                    throw new RepositoryException("No generated key returned");
                 }
             }
         } catch (SQLException e) {
-            throw new RepositoryException("Errore durante l'esecuzione dell'insert con chiave generata: " + sql, e);
+            throw new RepositoryException("Error executing insert with generated key: " + sql, e);
         }
     }
 
     /**
-     * Helper per impostare i parametri di un PreparedStatement.
+     * Helper to set parameters for a PreparedStatement.
      *
-     * @param stmt       il PreparedStatement
-     * @param parameters i parametri in ordine
-     * @throws SQLException se si verifica un errore durante l'impostazione
+     * @param stmt       the PreparedStatement
+     * @param parameters the parameters in order
+     * @throws SQLException if an error occurs during parameter setting
      */
     private void setParameters(PreparedStatement stmt, Object... parameters) throws SQLException {
         for (int i = 0; i < parameters.length; i++) {

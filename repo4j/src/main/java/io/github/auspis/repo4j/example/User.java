@@ -3,7 +3,7 @@ package io.github.auspis.repo4j.example;
 import java.util.Objects;
 
 /**
- * Entità di esempio: User.
+ * Example entity: User.
  */
 public class User {
     private Long id;
