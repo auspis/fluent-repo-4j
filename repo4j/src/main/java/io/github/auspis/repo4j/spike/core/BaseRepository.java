@@ -1,6 +1,5 @@
-package io.github.auspis.repo4j.core;
+package io.github.auspis.repo4j.spike.core;
 
-import io.github.auspis.repo4j.core.provider.ConnectionProvider;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -8,6 +7,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import io.github.auspis.repo4j.spike.core.provider.ConnectionProvider;
 
 /**
  * Abstract base class for JDBC repositories.

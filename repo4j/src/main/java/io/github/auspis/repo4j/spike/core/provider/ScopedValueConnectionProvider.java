@@ -1,4 +1,4 @@
-package io.github.auspis.repo4j.core.provider;
+package io.github.auspis.repo4j.spike.core.provider;
 
 import java.sql.Connection;
 import java.util.NoSuchElementException;

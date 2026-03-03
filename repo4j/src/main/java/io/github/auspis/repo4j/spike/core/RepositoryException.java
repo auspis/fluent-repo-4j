@@ -1,4 +1,4 @@
-package io.github.auspis.repo4j.core;
+package io.github.auspis.repo4j.spike.core;
 
 /**
  * Unchecked exception for repository errors.

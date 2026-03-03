@@ -1,11 +1,10 @@
-package io.github.auspis.repo4j.example;
+package io.github.auspis.repo4j.spike.example;
 
-import io.github.auspis.repo4j.core.provider.ConnectionProvider;
-import io.github.auspis.repo4j.core.provider.ConnectionProviderFactory;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -13,7 +12,13 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import io.github.auspis.repo4j.spike.core.provider.ConnectionProvider;
+import io.github.auspis.repo4j.spike.core.provider.ConnectionProviderFactory;
 
 /**
  * Unit tests for UserRepository with H2 in-memory database.
@@ -187,7 +192,7 @@ class UserRepositoryTest {
     void testMultipleOperations() {
         // Arrange & Act
         User user1 = userRepository.create(new User("User One", "one@example.com"));
-        User user2 = userRepository.create(new User("User Two", "two@example.com"));
+        userRepository.create(new User("User Two", "two@example.com"));
         user1.setName("Updated One");
         userRepository.update(user1);
         

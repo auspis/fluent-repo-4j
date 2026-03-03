@@ -1,4 +1,4 @@
-package io.github.auspis.repo4j.example;
+package io.github.auspis.repo4j.spike.example;
 
 import java.util.Objects;
 

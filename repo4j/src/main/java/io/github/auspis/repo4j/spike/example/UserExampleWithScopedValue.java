@@ -1,13 +1,12 @@
-package io.github.auspis.repo4j.example;
-
-import io.github.auspis.repo4j.core.provider.ConnectionProvider;
-import io.github.auspis.repo4j.core.provider.ConnectionProviderFactory;
-import io.github.auspis.repo4j.core.provider.ScopedValueConnectionProvider;
+package io.github.auspis.repo4j.spike.example;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.List;
+
+import io.github.auspis.repo4j.spike.core.provider.ConnectionProviderFactory;
+import io.github.auspis.repo4j.spike.core.provider.ScopedValueConnectionProvider;
 
 /**
  * Example demonstrating ScopedValue-based ConnectionProvider.

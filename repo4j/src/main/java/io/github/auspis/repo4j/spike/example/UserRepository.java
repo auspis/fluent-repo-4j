@@ -1,13 +1,11 @@
-package io.github.auspis.repo4j.example;
+package io.github.auspis.repo4j.spike.example;
 
-import io.github.auspis.repo4j.core.BaseRepository;
-import io.github.auspis.repo4j.core.RowMapper;
-import io.github.auspis.repo4j.core.provider.ConnectionProvider;
-
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+
+import io.github.auspis.repo4j.spike.core.BaseRepository;
+import io.github.auspis.repo4j.spike.core.RowMapper;
+import io.github.auspis.repo4j.spike.core.provider.ConnectionProvider;
 
 /**
  * Concrete repository for the User entity.

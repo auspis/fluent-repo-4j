@@ -1,20 +1,23 @@
-package io.github.auspis.repo4j.core.provider;
+package io.github.auspis.repo4j.spike.core.provider;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 /**
- * Unit tests for ThreadLocalConnectionProvider.
+ * Unit tests for ScopedValueConnectionProvider.
  */
-@DisplayName("ThreadLocalConnectionProvider Tests")
-class ThreadLocalConnectionProviderTest {
+@DisplayName("ScopedValueConnectionProvider Tests")
+class ScopedValueConnectionProviderTest {
 
     private Connection connection;
     private ConnectionProvider provider;
@@ -23,7 +26,7 @@ class ThreadLocalConnectionProviderTest {
     void setUp() throws Exception {
         long timestamp = System.currentTimeMillis();
         connection = DriverManager.getConnection("jdbc:h2:mem:test_" + timestamp + ";DB_CLOSE_DELAY=-1", "sa", "");
-        provider = ConnectionProviderFactory.threadLocal();
+        provider = ConnectionProviderFactory.scopedValue();
     }
 
     @AfterEach
@@ -39,7 +42,7 @@ class ThreadLocalConnectionProviderTest {
     }
 
     @Test
-    @DisplayName("Set and retrieve a Connection")
+    @DisplayName("Set and retrieve a Connection (using fallback ThreadLocal)")
     void testSetAndGetConnection() {
         // Act
         provider.setConnection(connection);
@@ -105,38 +108,11 @@ class ThreadLocalConnectionProviderTest {
     }
 
     @Test
-    @DisplayName("ThreadLocal isolation between threads")
-    void testThreadLocalIsolation() throws InterruptedException {
-        // Arrange
-        provider.setConnection(connection);
-        Exception[] exception = new Exception[1];
-        
-        Thread otherThread = new Thread(() -> {
-            try {
-                // In the new thread, there should be no Connection
-                assertFalse(provider.hasConnection());
-                assertThrows(IllegalStateException.class, provider::getConnection);
-            } catch (Exception e) {
-                exception[0] = e;
-            }
-        });
-        
-        // Act
-        otherThread.start();
-        otherThread.join();
-        
-        // Assert
-        assertNull(exception[0]);
-        // In the main thread, the Connection is still available
-        assertTrue(provider.hasConnection());
-    }
-
-    @Test
     @DisplayName("Each factory call creates a new instance with isolated state")
     void testFreshInstancesHaveIsolatedState() {
         // Arrange
-        ConnectionProvider provider1 = ConnectionProviderFactory.threadLocal();
-        ConnectionProvider provider2 = ConnectionProviderFactory.threadLocal();
+        ConnectionProvider provider1 = ConnectionProviderFactory.scopedValue();
+        ConnectionProvider provider2 = ConnectionProviderFactory.scopedValue();
         
         // Act
         provider1.setConnection(connection);

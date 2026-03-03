@@ -1,13 +1,13 @@
-package io.github.auspis.repo4j.example;
-
-import io.github.auspis.repo4j.core.provider.ConnectionProvider;
-import io.github.auspis.repo4j.core.provider.ConnectionProviderFactory;
+package io.github.auspis.repo4j.spike.example;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
+
+import io.github.auspis.repo4j.spike.core.provider.ConnectionProvider;
+import io.github.auspis.repo4j.spike.core.provider.ConnectionProviderFactory;
 
 /**
  * Example usage of the Repository Pattern with pure JDBC.
