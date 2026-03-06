@@ -4,11 +4,11 @@ An enterprise-grade library for implementing the **Repository Pattern** with pur
 
 ## Features
 
-✅ **Zero Spring dependencies** - Completely standalone base  
+✅ **Minimal Spring dependencies** - Uses Spring Data Commons and spring-jdbc  
 ✅ **Pure JDBC** - No ORM complexity, full control  
 ✅ **Flexible Connection Management** - ThreadLocal or ScopedValue (Java 21+)  
 ✅ **Generic BaseRepository** - Inherit once, implement specific queries  
-✅ **JUnit 6 Ready** - Complete tests with H2 in-memory  
+✅ **JUnit 5 (Jupiter)** - Test suite with H2 in-memory database  
 ✅ **Enterprise Design** - Decoupling, Exception handling, RowMapper pattern  
 ✅ **Virtual Threads Ready** - ScopedValue support for modern concurrency  
 
