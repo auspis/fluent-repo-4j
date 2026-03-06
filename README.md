@@ -41,8 +41,8 @@ CREATE TABLE users (
 ### 3. Implement the Repository
 
 ```java
-import io.github.auspis.fluentrepo4j.core.provider.ConnectionProvider;
-import io.github.auspis.fluentrepo4j.core.provider.ConnectionProviderFactory;
+import io.github.auspis.fluentrepo4j.connection.ConnectionProvider;
+import io.github.auspis.fluentrepo4j.connection.ConnectionProviderFactory;
 
 public class UserRepository extends BaseRepository<User, Long> {
     
