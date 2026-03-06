@@ -241,6 +241,9 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
             try (PreparedStatement ps = builder.build(conn)) {
                 ps.executeUpdate();
             }
+            
+            // For now, simply return the entity without ID
+            // TODO: Implement proper ID generation and retrieval support
             return entity;
         } catch (SQLException e) {
             throw translateException("insert", e);

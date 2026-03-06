@@ -68,4 +68,22 @@ public @interface EnableFluentRepositories {
      * bean to be used with the repositories detected.
      */
     String transactionManagerRef() default "transactionManager";
+
+    /**
+     * Configures the location of where to find Spring Data named queries.
+     * Will default to {@code classpath*:META-INF/jpa-named-queries.properties}.
+     */
+    String namedQueriesLocation() default "";
+
+    /**
+     * Configures whether nested repository-interfaces (e.g. a repository inside a service class)
+     * should be discovered.
+     */
+    boolean considerNestedRepositories() default false;
+
+    /**
+     * Configures the postfix to be used when looking for custom repository implementations.
+     * Defaults to {@code Impl}.
+     */
+    String repositoryImplementationPostfix() default "Impl";
 }

@@ -16,6 +16,8 @@ import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
  * Falls back to {@code standardsql/2008} if no specific plugin matches.
  * </p>
  */
+
+// TODO: is really needed? may we rely on fluent-sql-4j's own auto-detection in the DSLRegistry? maybe we can just delegate to it and let it handle the fallback logic?
 public final class DialectDetector {
 
     private DialectDetector() {

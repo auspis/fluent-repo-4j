@@ -16,42 +16,181 @@ An enterprise-grade library for implementing the **Repository Pattern** with pur
 
 ## Quick Start
 
-### 1. Create an entity
+### With Spring Boot (Recommended)
+
+Include this library as a dependency. Spring Boot auto-configures everything!
+
+```xml
+<dependency>
+    <groupId>io.github.auspis</groupId>
+    <artifactId>fluent-repo-4j</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+#### 1. Define your entity with JPA annotations
 
 ```java
+import jakarta.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Id;
+
+@Table(name = "users")
 public class User {
+    @Id
     private Long id;
+    
+    @Column(name = "name")
     private String name;
+    
+    @Column(name = "email")
     private String email;
     
     // Constructors, getters, setters...
 }
 ```
 
-### 2. Create a database schema
-
-```sql
-CREATE TABLE users (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL
-);
-```
-
-### 3. Implement the Repository
+#### 2. Create a repository interface
 
 ```java
-import io.github.auspis.fluentrepo4j.connection.ConnectionProvider;
-import io.github.auspis.fluentrepo4j.connection.ConnectionProviderFactory;
+import org.springframework.data.repository.CrudRepository;
+
+public interface UserRepository extends CrudRepository<User, Long> {
+    // CRUD methods are inherited: save, findById, findAll, deleteById, count, etc.
+    // Add custom queries if needed
+    Optional<User> findByEmail(String email);
+}
+```
+
+#### 3. Use it in a service
+
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class UserService {
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Transactional
+    public User createUser(String name, String email) {
+        // Spring Data proxy automatically:
+        // 1. Gets a connection from the DataSource
+        // 2. Uses FluentConnectionProvider to bind it to transaction
+        // 3. Delegates to SimpleFluentRepository.save()
+        User user = new User(name, email);
+        return userRepository.save(user);
+    }
+    
+    public User getUser(Long id) {
+        return userRepository.findById(id).orElseThrow();
+    }
+    
+    public List<User> getAllUsers() {
+        return (List<User>) userRepository.findAll();
+    }
+    
+    @Transactional
+    public void updateUser(Long id, String newName, String newEmail) {
+        User user = userRepository.findById(id).orElseThrow();
+        user.setName(newName);
+        user.setEmail(newEmail);
+        userRepository.save(user);  // UPDATE
+    }
+    
+    @Transactional
+    public void deleteUser(Long id) {
+        userRepository.deleteById(id);
+    }
+}
+```
+
+#### 4. Use the service in a controller (or anywhere)
+
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/users")
+public class UserController {
+    
+    @Autowired
+    private UserService userService;
+    
+    @PostMapping
+    public User create(@RequestParam String name, @RequestParam String email) {
+        return userService.createUser(name, email);
+    }
+    
+    @GetMapping("/{id}")
+    public User getById(@PathVariable Long id) {
+        return userService.getUser(id);
+    }
+    
+    @GetMapping
+    public List<User> getAll() {
+        return userService.getAllUsers();
+    }
+    
+    @PutMapping("/{id}")
+    public User update(@PathVariable Long id, 
+                       @RequestParam String name, 
+                       @RequestParam String email) {
+        userService.updateUser(id, name, email);
+        return userService.getUser(id);
+    }
+    
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        userService.deleteUser(id);
+    }
+}
+```
+
+#### 5. Configure the datasource (application.yml)
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/myapp
+    username: root
+    password: secret
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+```
+
+No additional configuration needed! The library:
+- ✅ Auto-detects the database dialect from DataSource metadata
+- ✅ Scans for `CrudRepository` interfaces automatically
+- ✅ Creates beans with transaction support via `@Transactional`
+- ✅ Manages connections via `DataSourceUtils` (integrated with Spring Transactions)
+
+---
+
+### Without Spring Boot (Standalone)
+
+The library also works as a plain JDBC wrapper without Spring:
+
+```java
+public class User {
+    private Long id;
+    private String name;
+    private String email;
+    // ...
+}
 
 public class UserRepository extends BaseRepository<User, Long> {
     
-    // Constructor accepting a ConnectionProvider
     public UserRepository(ConnectionProvider connectionProvider) {
         super(connectionProvider);
     }
     
-    // RowMapper to map ResultSet → User
     private static final RowMapper<User> USER_MAPPER = rs -> 
         new User(rs.getLong("id"), rs.getString("name"), rs.getString("email"));
 
@@ -92,80 +231,6 @@ public class UserRepository extends BaseRepository<User, Long> {
         String sql = "DELETE FROM users WHERE id = ?";
         executeUpdate(sql, id);
     }
-
-    // Query specifiche del dominio (bonus!)
-    public Optional<User> findByEmail(String email) {
-        String sql = "SELECT id, name, email FROM users WHERE email = ?";
-        return executeQuerySingle(sql, USER_MAPPER, email);
-    }
-}
-```
-
-### 4. Use the Repository
-
-#### Option A: ThreadLocal (Traditional approach)
-
-```java
-import io.github.auspis.fluentrepo4j.core.provider.ConnectionProviderFactory;
-
-public static void main(String[] args) throws Exception {
-    // 1. Create a connection
-    Connection conn = DriverManager.getConnection("jdbc:h2:mem:test", "sa", "");
-    
-    // 2. Create a ThreadLocal provider
-    ConnectionProvider provider = ConnectionProviderFactory.threadLocal();
-    provider.setConnection(conn);
-    
-    try {
-        // 3. Use the repository - ZERO Connection in method signatures!
-        UserRepository repo = new UserRepository(provider);
-        
-        User newUser = repo.create(new User("John Doe", "john@example.com"));
-        System.out.println("Created: " + newUser);
-        
-        Optional<User> found = repo.findById(newUser.getId());
-        System.out.println("Found: " + found);
-        
-        newUser.setName("Jane Doe");
-        repo.update(newUser);
-        
-        List<User> all = repo.findAll();
-        System.out.println("All users: " + all);
-        
-    } finally {
-        // 4. Clean up the connection
-        provider.close();
-    }
-}
-```
-
-#### Option B: ScopedValue (Java 21+, Virtual Threads)
-
-```java
-import io.github.auspis.fluentrepo4j.core.provider.ConnectionProviderFactory;
-import io.github.auspis.fluentrepo4j.core.provider.ScopedValueConnectionProvider;
-
-public static void main(String[] args) throws Exception {
-    // 1. Create a connection
-    Connection conn = DriverManager.getConnection("jdbc:h2:mem:test", "sa", "");
-    
-    // 2. Create a ScopedValue provider
-    ScopedValueConnectionProvider provider = 
-        (ScopedValueConnectionProvider) ConnectionProviderFactory.scopedValue();
-    
-    // 3. Execute within a scoped context
-    provider.executeInScope(conn, () -> {
-        UserRepository repo = new UserRepository(provider);
-        
-        User newUser = repo.create(new User("John Doe", "john@example.com"));
-        System.out.println("Created: " + newUser);
-        
-        List<User> all = repo.findAll();
-        System.out.println("All users: " + all);
-    });
-    
-    // Connection automatically unbound after scope exits
-    conn.close();
 }
 ```
 
@@ -355,7 +420,7 @@ I **repository non cambiano una riga**.
 ---
 
 ## Project Structure
-
+// TODO: align Project Structure (the whole README.md needs to be aligned)
 ```
 src/
 ├── main/java/io/github/auspis/repo4j/
@@ -372,6 +437,52 @@ src/
     │   └── ConnectionProviderTest.java
     └── example/
         └── UserRepositoryTest.java
+```
+
+---
+
+## Spring Data Integration
+
+This module integrates with **Spring Data Commons** to provide automatic repository scanning and bean creation. When you include this library in a Spring Boot application, it automatically configures repository support with zero boilerplate.
+
+### Component Responsibilities
+
+| Component | Responsibility |
+|-----------|-----------------|
+| **`@EnableFluentRepositories`** | Entry-point annotation; imports the registrar for repository scanning |
+| **`FluentRepositoriesRegistrar`** | Implements Spring's `ImportBeanDefinitionRegistrar`; triggers classpath scanning for `Repository` interfaces |
+| **`FluentRepositoryConfigExtension`** | Provides configuration strategy to Spring Data: which factory to use, how to identify repositories |
+| **`FluentRepositoryFactoryBean`** | Factory bean that creates `FluentRepositoryFactory` and injects `FluentConnectionProvider` + `DSL` |
+| **`FluentRepositoryFactory`** | Creates `SimpleFluentRepository<T, ID>` instances; extracts entity metadata |
+| **`SimpleFluentRepository<T, ID>`** | **Actual implementation**: executes `findById`, `save`, `delete`, etc. using JDBC + fluent-sql-4j |
+| **`FluentConnectionProvider`** | Obtains connections via Spring's `DataSourceUtils` (transaction-aware or auto-commit) |
+| **`FluentEntityInformation<T, ID>`** | Extracts entity metadata: table name, column names, `@Id` field using Jakarta Persistence annotations |
+| **`FluentEntityRowMapper<T>`** | Maps `ResultSet` rows to entity instances |
+| **`FluentEntityWriter<T>`** | Writes entity properties to `PreparedStatement` parameters |
+
+### Configuration Flow
+
+```
+Spring Boot Application starts
+        ↓
+@EnableFluentRepositories detected (or auto-configured)
+        ↓
+FluentRepositoriesRegistrar scans basePackages
+        ↓
+Finds interfaces extending CrudRepository (e.g., UserRepository)
+        ↓
+Creates BeanDefinition pointing to FluentRepositoryFactoryBean
+        ↓
+When @Autowired UserRepository is encountered:
+    1. FluentRepositoryFactoryBean.getObject() invoked
+    2. FluentRepositoryFactory created (receives ConnectionProvider + DSL)
+    3. SimpleFluentRepository<User, Long> instantiated
+    4. Spring Data creates proxy around implementation
+    5. Proxy injected into application bean
+        ↓
+userRepository.findById(1L) 
+    → Proxy delegates to SimpleFluentRepository.findById()
+    → Executes SQL via FluentConnectionProvider
 ```
 
 ---

@@ -3,7 +3,6 @@ package io.github.auspis.fluentrepo4j.autoconfigure;
 import javax.sql.DataSource;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -28,10 +27,12 @@ import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
  */
 @AutoConfiguration
 @ConditionalOnClass({DataSource.class, DSL.class})
-@ConditionalOnBean(DataSource.class)
 @EnableFluentRepositories
 public class FluentRepositoriesAutoConfiguration {
 
+    // TODO: consider multi datasource support in the future
+    // , e.g. by allowing users to define multiple FluentConnectionProvider 
+    // beans with qualifiers
     @Bean
     @ConditionalOnMissingBean
     public FluentConnectionProvider fluentConnectionProvider(DataSource dataSource) {
