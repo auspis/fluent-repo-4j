@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import io.github.auspis.fluentrepo4j.test.domain.User;
 
 /**
  * Integration test demonstrating UserRepository usage with Spring Data Fluent SQL.
