@@ -1,8 +1,13 @@
 DROP TABLE IF EXISTS "users";
 
 CREATE TABLE "users" (
-    "id" BIGINT PRIMARY KEY AUTO_INCREMENT,
-    "user_name" VARCHAR(255) NOT NULL,
-    "email" VARCHAR(255) UNIQUE,
-    "age" INT
+    "id" INTEGER PRIMARY KEY AUTO_INCREMENT,
+    "name" VARCHAR(50),
+    "email" VARCHAR(100),
+    "age" INTEGER,
+    "active" BOOLEAN,
+    "birthdate" DATE,
+    "createdAt" TIMESTAMP,
+    "address" JSON,
+    "preferences" JSON
 );

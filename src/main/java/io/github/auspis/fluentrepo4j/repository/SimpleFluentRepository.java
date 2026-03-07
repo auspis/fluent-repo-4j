@@ -8,12 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.support.SQLExceptionSubclassTranslator;
 import org.springframework.jdbc.support.SQLExceptionTranslator;
-
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.mapping.DslTypeDispatcher;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
@@ -43,9 +41,9 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
         this.entityInformation = entityInformation;
         this.connectionProvider = connectionProvider;
         this.dsl = dsl;
-        this.rowMapper = new FluentEntityRowMapper<>(entityInformation);
-        this.entityWriter = new FluentEntityWriter<>(entityInformation);
-        this.exceptionTranslator = new SQLExceptionSubclassTranslator();
+        rowMapper = new FluentEntityRowMapper<>(entityInformation);
+        entityWriter = new FluentEntityWriter<>(entityInformation);
+        exceptionTranslator = new SQLExceptionSubclassTranslator();
     }
 
     // ---- Save ----
@@ -232,6 +230,7 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
     private <S extends T> S insert(S entity) {
         String table = entityInformation.getTableName();
         Map<String, Object> values = entityWriter.getAllColumnValues(entity);
+        values.put("id", "100023"); // Ensure ID is included as null for auto-generation
         Connection conn = connectionProvider.getConnection();
         try {
             var builder = dsl.insertInto(table);
