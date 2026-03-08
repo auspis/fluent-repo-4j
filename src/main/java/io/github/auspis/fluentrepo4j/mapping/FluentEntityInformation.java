@@ -6,9 +6,12 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.data.domain.Persistable;
 import org.springframework.data.repository.core.support.AbstractEntityInformation;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
@@ -27,6 +30,7 @@ public class FluentEntityInformation<T, ID> extends AbstractEntityInformation<T,
     private final String idColumnName;
     private final Field idField;
     private final Class<ID> idType;
+    private final IdGenerationStrategy idGenerationStrategy;
     private final Map<String, Field> columnToField;   // column_name → Field
     private final Map<Field, String> fieldToColumn;    // Field → column_name
 
@@ -75,6 +79,7 @@ public class FluentEntityInformation<T, ID> extends AbstractEntityInformation<T,
 
         this.idField = foundIdField;
         this.idType = foundIdType;
+        this.idGenerationStrategy = resolveIdGenerationStrategy(foundIdField);
         this.columnToField = Collections.unmodifiableMap(colToField);
         this.fieldToColumn = Collections.unmodifiableMap(fieldToCol);
 
@@ -104,6 +109,29 @@ public class FluentEntityInformation<T, ID> extends AbstractEntityInformation<T,
     @Override
     public Class<ID> getIdType() {
         return idType;
+    }
+
+    /**
+     * Determines whether the given entity is new (not yet persisted).
+     * <p>
+     * If the entity implements {@link Persistable}, delegates to {@link Persistable#isNew()},
+     * giving the developer full control over the new/existing distinction.
+     * Otherwise, falls back to the standard Spring Data logic (ID == null → new).
+     * </p>
+     *
+     * @param entity the entity to check
+     * @return {@code true} if the entity should be treated as new (INSERT), {@code false} otherwise (UPDATE)
+     */
+    @Override
+    public boolean isNew(T entity) {
+        if (entity instanceof Persistable<?> persistable) {
+            return persistable.isNew();
+        }
+        return super.isNew(entity);
+    }
+
+    public IdGenerationStrategy getIdGenerationStrategy() {
+        return idGenerationStrategy;
     }
 
     public String getTableName() {
@@ -139,5 +167,34 @@ public class FluentEntityInformation<T, ID> extends AbstractEntityInformation<T,
         Map<String, Field> result = new LinkedHashMap<>(columnToField);
         result.remove(idColumnName);
         return result;
+    }
+
+    /**
+     * Sets the ID value on the given entity.
+     *
+     * @param entity the entity to update
+     * @param id     the ID value to set
+     */
+    public void setId(T entity, ID id) {
+        try {
+            idField.set(entity, id);
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException("Cannot set @Id field " + idField.getName(), e);
+        }
+    }
+
+    private static IdGenerationStrategy resolveIdGenerationStrategy(Field idField) {
+        GeneratedValue generatedValue = idField.getAnnotation(GeneratedValue.class);
+        if (generatedValue == null) {
+            return IdGenerationStrategy.PROVIDED;
+        }
+        GenerationType strategy = generatedValue.strategy();
+        if (strategy == GenerationType.IDENTITY) {
+            return IdGenerationStrategy.IDENTITY;
+        }
+        throw new UnsupportedOperationException(
+                "ID generation strategy " + strategy + " is not supported. "
+                        + "Only GenerationType.IDENTITY is supported. "
+                        + "Remove @GeneratedValue for application-provided IDs.");
     }
 }

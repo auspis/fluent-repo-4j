@@ -2,7 +2,6 @@ package io.github.auspis.fluentrepo4j.mapping;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-
 import io.github.auspis.fluentsql4j.dsl.clause.SupportsWhere;
 import io.github.auspis.fluentsql4j.dsl.clause.WhereConditionBuilder;
 import io.github.auspis.fluentsql4j.dsl.insert.InsertBuilder;
@@ -31,14 +30,16 @@ public final class DslTypeDispatcher {
      * @return the builder after applying the eq condition
      */
     public static <T extends SupportsWhere<T>> T eq(WhereConditionBuilder<T> column, Object value) {
-        if (value instanceof String s) return column.eq(s);
-        if (value instanceof Number n) return column.eq(n);
-        if (value instanceof Boolean b) return column.eq(b);
-        if (value instanceof LocalDate d) return column.eq(d);
-        if (value instanceof LocalDateTime dt) return column.eq(dt);
-        throw new IllegalArgumentException(
-                "Unsupported value type for eq(): " + (value == null ? "null" : value.getClass().getName())
-                        + ". Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
+        return switch (value) {
+            case String s -> column.eq(s);
+            case Number n -> column.eq(n);
+            case Boolean b -> column.eq(b);
+            case LocalDate d -> column.eq(d);
+            case LocalDateTime dt -> column.eq(dt);
+            case null, default -> throw new IllegalArgumentException(
+                    "Unsupported value type for eq(): " + (value == null ? "null" : value.getClass().getName())
+                            + ". Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
+        };
     }
 
     /**
@@ -51,16 +52,18 @@ public final class DslTypeDispatcher {
      * @return the builder after applying set (or unchanged if value is null)
      */
     public static InsertBuilder set(InsertBuilder builder, String columnName, Object value) {
-        if (value == null) return builder;
-        if (value instanceof String s) return builder.set(columnName, s);
-        if (value instanceof Number n) return builder.set(columnName, n);
-        if (value instanceof Boolean b) return builder.set(columnName, b);
-        if (value instanceof LocalDate d) return builder.set(columnName, d);
-        if (value instanceof LocalDateTime dt) return builder.set(columnName, dt);
-        throw new IllegalArgumentException(
-                "Unsupported value type for INSERT set(): " + value.getClass().getName()
-                        + " (column: " + columnName + ")."
-                        + " Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
+        return switch (value) {
+            case null -> builder;
+            case String s -> builder.set(columnName, s);
+            case Number n -> builder.set(columnName, n);
+            case Boolean b -> builder.set(columnName, b);
+            case LocalDate d -> builder.set(columnName, d);
+            case LocalDateTime dt -> builder.set(columnName, dt);
+            default -> throw new IllegalArgumentException(
+                    "Unsupported value type for INSERT set(): " + value.getClass().getName()
+                            + " (column: " + columnName + ")."
+                            + " Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
+        };
     }
 
     /**
@@ -73,15 +76,17 @@ public final class DslTypeDispatcher {
      * @return the builder after applying set (or unchanged if value is null)
      */
     public static UpdateBuilder set(UpdateBuilder builder, String columnName, Object value) {
-        if (value == null) return builder;
-        if (value instanceof String s) return builder.set(columnName, s);
-        if (value instanceof Number n) return builder.set(columnName, n);
-        if (value instanceof Boolean b) return builder.set(columnName, b);
-        if (value instanceof LocalDate d) return builder.set(columnName, d);
-        if (value instanceof LocalDateTime dt) return builder.set(columnName, dt);
-        throw new IllegalArgumentException(
-                "Unsupported value type for UPDATE set(): " + value.getClass().getName()
-                        + " (column: " + columnName + ")."
-                        + " Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
+        return switch (value) {
+            case null -> builder;
+            case String s -> builder.set(columnName, s);
+            case Number n -> builder.set(columnName, n);
+            case Boolean b -> builder.set(columnName, b);
+            case LocalDate d -> builder.set(columnName, d);
+            case LocalDateTime dt -> builder.set(columnName, dt);
+            default -> throw new IllegalArgumentException(
+                    "Unsupported value type for UPDATE set(): " + value.getClass().getName()
+                            + " (column: " + columnName + ")."
+                            + " Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
+        };
     }
 }

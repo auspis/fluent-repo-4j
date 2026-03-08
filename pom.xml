@@ -17,7 +17,7 @@
 		<maven.compiler.target>21</maven.compiler.target>
 		<!-- TODO: upgrade to Spring Boot 4 -->
 		<spring-boot.version>3.5.11</spring-boot.version>
-		<fluent-sql-4j.version>1.0.6</fluent-sql-4j.version>
+		<fluent-sql-4j.version>1.1.0</fluent-sql-4j.version>
 	</properties>
 
 	<dependencyManagement>
@@ -69,7 +69,7 @@
 		<dependency>
 			<groupId>io.github.auspis.fluentsql4j</groupId>
 			<artifactId>test-support</artifactId>
-			<version>1.0.6</version>
+			<version>${fluent-sql-4j.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

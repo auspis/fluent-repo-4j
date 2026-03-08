@@ -1,16 +1,20 @@
 package io.github.auspis.fluentrepo4j.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Optional;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.dialect.DialectDetector;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
+import io.github.auspis.fluentrepo4j.test.domain.CartItem;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
@@ -18,273 +22,358 @@ import io.github.auspis.fluentsql4j.test.util.TestDatabaseUtil;
 
 /**
  * Integration test for {@link SimpleFluentRepository} using an in-memory H2 database.
+ * Tests both PROVIDED (application-set ID) and IDENTITY (database-generated ID) strategies.
  */
 class SimpleFluentRepositoryIT {
-    private Connection connection;
-    private DataSource dataSource;
-//    private Connection sharedConnection;
-    private SimpleFluentRepository<User, Long> repository;
+
+    /**
+     * Tests for entities using PROVIDED ID strategy (User: no @GeneratedValue).
+     * The application must set the ID before calling save().
+     */
+    @Nested
+    class ProvidedIdStrategyIT {
+
+        private Connection connection;
+        private SimpleFluentRepository<User, Long> repository;
+
+        @BeforeEach
+        void setUp() throws SQLException {
+            connection = TestDatabaseUtil.createH2Connection();
+            TestDatabaseUtil.createUsersTable(connection);
+            TestDatabaseUtil.insertSampleUsers(connection);
+            DataSource dataSource = new SingleConnectionDataSource(connection, true);
+
+            DSLRegistry registry = DSLRegistry.createWithServiceLoader();
+            DSL dsl = DialectDetector.detect(dataSource, registry);
+            FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
+            FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
+
+            repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
+        }
+
+        @AfterEach
+        void tearDown() throws SQLException {
+            TestDatabaseUtil.closeConnection(connection);
+        }
+
+        @Test
+        void save_insertOk() {
+            User user = new User("Alice", "alice@example.com", 30);
+            user.setId(100L);
+            long countBefore = repository.count();
+
+            User saved = repository.save(user);
+
+            assertThat(saved).isSameAs(user);
+            assertThat(saved.getId()).isEqualTo(100L);
+            assertThat(repository.count()).isEqualTo(countBefore + 1);
+
+            Optional<User> found = repository.findById(100L);
+            assertThat(found).isPresent();
+            assertThat(found.get().getName()).isEqualTo("Alice");
+            assertThat(found.get().getEmail()).isEqualTo("alice@example.com");
+            assertThat(found.get().getAge()).isEqualTo(30);
+        }
+
+        @Test
+        void save_nullId_throwsIllegalArgument() {
+            User user = new User("NoId", "noid@example.com", 25);
+            // id is null, no @GeneratedValue → should throw
+
+            assertThatThrownBy(() -> repository.save(user))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("requires ID to be set before save()");
+        }
+
+        @Test
+        void save_updateOk() {
+            User user = repository.findById(1L).orElseThrow();
+            user.setName("John Updated");
+            user.setEmail("john.updated@example.com");
+
+            repository.save(user);
+
+            Optional<User> found = repository.findById(1L);
+            assertThat(found).isPresent();
+            assertThat(found.get().getName()).isEqualTo("John Updated");
+            assertThat(found.get().getEmail()).isEqualTo("john.updated@example.com");
+        }
+
+        @Test
+        void save_insertByExistsByIdFallback() {
+            // ID is non-null → isNew() returns false, but entity doesn't exist in DB
+            // The existsById() fallback should detect this and perform INSERT
+            User user = new User("Fallback", "fallback@example.com", 40);
+            user.setId(999L);
+
+            User saved = repository.save(user);
+
+            assertThat(saved.getId()).isEqualTo(999L);
+            assertThat(repository.existsById(999L)).isTrue();
+        }
+
+        @Test
+        void save_updateByExistsByIdFallback() {
+            // ID is non-null → isNew() returns false, and entity exists in DB
+            // The existsById() fallback should detect this and perform UPDATE
+            User user = new User("Fallback", "fallback@example.com", 40);
+            user.setId(1L);
+            
+            User saved = repository.save(user);
+            
+            assertThat(saved.getId()).isEqualTo(1L);
+            assertThat(repository.existsById(1L)).isTrue();
+        }
+    }
+
+    /**
+     * Tests for entities using IDENTITY ID strategy (Product: @GeneratedValue(strategy = IDENTITY)).
+     * The database generates the ID via auto-increment.
+     */
+    @Nested
+    class IdentityIdStrategyIT {
+
+        private Connection connection;
+        private SimpleFluentRepository<CartItem, Long> repository;
+
+        @BeforeEach
+        void setUp() throws SQLException {
+            connection = TestDatabaseUtil.createH2Connection();
+            TestDatabaseUtil.createCartItemsTable(connection);
+            DataSource dataSource = new SingleConnectionDataSource(connection, true);
+
+            DSLRegistry registry = DSLRegistry.createWithServiceLoader();
+            DSL dsl = DialectDetector.detect(dataSource, registry);
+            FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
+            FluentEntityInformation<CartItem, Long> entityInfo = new FluentEntityInformation<>(CartItem.class);
+
+            repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
+        }
+
+        @AfterEach
+        void tearDown() throws SQLException {
+            TestDatabaseUtil.closeConnection(connection);
+        }
+
+        @Test
+        void save_insertOk() {
+            CartItem product = new CartItem(1L, 2L, "Coffee Cup", 9.99, 1);
+
+            CartItem saved = repository.save(product);
+
+            assertThat(saved).isSameAs(product);
+            assertThat(saved.getId()).isNotNull();
+            assertThat(saved.getId()).isPositive();
+            
+            Optional<CartItem> found = repository.findById(saved.getId());
+            assertThat(found).isPresent();
+            assertThat(found.get().getCartId()).isEqualTo(1L);
+            assertThat(found.get().getProductId()).isEqualTo(2L);
+            assertThat(found.get().getProductName()).isEqualTo("Coffee Cup");
+            assertThat(found.get().getUnitPrice()).isEqualTo(9.99);
+            assertThat(found.get().getQuantity()).isEqualTo(1);
+        }
+
+        @Test
+        void save_multipleInserts() {
+            CartItem p1 = new CartItem(1L, 2L, "Alpha", 20.0, 2);
+            CartItem p2 = new CartItem(1L, 3L, "Beta", 30.0, 3);
+            CartItem p3 = new CartItem(1L, 4L, "Gamma", 40.0, 4);
+
+            repository.save(p1);
+            repository.save(p2);
+            repository.save(p3);
+
+            assertThat(p1.getId()).isNotNull();
+            assertThat(p2.getId()).isNotNull();
+            assertThat(p3.getId()).isNotNull();
+            assertThat(p1.getId()).isNotEqualTo(p2.getId());
+            assertThat(p2.getId()).isNotEqualTo(p3.getId());
+            assertThat(repository.count()).isEqualTo(3);
+        }
+
+        @Test
+        void save_update() {
+            CartItem product = new CartItem(1L, 2L, "Coffee Cup", 9.99, 1);
+            repository.save(product);
+            Long generatedId = product.getId();
+
+            product.setQuantity(5);
+            repository.save(product);
+
+            Optional<CartItem> found = repository.findById(generatedId);
+            assertThat(found).isPresent();
+            assertThat(found.get().getQuantity()).isEqualTo(5);
+        }
+    }
     
-    @BeforeEach
-    void setUp() throws SQLException {
-        // Set up database
-        connection = TestDatabaseUtil.createH2Connection();
-        TestDatabaseUtil.createUsersTable(connection);
-        TestDatabaseUtil.insertSampleUsers(connection);
-        dataSource = new SingleConnectionDataSource(connection, true);
-        
-        DSLRegistry registry = DSLRegistry.createWithServiceLoader();
-        DSL dsl = DialectDetector.detect(dataSource, registry);
-        FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
-        FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
-
-        repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
-    }
-
-    @AfterEach
-    void tearDown() throws SQLException {
-        TestDatabaseUtil.closeConnection(connection);
-    }
-
-//    @BeforeEach
-//    void setUp() throws Exception {
-//        // H2 in-memory with lowercase identifiers to match quoted names from fluent-sql-4j
-//        sharedConnection = org.h2.Driver.load()
-//                .connect("jdbc:h2:mem:repo4j_test;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=FALSE",
-//                        new java.util.Properties());
-//        dataSource = new SingleConnectionDataSource(sharedConnection, true);
+//  @Test
+//  void save_updateExistingEntity() throws Exception {
+//      long id = insertRaw("Alice", "alice@example.com", 30);
 //
-//        // Create test table
-//        try (Statement stmt = sharedConnection.createStatement()) {
-//            stmt.execute("""
-//                    CREATE TABLE IF NOT EXISTS users (
-//                        id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-//                        user_name VARCHAR(255),
-//                        email VARCHAR(255),
-//                        age INTEGER
-//                    )
-//                    """);
-//        }
+//      User user = new User(id, "Alice Updated", "alice.updated@example.com", 31);
+//      repository.save(user);
 //
-//        DSLRegistry registry = DSLRegistry.createWithServiceLoader();
-//        DSL dsl = DialectDetector.detect(dataSource, registry);
-//        FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
-//        FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
+//      Optional<User> found = repository.findById(id);
+//      assertThat(found).isPresent();
+//      assertThat(found.get().getName()).isEqualTo("Alice Updated");
+//      assertThat(found.get().getEmail()).isEqualTo("alice.updated@example.com");
+//      assertThat(found.get().getAge()).isEqualTo(31);
+//  }
 //
-//        repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
-//    }
+//  @Test
+//  void saveAll_multipleEntities() {
+//      List<User> users = List.of(
+//              new User(null, "Alice", "alice@example.com", 30),
+//              new User(null, "Bob", "bob@example.com", 25)
+//      );
 //
-//    @AfterEach
-//    void tearDown() throws Exception {
-//        try (Statement stmt = sharedConnection.createStatement()) {
-//            stmt.execute("DROP TABLE IF EXISTS users");
-//        }
-//        sharedConnection.close();
-//    }
+//      Iterable<User> saved = repository.saveAll(users);
 //
-//    /**
-//     * Helper: inserts a row via raw JDBC and returns the generated id.
-//     */
-//    private long insertRaw(String name, String email, Integer age) throws SQLException {
-//        try (var ps = sharedConnection.prepareStatement(
-//                "INSERT INTO users (user_name, email, age) VALUES (?, ?, ?)",
-//                Statement.RETURN_GENERATED_KEYS)) {
-//            ps.setString(1, name);
-//            ps.setString(2, email);
-//            if (age != null) {
-//                ps.setInt(3, age);
-//            } else {
-//                ps.setNull(3, java.sql.Types.INTEGER);
-//            }
-//            ps.executeUpdate();
-//            try (var rs = ps.getGeneratedKeys()) {
-//                rs.next();
-//                return rs.getLong(1);
-//            }
-//        }
-//    }
-
-    // ---- Save / Insert ----
-
-    @Test
-    void save_insertNewEntity() {
-        // Entity with null id → isNew() returns true → insert
-        User user = new User("Alice", "alice@example.com", 30);
-        long count = repository.count();
-
-        User saved = repository.save(user);
-
-        assertThat(saved).isSameAs(user);
-        assertThat(repository.count()).isEqualTo(count + 1);
-    }
-
-//    @Test
-//    void save_updateExistingEntity() throws Exception {
-//        long id = insertRaw("Alice", "alice@example.com", 30);
+//      assertThat(saved).hasSize(2);
+//      assertThat(repository.count()).isEqualTo(2);
+//  }
 //
-//        User user = new User(id, "Alice Updated", "alice.updated@example.com", 31);
-//        repository.save(user);
+//  // ---- Find ----
 //
-//        Optional<User> found = repository.findById(id);
-//        assertThat(found).isPresent();
-//        assertThat(found.get().getName()).isEqualTo("Alice Updated");
-//        assertThat(found.get().getEmail()).isEqualTo("alice.updated@example.com");
-//        assertThat(found.get().getAge()).isEqualTo(31);
-//    }
+//  @Test
+//  void findById_existing() throws Exception {
+//      long id = insertRaw("Alice", "alice@example.com", 30);
 //
-//    @Test
-//    void saveAll_multipleEntities() {
-//        List<User> users = List.of(
-//                new User(null, "Alice", "alice@example.com", 30),
-//                new User(null, "Bob", "bob@example.com", 25)
-//        );
+//      Optional<User> found = repository.findById(id);
 //
-//        Iterable<User> saved = repository.saveAll(users);
+//      assertThat(found).isPresent();
+//      assertThat(found.get().getName()).isEqualTo("Alice");
+//      assertThat(found.get().getEmail()).isEqualTo("alice@example.com");
+//      assertThat(found.get().getAge()).isEqualTo(30);
+//  }
 //
-//        assertThat(saved).hasSize(2);
-//        assertThat(repository.count()).isEqualTo(2);
-//    }
+//  @Test
+//  void findById_nonExisting() {
+//      Optional<User> found = repository.findById(999L);
+//      assertThat(found).isEmpty();
+//  }
 //
-//    // ---- Find ----
+//  @Test
+//  void findAll_returnsAllEntities() throws Exception {
+//      insertRaw("Alice", "alice@example.com", 30);
+//      insertRaw("Bob", "bob@example.com", 25);
 //
-//    @Test
-//    void findById_existing() throws Exception {
-//        long id = insertRaw("Alice", "alice@example.com", 30);
+//      Iterable<User> all = repository.findAll();
 //
-//        Optional<User> found = repository.findById(id);
+//      assertThat(all).hasSize(2);
+//  }
 //
-//        assertThat(found).isPresent();
-//        assertThat(found.get().getName()).isEqualTo("Alice");
-//        assertThat(found.get().getEmail()).isEqualTo("alice@example.com");
-//        assertThat(found.get().getAge()).isEqualTo(30);
-//    }
+//  @Test
+//  void findAllById_returnsMatching() throws Exception {
+//      long id1 = insertRaw("Alice", "alice@example.com", 30);
+//      insertRaw("Bob", "bob@example.com", 25);
+//      long id3 = insertRaw("Charlie", "charlie@example.com", 35);
 //
-//    @Test
-//    void findById_nonExisting() {
-//        Optional<User> found = repository.findById(999L);
-//        assertThat(found).isEmpty();
-//    }
+//      Iterable<User> found = repository.findAllById(List.of(id1, id3));
 //
-//    @Test
-//    void findAll_returnsAllEntities() throws Exception {
-//        insertRaw("Alice", "alice@example.com", 30);
-//        insertRaw("Bob", "bob@example.com", 25);
+//      List<String> names = StreamSupport.stream(found.spliterator(), false)
+//              .map(User::getName)
+//              .toList();
+//      assertThat(names).containsExactlyInAnyOrder("Alice", "Charlie");
+//  }
 //
-//        Iterable<User> all = repository.findAll();
+//  // ---- Exists / Count ----
 //
-//        assertThat(all).hasSize(2);
-//    }
+//  @Test
+//  void existsById_true() throws Exception {
+//      long id = insertRaw("Alice", "alice@example.com", 30);
+//      assertThat(repository.existsById(id)).isTrue();
+//  }
 //
-//    @Test
-//    void findAllById_returnsMatching() throws Exception {
-//        long id1 = insertRaw("Alice", "alice@example.com", 30);
-//        insertRaw("Bob", "bob@example.com", 25);
-//        long id3 = insertRaw("Charlie", "charlie@example.com", 35);
+//  @Test
+//  void existsById_false() {
+//      assertThat(repository.existsById(999L)).isFalse();
+//  }
 //
-//        Iterable<User> found = repository.findAllById(List.of(id1, id3));
+//  @Test
+//  void count_emptyTable() {
+//      assertThat(repository.count()).isEqualTo(0);
+//  }
 //
-//        List<String> names = StreamSupport.stream(found.spliterator(), false)
-//                .map(User::getName)
-//                .toList();
-//        assertThat(names).containsExactlyInAnyOrder("Alice", "Charlie");
-//    }
+//  @Test
+//  void count_withData() throws Exception {
+//      insertRaw("Alice", "alice@example.com", 30);
+//      insertRaw("Bob", "bob@example.com", 25);
+//      assertThat(repository.count()).isEqualTo(2);
+//  }
 //
-//    // ---- Exists / Count ----
+//  // ---- Delete ----
 //
-//    @Test
-//    void existsById_true() throws Exception {
-//        long id = insertRaw("Alice", "alice@example.com", 30);
-//        assertThat(repository.existsById(id)).isTrue();
-//    }
+//  @Test
+//  void deleteById_removesEntity() throws Exception {
+//      long id = insertRaw("Alice", "alice@example.com", 30);
 //
-//    @Test
-//    void existsById_false() {
-//        assertThat(repository.existsById(999L)).isFalse();
-//    }
+//      repository.deleteById(id);
 //
-//    @Test
-//    void count_emptyTable() {
-//        assertThat(repository.count()).isEqualTo(0);
-//    }
+//      assertThat(repository.existsById(id)).isFalse();
+//      assertThat(repository.count()).isEqualTo(0);
+//  }
 //
-//    @Test
-//    void count_withData() throws Exception {
-//        insertRaw("Alice", "alice@example.com", 30);
-//        insertRaw("Bob", "bob@example.com", 25);
-//        assertThat(repository.count()).isEqualTo(2);
-//    }
+//  @Test
+//  void delete_byEntity() throws Exception {
+//      long id = insertRaw("Alice", "alice@example.com", 30);
+//      User user = new User(id, "Alice", "alice@example.com", 30);
 //
-//    // ---- Delete ----
+//      repository.delete(user);
 //
-//    @Test
-//    void deleteById_removesEntity() throws Exception {
-//        long id = insertRaw("Alice", "alice@example.com", 30);
+//      assertThat(repository.count()).isEqualTo(0);
+//  }
 //
-//        repository.deleteById(id);
+//  @Test
+//  void deleteAllById_removesSelected() throws Exception {
+//      long id1 = insertRaw("Alice", "alice@example.com", 30);
+//      long id2 = insertRaw("Bob", "bob@example.com", 25);
+//      long id3 = insertRaw("Charlie", "charlie@example.com", 35);
 //
-//        assertThat(repository.existsById(id)).isFalse();
-//        assertThat(repository.count()).isEqualTo(0);
-//    }
+//      repository.deleteAllById(List.of(id1, id3));
 //
-//    @Test
-//    void delete_byEntity() throws Exception {
-//        long id = insertRaw("Alice", "alice@example.com", 30);
-//        User user = new User(id, "Alice", "alice@example.com", 30);
+//      assertThat(repository.count()).isEqualTo(1);
+//      assertThat(repository.existsById(id2)).isTrue();
+//  }
 //
-//        repository.delete(user);
+//  @Test
+//  void deleteAll_removesEverything() throws Exception {
+//      insertRaw("Alice", "alice@example.com", 30);
+//      insertRaw("Bob", "bob@example.com", 25);
 //
-//        assertThat(repository.count()).isEqualTo(0);
-//    }
+//      repository.deleteAll();
 //
-//    @Test
-//    void deleteAllById_removesSelected() throws Exception {
-//        long id1 = insertRaw("Alice", "alice@example.com", 30);
-//        long id2 = insertRaw("Bob", "bob@example.com", 25);
-//        long id3 = insertRaw("Charlie", "charlie@example.com", 35);
+//      assertThat(repository.count()).isEqualTo(0);
+//  }
 //
-//        repository.deleteAllById(List.of(id1, id3));
+//  @Test
+//  void deleteAll_withEntities() throws Exception {
+//      long id1 = insertRaw("Alice", "alice@example.com", 30);
+//      long id2 = insertRaw("Bob", "bob@example.com", 25);
+//      long id3 = insertRaw("Charlie", "charlie@example.com", 35);
 //
-//        assertThat(repository.count()).isEqualTo(1);
-//        assertThat(repository.existsById(id2)).isTrue();
-//    }
+//      User alice = new User(id1, "Alice", "alice@example.com", 30);
+//      User bob = new User(id2, "Bob", "bob@example.com", 25);
 //
-//    @Test
-//    void deleteAll_removesEverything() throws Exception {
-//        insertRaw("Alice", "alice@example.com", 30);
-//        insertRaw("Bob", "bob@example.com", 25);
+//      repository.deleteAll(List.of(alice, bob));
 //
-//        repository.deleteAll();
+//      assertThat(repository.count()).isEqualTo(1);
+//      assertThat(repository.existsById(id3)).isTrue();
+//  }
 //
-//        assertThat(repository.count()).isEqualTo(0);
-//    }
+//  // ---- Null handling ----
 //
-//    @Test
-//    void deleteAll_withEntities() throws Exception {
-//        long id1 = insertRaw("Alice", "alice@example.com", 30);
-//        long id2 = insertRaw("Bob", "bob@example.com", 25);
-//        long id3 = insertRaw("Charlie", "charlie@example.com", 35);
+//  @Test
+//  void save_entityWithNullFields() {
+//      User user = new User(null, "Alice", null, null);
+//      repository.save(user);
 //
-//        User alice = new User(id1, "Alice", "alice@example.com", 30);
-//        User bob = new User(id2, "Bob", "bob@example.com", 25);
-//
-//        repository.deleteAll(List.of(alice, bob));
-//
-//        assertThat(repository.count()).isEqualTo(1);
-//        assertThat(repository.existsById(id3)).isTrue();
-//    }
-//
-//    // ---- Null handling ----
-//
-//    @Test
-//    void save_entityWithNullFields() {
-//        User user = new User(null, "Alice", null, null);
-//        repository.save(user);
-//
-//        Iterable<User> all = repository.findAll();
-//        assertThat(all).hasSize(1);
-//        User found = all.iterator().next();
-//        assertThat(found.getName()).isEqualTo("Alice");
-//        assertThat(found.getEmail()).isNull();
-//        assertThat(found.getAge()).isNull();
-//    }
+//      Iterable<User> all = repository.findAll();
+//      assertThat(all).hasSize(1);
+//      User found = all.iterator().next();
+//      assertThat(found.getName()).isEqualTo("Alice");
+//      assertThat(found.getEmail()).isNull();
+//      assertThat(found.getAge()).isNull();
+//  }
 }
