@@ -339,12 +339,12 @@ private UUID id;  // Default: PROVIDED
 
 ## Checklist Implementativa
 
-- [ ] Step 1: Override `isNew()` in `FluentEntityInformation` per supportare `Persistable<ID>`
-- [ ] Step 2: Modificare `SimpleFluentRepository.insert()` per rimuovere ID hardcoded
-- [ ] Step 3: Validare che ID != null prima di INSERT
-- [ ] Step 4: Aggiornare test `save_insertNewEntity()` per impostare ID
-- [ ] Step 5: Aggiungere test per `Persistable<ID>` (opzionale per MVP)
-- [ ] Step 6: Aggiungere commenti/documentazione sul flusso
+- [X] Step 1: Override `isNew()` in `FluentEntityInformation` per supportare `Persistable<ID>`
+- [X] Step 2: Modificare `SimpleFluentRepository.insert()` per rimuovere ID hardcoded
+- [X] Step 3: Validare che ID != null prima di INSERT
+- [X] Step 4: Aggiornare test `save_insertNewEntity()` per impostare ID
+- [X] Step 5: Aggiungere test per `Persistable<ID>` (opzionale per MVP)
+- [X] Step 6: Aggiungere commenti/documentazione sul flusso
 
 ---
 

@@ -1,24 +1,22 @@
-# repo4j - JDBC Repository Pattern
+# fluent-repo-4j - Pure JDBC Repositories for Spring Boot
 
-An enterprise-grade library for implementing the **Repository Pattern** with pure JDBC, maintaining a clean business-focused API decoupled from the database.
+A lightweight Spring Boot library for implementing the **Repository Pattern** with pure JDBC and the fluent-sql-4j DSL. Write type-safe, declarative database queries without ORM overhead.
 
 ## Features
 
-✅ **Minimal Spring dependencies** - Uses Spring Data Commons and spring-jdbc  
-✅ **Pure JDBC** - No ORM complexity, full control  
-✅ **Flexible Connection Management** - ThreadLocal or ScopedValue (Java 21+)  
-✅ **Generic BaseRepository** - Inherit once, implement specific queries  
-✅ **JUnit 5 (Jupiter)** - Test suite with H2 in-memory database  
-✅ **Enterprise Design** - Decoupling, Exception handling, RowMapper pattern  
-✅ **Virtual Threads Ready** - ScopedValue support for modern concurrency  
+✅ **Spring Boot Auto-Configuration** - Zero boilerplate; `@EnableFluentRepositories` scans and creates repository beans  
+✅ **Pure JDBC** - Full SQL control via fluent-sql-4j DSL; no ORM complexity  
+✅ **Spring Transaction Integration** - Automatic binding via `DataSourceUtils`; `@Transactional` works seamlessly  
+✅ **Simple Entity Mapping** - Jakarta Persistence annotations (`@Table`, `@Column`, `@Id`); automatic snake_case conversion  
+✅ **ID Generation Strategies** - Support for application-provided IDs and database auto-increment (`@GeneratedValue(IDENTITY)`)  
+✅ **Type Conversion** - Automatic mapping: strings, numbers, booleans, dates (LocalDate, LocalDateTime)  
+✅ **Exception Translation** - SQL exceptions automatically translated to Spring's `DataAccessException`  
 
 ---
 
 ## Quick Start
 
-### With Spring Boot (Recommended)
-
-Include this library as a dependency. Spring Boot auto-configures everything!
+Include this library as a dependency and Spring Boot auto-configures everything!
 
 ```xml
 <dependency>
@@ -28,16 +26,21 @@ Include this library as a dependency. Spring Boot auto-configures everything!
 </dependency>
 ```
 
-#### 1. Define your entity with JPA annotations
+### 1. Define Your Entity
+
+Use Jakarta Persistence annotations. The `@Id` field is required; map the ID generation strategy if needed.
 
 ```java
 import jakarta.persistence.Table;
 import jakarta.persistence.Column;
 import jakarta.persistence.Id;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 
 @Table(name = "users")
 public class User {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)  // Database auto-increment
     private Long id;
     
     @Column(name = "name")
@@ -46,59 +49,60 @@ public class User {
     @Column(name = "email")
     private String email;
     
+    private int age;  // Field without @Column → auto-mapped to 'age' column
+    
     // Constructors, getters, setters...
 }
 ```
 
-#### 2. Create a repository interface
+### 2. Create a Repository Interface
+
+Extend `CrudRepository<Entity, ID>`. CRUD methods are inherited automatically.
 
 ```java
 import org.springframework.data.repository.CrudRepository;
 
 public interface UserRepository extends CrudRepository<User, Long> {
-    // CRUD methods are inherited: save, findById, findAll, deleteById, count, etc.
-    // Add custom queries if needed
-    Optional<User> findByEmail(String email);
+    // Inherited methods: save(), findById(), findAll(), count(), deleteById(), etc.
 }
 ```
 
-#### 3. Use it in a service
+### 3. Inject and Use
 
 ```java
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
     
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
     
     @Transactional
-    public User createUser(String name, String email) {
-        // Spring Data proxy automatically:
-        // 1. Gets a connection from the DataSource
-        // 2. Uses FluentConnectionProvider to bind it to transaction
-        // 3. Delegates to SimpleFluentRepository.save()
-        User user = new User(name, email);
+    public User createUser(String name, String email, int age) {
+        User user = new User(name, email, age);
+        // ID is auto-generated; save() performs INSERT
         return userRepository.save(user);
     }
     
-    public User getUser(Long id) {
+    public User findUser(Long id) {
         return userRepository.findById(id).orElseThrow();
     }
     
-    public List<User> getAllUsers() {
-        return (List<User>) userRepository.findAll();
+    @Transactional
+    public User updateUser(Long id, String newName) {
+        User user = findUser(id);
+        user.setName(newName);
+        // save() detects ID exists → performs UPDATE
+        return userRepository.save(user);
     }
     
-    @Transactional
-    public void updateUser(Long id, String newName, String newEmail) {
-        User user = userRepository.findById(id).orElseThrow();
-        user.setName(newName);
-        user.setEmail(newEmail);
-        userRepository.save(user);  // UPDATE
+    public List<User> allUsers() {
+        return (List<User>) userRepository.findAll();
     }
     
     @Transactional
@@ -108,50 +112,9 @@ public class UserService {
 }
 ```
 
-#### 4. Use the service in a controller (or anywhere)
+### 4. Configure DataSource
 
-```java
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
-@RestController
-@RequestMapping("/users")
-public class UserController {
-    
-    @Autowired
-    private UserService userService;
-    
-    @PostMapping
-    public User create(@RequestParam String name, @RequestParam String email) {
-        return userService.createUser(name, email);
-    }
-    
-    @GetMapping("/{id}")
-    public User getById(@PathVariable Long id) {
-        return userService.getUser(id);
-    }
-    
-    @GetMapping
-    public List<User> getAll() {
-        return userService.getAllUsers();
-    }
-    
-    @PutMapping("/{id}")
-    public User update(@PathVariable Long id, 
-                       @RequestParam String name, 
-                       @RequestParam String email) {
-        userService.updateUser(id, name, email);
-        return userService.getUser(id);
-    }
-    
-    @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
-        userService.deleteUser(id);
-    }
-}
-```
-
-#### 5. Configure the datasource (application.yml)
+In `application.yml`:
 
 ```yaml
 spring:
@@ -160,356 +123,195 @@ spring:
     username: root
     password: secret
     driver-class-name: com.mysql.cj.jdbc.Driver
-
-  jpa:
-    database-platform: org.hibernate.dialect.MySQL8Dialect
 ```
 
-No additional configuration needed! The library:
-- ✅ Auto-detects the database dialect from DataSource metadata
-- ✅ Scans for `CrudRepository` interfaces automatically
-- ✅ Creates beans with transaction support via `@Transactional`
-- ✅ Manages connections via `DataSourceUtils` (integrated with Spring Transactions)
+**That's it!** The library:
+- ✅ Auto-detects the database dialect from DataSource metadata  
+- ✅ Scans for `CrudRepository` interfaces and creates beans  
+- ✅ Binds connections to Spring transactions automatically via `DataSourceUtils`  
+- ✅ Maps entities to tables using Jakarta Persistence annotations  
 
 ---
 
-### Without Spring Boot (Standalone)
+## ID Generation Strategies
 
-The library also works as a plain JDBC wrapper without Spring:
+How does the library decide whether to INSERT or UPDATE? It uses the `isNew()` method, which inspects the ID and optional `@GeneratedValue` annotation.
+
+### Strategy 1: Application-Provided ID (Default)
+
+The **application** is responsible for setting the ID before calling `save()`.
 
 ```java
+@Table(name = "events")
+public class Event {
+    @Id
+    private UUID id;  // No @GeneratedValue annotation
+    
+    private String description;
+    
+    // Constructor, getters, setters...
+}
+
+// Usage:
+Event event = new Event(UUID.randomUUID(), "Something happened");
+repository.save(event);  // ID is set → INSERT
+```
+
+**Behavior**: If ID is not null, `isNew()` returns false → INSERT is executed (not UPDATE).  
+**Best for**: UUIDs, business keys, or scenarios where the app generates the ID.
+
+### Strategy 2: Database Auto-Increment
+
+Let the **database** generate the ID using auto-increment / identity columns.
+
+```java
+@Table(name = "users")
 public class User {
-    private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;  // Database generates this
+    
     private String name;
-    private String email;
-    // ...
-}
-
-public class UserRepository extends BaseRepository<User, Long> {
     
-    public UserRepository(ConnectionProvider connectionProvider) {
-        super(connectionProvider);
-    }
+    // Constructor, getters, setters...
+}
+
+// Usage:
+User user = new User("Alice");  // id = null
+repository.save(user);  // ID is null → INSERT without ID, database returns generated key
+```
+
+**Behavior**: When ID is null, `isNew()` returns true → INSERT is executed. The library retrieves the generated ID from the database and populates the entity.  
+**Best for**: Sequential IDs (IDENTITY, SERIAL, AUTO_INCREMENT columns).
+
+### Strategy 3: Custom isNew() Logic via Persistable<ID>
+
+For complex scenarios (e.g., UUID with explicit `isNew` tracking), implement `Persistable<ID>`.
+
+```java
+import org.springframework.data.domain.Persistable;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
+
+@Table(name = "orders")
+public class Order implements Persistable<UUID> {
+    @Id
+    private UUID id;
     
-    private static final RowMapper<User> USER_MAPPER = rs -> 
-        new User(rs.getLong("id"), rs.getString("name"), rs.getString("email"));
-
-    @Override
-    public User create(User user) {
-        String sql = "INSERT INTO users (name, email) VALUES (?, ?)";
-        Long generatedId = executeInsertWithGeneratedKey(
-            sql, 
-            rs -> rs.getLong(1), 
-            user.getName(), 
-            user.getEmail()
-        );
-        user.setId(generatedId);
-        return user;
-    }
-
-    @Override
-    public Optional<User> findById(Long id) {
-        String sql = "SELECT id, name, email FROM users WHERE id = ?";
-        return executeQuerySingle(sql, USER_MAPPER, id);
-    }
-
-    @Override
-    public List<User> findAll() {
-        String sql = "SELECT id, name, email FROM users ORDER BY id";
-        return executeQuery(sql, USER_MAPPER);
-    }
-
-    @Override
-    public User update(User user) {
-        String sql = "UPDATE users SET name = ?, email = ? WHERE id = ?";
-        executeUpdate(sql, user.getName(), user.getEmail(), user.getId());
-        return user;
-    }
-
-    @Override
-    public void delete(Long id) {
-        String sql = "DELETE FROM users WHERE id = ?";
-        executeUpdate(sql, id);
-    }
-}
-```
-
----
-
-## Architecture
-
-### ConnectionProvider Implementations
-
-The library provides two connection management strategies following the **Single Responsibility Principle (SRP)**:
-
-#### 1. ThreadLocalConnectionProvider
-- Uses `ThreadLocal` for connection storage
-- Suitable for traditional thread pool scenarios
-- Compatible with all Java versions
-- Each instance has its own isolated ThreadLocal storage
-
-#### 2. ScopedValueConnectionProvider  
-- Uses `ScopedValue` (Java 21+) for connection storage
-- Optimized for virtual threads and structured concurrency
-- Better garbage collection performance
-- Automatic scope binding/unbinding
-
-### Factory Pattern
-
-```java
-// Create providers using the factory
-ConnectionProvider threadLocalProvider = ConnectionProviderFactory.threadLocal();
-ConnectionProvider scopedProvider = ConnectionProviderFactory.scopedValue();
-
-// Each call returns a fresh instance with isolated state
-```
-
-### ConnectionProvider Interface
-
-Manages the `Connection` lifecycle without exposing it to repositories.
-
-```java
-public interface ConnectionProvider {
-    void setConnection(Connection connection);
-    Connection getConnection();
-    boolean hasConnection();
-    void clear();  // Remove without closing
-    void close();  // Close and remove
-}
-```
-
-### When to Use Which Provider?
-
-#### Use **ThreadLocalConnectionProvider** when:
-- ✅ Working with traditional thread pools (e.g., Servlet containers)
-- ✅ Need compatibility with older Java versions (pre-21)
-- ✅ Using Spring Framework with `@Transactional` (Spring manages ThreadLocal automatically)
-- ✅ Standard enterprise applications with fixed thread pools
-
-#### Use **ScopedValueConnectionProvider** when:
-- ✅ Working with virtual threads (Java 21+)
-- ✅ Need better garbage collection performance
-- ✅ Implementing structured concurrency patterns
-- ✅ Want explicit scope-based lifecycle management
-- ✅ Building modern reactive/async applications
-
-### Key Advantages
-
-**Architecture Benefits:**
-- ✅ One Connection per thread/scope (thread-safe for multi-threaded applications)
-- ✅ Repository completely decoupled from Connection management
-- ✅ Clean separation of concerns (SRP applied)
-- ✅ Easy testing with dependency injection
-- ✅ No Connection parameters in method signatures
-
-**ScopedValue Benefits (Java 21+):**
-- ✅ Better performance with virtual threads
-- ✅ Reduced memory footprint
-- ✅ Automatic scope cleanup
-- ✅ Immutable binding (safer than ThreadLocal)
-
-### BaseRepository<T, ID>
-
-Abstract class with utility methods for common CRUD operations:
-
-| Method | Description |
-|--------|-------------|
-| `create(T)` | INSERT - to be implemented |
-| `findById(ID)` | SELECT by ID - to be implemented |
-| `findAll()` | SELECT all - to be implemented |
-| `update(T)` | UPDATE - to be implemented |
-| `delete(ID)` | DELETE - to be implemented |
-| `executeQuery(sql, mapper, params)` | Execute SELECT, return List |
-| `executeQuerySingle(sql, mapper, params)` | Execute SELECT, return Optional |
-| `executeUpdate(sql, params)` | Execute INSERT/UPDATE/DELETE |
-| `executeInsertWithGeneratedKey(sql, mapper, params)` | INSERT with generated PRIMARY KEY |
-
-### RowMapper<T>
-
-Functional interface for mapping ResultSet → T:
-
-```java
-@FunctionalInterface
-public interface RowMapper<T> {
-    T mapRow(ResultSet rs) throws SQLException;
-}
-
-// Use as lambda:
-RowMapper<User> userMapper = rs -> new User(
-    rs.getLong("id"),
-    rs.getString("name"),
-    rs.getString("email")
-);
-```
-
-### RepositoryException
-
-Eccezione unchecked che wrappa `SQLException`:
-
-```java
-try {
-    // JDBC operation
-} catch (SQLException e) {
-    throw new RepositoryException("Errore durante l'operazione", e);
-}
-```
-
----
-
-## Testing
-
-Ogni repository test usa H2 in-memory database con ThreadLocal isolation:
-
-```java
-@BeforeEach
-void setUp() throws Exception {
-    // Crea DB in-memory con timestamp unico per test isolation
-    Connection conn = DriverManager.getConnection(
-        "jdbc:h2:mem:test_" + System.currentTimeMillis() + ";DB_CLOSE_DELAY=-1", 
-        "sa", 
-        ""
-    );
+    @Transient
+    private boolean isNew = true;
     
-    // Schema DDL
-    try (Statement stmt = conn.createStatement()) {
-        stmt.executeUpdate("CREATE TABLE users (...)");
+    private String description;
+    
+    public Order() {
+        this.id = UUID.randomUUID();  // Generate UUID at construction
     }
     
-    // Imposta provider
-    ConnectionProvider.setConnection(conn);
-    repository = new UserRepository();
+    @Override
+    public UUID getId() {
+        return id;
+    }
+    
+    @Override
+    public boolean isNew() {
+        return isNew;  // You control when the entity is considered "new"
+    }
+    
+    @PostLoad
+    @PostPersist
+    void markPersisted() {
+        this.isNew = false;
+    }
 }
 
-@Test
-void testCreate() {
-    User created = repository.create(new User("Test", "test@example.com"));
-    assertEquals("Test", created.getName());
-}
-
-@AfterEach
-void tearDown() {
-    ConnectionProvider.close();
-}
+// Usage:
+Order order = new Order();  // isNew = true, UUID already generated
+repository.save(order);  // isNew() → true → INSERT
 ```
+
+**Behavior**: `save()` calls `isNew()` directly on the entity. Full control over insert/update logic.  
+**Best for**: Complex ID schemes or when you need explicit state tracking.
 
 ---
 
-## Integration con Spring (Futuro)
+## Data Types Supported
 
-Una volta integrato Spring, **la base rimarrà identica**, solo il codice client cambierà:
+The library automatically converts ResultSet columns to Java types:
 
-```java
-// Senza Spring (attuale)
-Connection conn = dataSource.getConnection();
-ConnectionProvider.setConnection(conn);
-try {
-    userRepo.create(user);
-} finally {
-    ConnectionProvider.close();
-}
-
-// Con Spring (futuro)
-@Transactional  // ← Spring gestisce ConnectionProvider automaticamente
-public void createUser(User user) {
-    userRepo.create(user);  // ← IDENTICO!
-}
-```
-
-I **repository non cambiano una riga**.
+| Java Type | Supported | Notes |
+|-----------|-----------|-------|
+| String | ✅ | VARCHAR, TEXT, CHAR |
+| Long, Integer, Short, Byte | ✅ | BIGINT, INT, SMALLINT, TINYINT |
+| Double, Float, BigDecimal | ✅ | DOUBLE, FLOAT, DECIMAL |
+| Boolean | ✅ | BOOLEAN, BIT (0/1 converts to false/true) |
+| LocalDate | ✅ | DATE |
+| LocalDateTime | ✅ | TIMESTAMP |
+| UUID | ✅ | VARCHAR/CHAR (stored as string) |
+| Custom types, arrays, LOBs | ❌ | Not supported; implement custom converters or store as JSON strings |
 
 ---
 
-## Project Structure
-// TODO: align Project Structure (the whole README.md needs to be aligned)
-```
-src/
-├── main/java/io/github/auspis/repo4j/
-│   ├── core/
-│   │   ├── ConnectionProvider.java      (ThreadLocal wrapper)
-│   │   ├── BaseRepository.java          (Classe astratta generica)
-│   │   ├── RowMapper.java               (Interface mapping)
-│   │   └── RepositoryException.java     (Unchecked exception)
-│   └── example/
-│       ├── User.java                    (Entità di esempio)
-│       └── UserRepository.java          (Repository concreto)
-└── test/java/io/github/auspis/repo4j/
-    ├── core/
-    │   └── ConnectionProviderTest.java
-    └── example/
-        └── UserRepositoryTest.java
-```
+## Architecture Snapshot
+
+How does the library work?
+
+1. **Application startup**: Spring Boot detects `@EnableFluentRepositories` (or auto-configuration) and triggers repository scanning.
+2. **Repository bean creation**: For each `CrudRepository` interface, a `FluentRepositoryFactoryBean` creates a `SimpleFluentRepository<Entity, ID>` implementation and wraps it with Spring Data's proxy.
+3. **Method invocation**: When you call `repository.save(entity)`, the proxy invokes `SimpleFluentRepository.save()`.
+4. **Save logic**:
+   - Check `entity.isNew()` (uses `@GeneratedValue` annotation or `Persistable<ID>` override)
+   - If true → INSERT; if false → UPDATE
+5. **SQL execution**: `SimpleFluentRepository` builds SQL using fluent-sql-4j, prepares statements via `FluentConnectionProvider`, and executes against the DataSource.
+6. **Transaction binding**: Connections are obtained via Spring's `DataSourceUtils`, automatically bound to the active `@Transactional` scope.
+7. **Results mapping**: `FluentEntityRowMapper` converts ResultSet rows to entity instances using Jakarta Persistence metadata.
+
+**For detailed component descriptions and architecture diagrams**, see [data/wiki/ARCHITECTURE.md](data/wiki/ARCHITECTURE.md).
 
 ---
 
-## Spring Data Integration
+## Supported vs Not Supported
 
-This module integrates with **Spring Data Commons** to provide automatic repository scanning and bean creation. When you include this library in a Spring Boot application, it automatically configures repository support with zero boilerplate.
-
-### Component Responsibilities
-
-| Component | Responsibility |
-|-----------|-----------------|
-| **`@EnableFluentRepositories`** | Entry-point annotation; imports the registrar for repository scanning |
-| **`FluentRepositoriesRegistrar`** | Implements Spring's `ImportBeanDefinitionRegistrar`; triggers classpath scanning for `Repository` interfaces |
-| **`FluentRepositoryConfigExtension`** | Provides configuration strategy to Spring Data: which factory to use, how to identify repositories |
-| **`FluentRepositoryFactoryBean`** | Factory bean that creates `FluentRepositoryFactory` and injects `FluentConnectionProvider` + `DSL` |
-| **`FluentRepositoryFactory`** | Creates `SimpleFluentRepository<T, ID>` instances; extracts entity metadata |
-| **`SimpleFluentRepository<T, ID>`** | **Actual implementation**: executes `findById`, `save`, `delete`, etc. using JDBC + fluent-sql-4j |
-| **`FluentConnectionProvider`** | Obtains connections via Spring's `DataSourceUtils` (transaction-aware or auto-commit) |
-| **`FluentEntityInformation<T, ID>`** | Extracts entity metadata: table name, column names, `@Id` field using Jakarta Persistence annotations |
-| **`FluentEntityRowMapper<T>`** | Maps `ResultSet` rows to entity instances |
-| **`FluentEntityWriter<T>`** | Writes entity properties to `PreparedStatement` parameters |
-
-### Configuration Flow
-
-```
-Spring Boot Application starts
-        ↓
-@EnableFluentRepositories detected (or auto-configured)
-        ↓
-FluentRepositoriesRegistrar scans basePackages
-        ↓
-Finds interfaces extending CrudRepository (e.g., UserRepository)
-        ↓
-Creates BeanDefinition pointing to FluentRepositoryFactoryBean
-        ↓
-When @Autowired UserRepository is encountered:
-    1. FluentRepositoryFactoryBean.getObject() invoked
-    2. FluentRepositoryFactory created (receives ConnectionProvider + DSL)
-    3. SimpleFluentRepository<User, Long> instantiated
-    4. Spring Data creates proxy around implementation
-    5. Proxy injected into application bean
-        ↓
-userRepository.findById(1L) 
-    → Proxy delegates to SimpleFluentRepository.findById()
-    → Executes SQL via FluentConnectionProvider
-```
+| Feature | Status | Notes |
+|---------|--------|-------|
+| CRUD operations (`save`, `findById`, `findAll`, `count`, `deleteById`) | ✅ Supported | Core functionality built-in |
+| `@Transactional` integration | ✅ Supported | Automatic connection binding via Spring |
+| `@GeneratedValue(IDENTITY)` | ✅ Supported | Database auto-increment IDs |
+| Application-provided IDs | ✅ Supported | Set ID before `save()` |
+| `Persistable<ID>` for custom `isNew()` logic | ✅ Supported | Fine-grained control over insert/update |
+| Simple entity mapping (Jakarta Persistence annotations) | ✅ Supported | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient` |
+| Exception translation to `DataAccessException` | ✅ Supported | Automatic SQL exception handling |
+| Custom query methods (e.g., `findByEmail()`) | ❌ Not Supported | Use `findAll()` + filter in application code, or implement custom SQL in fragments |
+| Query method derivation (e.g., PartTree) | ❌ Not Supported | Planned for future release |
+| Object relationships (one-to-many, many-to-many) | ❌ Not Supported | Use separate repositories and explicit queries |
+| `@GeneratedValue(SEQUENCE)` | ❌ Not Supported | Planned for future release |
+| Persistence context / first-level cache | ❌ Not Supported | Not applicable to JDBC; each query returns fresh objects |
 
 ---
 
-## Stack
+## Current Limitations
 
-- **Java**: 21+
-- **Build**: Maven
-- **Test**: JUnit 6 (Jupiter)
-- **Database**: H2 (dev/test), any JDBC driver (production)
-- **Dependencies**: Zero (JDBC driver è l'unico requirement)
+This library focuses on **simple CRUD operations for single entities**. Be aware of the following:
+
+1. **CRUD-only API**: No custom query methods. Use `findAll()` + application-side filtering, or implement custom SQL using fluent-sql-4j directly.
+
+2. **No relationships**: The library does not load related entities automatically. If you need `User` with all their `Orders`, execute two separate queries and compose the result in application code.
+
+3. **No persistence context**: Unlike Hibernate, entities are not tracked. Calling `findById()` twice returns two separate object instances. This is inherent to JDBC and not a limitation.
+
+4. **ID generation limited**: Currently supports `PROVIDED` (app sets the ID) and `IDENTITY` (database auto-increment). `SEQUENCE` support is planned.
+
+5. **Transaction management**: Relies entirely on Spring's `@Transactional` and `DataSourceUtils`. Manual connection management is not exposed to application code.
+
+6. **No bulk operations**: `saveAll()` and `deleteAll()` execute in loops, not as batch statements. For high-volume inserts, consider batch APIs provided by the database driver directly.
 
 ---
 
-## Best Practices
+## Further Reading
 
-1. **Un repository per entità** - UserRepository per User, ProductRepository per Product, ecc.
+For comprehensive architecture details and advanced usage examples, see:
 
-2. **Query specifiche nel repository** - Domain queries vivono accanto al mapping logic
-
-3. **Usa Optional** - Per single-row queries, List per multi-row
-
-4. **Thread safety** - ConnectionProvider è thread-safe tramite ThreadLocal
-
-5. **Sempre chiudi la Connection** - Use try/finally o try-with-resources
-
-6. **Mock ConnectionProvider nei test** - Non necesità di database reale
+- **[Architecture & Internal Components](data/wiki/ARCHITECTURE.md)** – Deep dive into Spring Data integration, connection management, and entity mapping machinery.
+- **[Usage Examples](data/wiki/USAGE_EXAMPLES.md)** – Complete examples: UUID primary keys, Persistable<ID> implementation, transaction patterns, error handling.
 
 ---
 
