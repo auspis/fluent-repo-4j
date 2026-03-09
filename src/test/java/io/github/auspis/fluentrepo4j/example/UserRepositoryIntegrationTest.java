@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+
 import io.github.auspis.fluentrepo4j.test.domain.User;
 
 /**
@@ -59,7 +60,7 @@ class UserRepositoryIntegrationTest {
     @Test
     void testSave_NewUser() {
         // When: Save a new user (no ID set → INSERT)
-        User newUser = new User("John Doe", "john@example.com");
+        User newUser = new User("John Doe", "john@example.com").withId(1L);
         User saved = userRepository.save(newUser);
 
         // Then: User is persisted in database
@@ -81,7 +82,7 @@ class UserRepositoryIntegrationTest {
     @Test
     void testFindById() {
         // Given: A user in the database
-        User created = new User("Jane Smith", "jane@example.com");
+        User created = new User("Jane Smith", "jane@example.com").withId(1L);
         userRepository.save(created);
         
         // Retrieve the ID from database
@@ -115,9 +116,9 @@ class UserRepositoryIntegrationTest {
     @Test
     void testFindAll() {
         // Given: Multiple users in the database
-        userRepository.save(new User("Alice", "alice@example.com"));
-        userRepository.save(new User("Bob", "bob@example.com"));
-        userRepository.save(new User("Charlie", "charlie@example.com"));
+        userRepository.save(new User("Alice", "alice@example.com").withId(1L));
+        userRepository.save(new User("Bob", "bob@example.com").withId(2L));
+        userRepository.save(new User("Charlie", "charlie@example.com").withId(3L));
 
         // When: Retrieve all users
         List<User> allUsers = (List<User>) userRepository.findAll();
@@ -132,7 +133,7 @@ class UserRepositoryIntegrationTest {
     @Test
     void testSave_Update() {
         // Given: A user in the database
-        User original = new User("Original Name", "original@example.com");
+        User original = new User("Original Name", "original@example.com").withId(1L);
         userRepository.save(original);
         
         // Retrieve the ID from database
@@ -167,7 +168,7 @@ class UserRepositoryIntegrationTest {
     @Test
     void testDeleteById() {
         // Given: A user in the database
-        User created = new User("To Delete", "delete@example.com");
+        User created = new User("To Delete", "delete@example.com").withId(1L);
         userRepository.save(created);
         
         // Retrieve the ID from database
@@ -191,9 +192,9 @@ class UserRepositoryIntegrationTest {
         assertThat(initialCount).isZero();
 
         // Given: Add some users
-        userRepository.save(new User("User 1", "user1@example.com"));
-        userRepository.save(new User("User 2", "user2@example.com"));
-        userRepository.save(new User("User 3", "user3@example.com"));
+        userRepository.save(new User("User 1", "user1@example.com").withId(1L));
+        userRepository.save(new User("User 2", "user2@example.com").withId(2L));
+        userRepository.save(new User("User 3", "user3@example.com").withId(3L));
 
         // Then: Count is updated
         long finalCount = userRepository.count();
@@ -203,9 +204,9 @@ class UserRepositoryIntegrationTest {
     @Test
     void testSaveAll() {
         // When: Save multiple users at once
-        User user1 = new User("User 1", "user1@example.com");
-        User user2 = new User("User 2", "user2@example.com");
-        User user3 = new User("User 3", "user3@example.com");
+        User user1 = new User("User 1", "user1@example.com").withId(1L);
+        User user2 = new User("User 2", "user2@example.com").withId(2L);
+        User user3 = new User("User 3", "user3@example.com").withId(3L);
 
         Iterable<User> saved = userRepository.saveAll(List.of(user1, user2, user3));
 
@@ -221,7 +222,7 @@ class UserRepositoryIntegrationTest {
     @Test
     void testExistsById() {
         // Given: A user in the database
-        User created = new User("Existing", "existing@example.com");
+        User created = new User("Existing", "existing@example.com").withId(1L);
         userRepository.save(created);
         
         // Retrieve the ID from database

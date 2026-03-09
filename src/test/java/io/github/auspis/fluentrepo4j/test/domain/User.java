@@ -2,6 +2,7 @@ package io.github.auspis.fluentrepo4j.test.domain;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -54,6 +55,10 @@ public class User {
         birthdate = LocalDate.now().minusYears(age);
         placeOfResidence = "Unknown";
         preferences = "{}";
+    }
+
+    public User withId(long id) {
+        return new User(id, this.name, this.email, this.age, this.active, this.birthdate, this.createdAt, this.placeOfResidence, this.preferences);
     }
 
 }

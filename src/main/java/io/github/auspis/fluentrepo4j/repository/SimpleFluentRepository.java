@@ -8,10 +8,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.support.SQLExceptionSubclassTranslator;
 import org.springframework.jdbc.support.SQLExceptionTranslator;
+
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.mapping.DslTypeDispatcher;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
@@ -249,7 +251,6 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
 
     // ---- Internal ----
 
-    @SuppressWarnings("unchecked")
     private <S extends T> S insert(S entity) {
         IdGenerationStrategy strategy = entityInformation.getIdGenerationStrategy();
         if (strategy == IdGenerationStrategy.PROVIDED) {
