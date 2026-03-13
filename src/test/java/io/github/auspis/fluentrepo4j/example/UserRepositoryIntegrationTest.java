@@ -208,7 +208,7 @@ class UserRepositoryIntegrationTest {
         User user2 = new User("User 2", "user2@example.com").withId(2L);
         User user3 = new User("User 3", "user3@example.com").withId(3L);
 
-        Iterable<User> saved = userRepository.saveAll(List.of(user1, user2, user3));
+        userRepository.saveAll(List.of(user1, user2, user3));
 
         // Then: All users are persisted in database
         long count = jdbcTemplate.queryForObject(
