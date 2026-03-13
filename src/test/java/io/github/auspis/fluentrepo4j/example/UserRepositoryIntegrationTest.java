@@ -35,6 +35,7 @@ class UserRepositoryIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    // TODO: replace JdbcTemplate with fluent-sql-4j DSL
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -59,9 +60,8 @@ class UserRepositoryIntegrationTest {
 
     @Test
     void testSave_NewUser() {
-        // When: Save a new user (no ID set → INSERT)
         User newUser = new User("John Doe", "john@example.com").withId(1L);
-        User saved = userRepository.save(newUser);
+        userRepository.save(newUser);
 
         // Then: User is persisted in database
         assertThat(jdbcTemplate.queryForObject(
