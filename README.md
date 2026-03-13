@@ -135,30 +135,28 @@ spring:
 
 ## ID Generation Strategies
 
-How does the library decide whether to INSERT or UPDATE? It uses the `isNew()` method, which inspects the ID and optional `@GeneratedValue` annotation.
+How does the library decide whether to INSERT or UPDATE? A `SaveDecisionResolver` evaluates each `save()` call and returns one of four actions: `INSERT_PROVIDED_ID`, `INSERT_AUTO_ID`, `UPDATE`, or `ERROR`.
 
 ### Strategy 1: Application-Provided ID (Default)
 
-The **application** is responsible for setting the ID before calling `save()`.
+The **application** sets the ID before calling `save()`. No `@GeneratedValue` annotation is needed.
 
 ```java
 @Table(name = "events")
 public class Event {
     @Id
-    private UUID id;  // No @GeneratedValue annotation
+    private UUID id;  // No @GeneratedValue
     
     private String description;
-    
-    // Constructor, getters, setters...
 }
 
 // Usage:
 Event event = new Event(UUID.randomUUID(), "Something happened");
-repository.save(event);  // ID is set → INSERT
+repository.save(event);  // id != null, not in DB → INSERT_PROVIDED_ID
 ```
 
-**Behavior**: If ID is not null, `isNew()` returns false → INSERT is executed (not UPDATE).  
-**Best for**: UUIDs, business keys, or scenarios where the app generates the ID.
+**Decision logic**: id is non-null → `existsById()` check → if not found, INSERT; if found, UPDATE.  
+**Best for**: UUIDs, business keys, any scenario where the app generates the ID.
 
 ### Strategy 2: Database Auto-Increment
 
@@ -172,65 +170,58 @@ public class User {
     private Long id;  // Database generates this
     
     private String name;
-    
-    // Constructor, getters, setters...
 }
 
 // Usage:
 User user = new User("Alice");  // id = null
-repository.save(user);  // ID is null → INSERT without ID, database returns generated key
+repository.save(user);  // id == null → INSERT_AUTO_ID, database sets id on the entity
 ```
 
-**Behavior**: When ID is null, `isNew()` returns true → INSERT is executed. The library retrieves the generated ID from the database and populates the entity.  
-**Best for**: Sequential IDs (IDENTITY, SERIAL, AUTO_INCREMENT columns).
+**Decision logic**: id is null → `INSERT_AUTO_ID`. The generated key is read back and set on the entity.  
+**Error case**: if an entity with `@GeneratedValue(IDENTITY)` has a non-null id that does not exist in the DB, `save()` throws `IllegalStateException` — this is an inconsistent state.  
+**Best for**: Sequential Long IDs (IDENTITY / SERIAL / AUTO_INCREMENT columns).
 
-### Strategy 3: Custom isNew() Logic via Persistable<ID>
+### Strategy 3: Custom `isNew()` Logic via `Persistable<ID>`
 
-For complex scenarios (e.g., UUID with explicit `isNew` tracking), implement `Persistable<ID>`.
+For complete control over the new/existing distinction, implement `Persistable<ID>`. The `SaveDecisionResolver` honours `isNew()` directly and skips the `existsById()` database call.
 
 ```java
 import org.springframework.data.domain.Persistable;
-import jakarta.persistence.PostLoad;
-import jakarta.persistence.PostPersist;
 
-@Table(name = "orders")
-public class Order implements Persistable<UUID> {
+@Table(name = "products")
+public class Product implements Persistable<Integer> {
     @Id
-    private UUID id;
-    
+    private Integer id;
+
+    private String name;
+    private Double price;
+
     @Transient
-    private boolean isNew = true;
-    
-    private String description;
-    
-    public Order() {
-        this.id = UUID.randomUUID();  // Generate UUID at construction
-    }
-    
-    @Override
-    public UUID getId() {
-        return id;
-    }
-    
+    private boolean isNewEntity = true;
+
     @Override
     public boolean isNew() {
-        return isNew;  // You control when the entity is considered "new"
+        return isNewEntity;
     }
-    
-    @PostLoad
-    @PostPersist
-    void markPersisted() {
-        this.isNew = false;
+
+    public void markPersisted() {
+        this.isNewEntity = false;
     }
 }
 
-// Usage:
-Order order = new Order();  // isNew = true, UUID already generated
-repository.save(order);  // isNew() → true → INSERT
+// Insert:
+Product p = new Product(1, "Widget", 19.99);
+repository.save(p);  // isNew() = true → INSERT_PROVIDED_ID (no DB call)
+
+// Update:
+p.markPersisted();
+p.setPrice(24.99);
+repository.save(p);  // isNew() = false → UPDATE (no DB call)
 ```
 
-**Behavior**: `save()` calls `isNew()` directly on the entity. Full control over insert/update logic.  
-**Best for**: Complex ID schemes or when you need explicit state tracking.
+**Decision logic**: delegates entirely to `entity.isNew()` — no `existsById()` call.  
+**Note**: `@PostLoad` / `@PostPersist` are JPA callbacks and are **not** fired in pure JDBC mode. Call `markPersisted()` (or equivalent) manually after save.  
+**Best for**: explicit state control, complex ID schemes, or performance-sensitive code that avoids the `existsById()` round-trip.
 
 ---
 
@@ -258,14 +249,16 @@ How does the library work?
 1. **Application startup**: Spring Boot detects `@EnableFluentRepositories` (or auto-configuration) and triggers repository scanning.
 2. **Repository bean creation**: For each `CrudRepository` interface, a `FluentRepositoryFactoryBean` creates a `SimpleFluentRepository<Entity, ID>` implementation and wraps it with Spring Data's proxy.
 3. **Method invocation**: When you call `repository.save(entity)`, the proxy invokes `SimpleFluentRepository.save()`.
-4. **Save logic**:
-   - Check `entity.isNew()` (uses `@GeneratedValue` annotation or `Persistable<ID>` override)
-   - If true → INSERT; if false → UPDATE
+4. **Save logic via SaveDecisionResolver**:
+   - If entity implements `Persistable`: uses `entity.isNew()` directly, no DB call
+   - If id is null: INSERT (auto-id or provided, based on strategy)
+   - If id is non-null: `existsById()` check → UPDATE or INSERT (PROVIDED) or error (IDENTITY)
+   - `update()` checks the affected row count; throws `OptimisticLockingFailureException` if the row has disappeared
 5. **SQL execution**: `SimpleFluentRepository` builds SQL using fluent-sql-4j, prepares statements via `FluentConnectionProvider`, and executes against the DataSource.
 6. **Transaction binding**: Connections are obtained via Spring's `DataSourceUtils`, automatically bound to the active `@Transactional` scope.
 7. **Results mapping**: `FluentEntityRowMapper` converts ResultSet rows to entity instances using Jakarta Persistence metadata.
 
-**For detailed component descriptions and architecture diagrams**, see [data/wiki/ARCHITECTURE.md](data/wiki/ARCHITECTURE.md).
+**For detailed component descriptions and data flow diagrams**, see [data/wiki/ARCHITECTURE.md](data/wiki/ARCHITECTURE.md).
 
 ---
 

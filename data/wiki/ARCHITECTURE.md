@@ -98,7 +98,7 @@ protected Object getTargetRepository(RepositoryInformation repositoryInformation
 **Purpose**: The actual CRUD implementation. Executes SQL operations against the database using fluent-sql-4j DSL and Spring's `DataSourceUtils`.
 
 **Implemented Methods**:
-- `save(T)` – INSERT or UPDATE based on `isNew()`
+- `save(T)` – INSERT or UPDATE delegating to `SaveDecisionResolver`
 - `findById(ID)` – Single entity lookup
 - `findAll()` – Retrieve all entities
 - `count()` – Row count for the table
@@ -107,18 +107,20 @@ protected Object getTargetRepository(RepositoryInformation repositoryInformation
 - `delete(T)` – DELETE by entity (uses `getId()`)
 - `deleteAll()` – DELETE all rows (loop-based, not batch)
 
-**Core logic**:
+**Save logic**:
 
+```java
+public <S extends T> S save(S entity) {
+    return switch (saveDecisionResolver.apply(entity)) {
+        case INSERT_PROVIDED_ID -> insertWithProvidedId(entity);
+        case INSERT_AUTO_ID     -> insertWithIdentity(entity);
+        case UPDATE             -> update(entity);
+        case ERROR             -> throw new IllegalStateException(...);
+    };
+}
 ```
-save(entity):
-  if isNew(entity):
-    if entity.id == null:
-      INSERT without ID (database returns generated key, populate entity)
-    else:
-      INSERT with provided ID
-  else:
-    UPDATE where id = entity.id
-```
+
+The decision is entirely delegated to `SaveDecisionResolver`. `update()` checks the affected row count and throws `OptimisticLockingFailureException` if the row has disappeared between the existsById check and the update.
 
 **Connection handling**:
 - Obtains `Connection` via `FluentConnectionProvider.getConnection()`
@@ -171,17 +173,63 @@ void setId(T entity, ID id)        // Set the ID value via reflection
 boolean isNew(T entity)            // Check if entity is new (not persisted)
 ```
 
-**IsNew logic**:
+**isNew() logic** (Spring Data SPI contract, used by callers outside save()):
 ```
 if entity instanceof Persistable:
-  return entity.isNew()  // User has full control
+  return entity.isNew()  // developer has full control
 else:
   return entity.getId() == null
 ```
 
+Note: `save()` does not use `isNew()` directly — it delegates to `SaveDecisionResolver`, which applies richer logic (see below).
+
 ---
 
-### 8. FluentEntityRowMapper<T>
+### 8. SaveDecisionResolver<T, ID>
+
+**Location**: `io.github.auspis.fluentrepo4j.repository.SaveDecisionResolver`
+
+**Purpose**: Determines the `SaveAction` to perform for a given entity. Implements `Function<T, SaveAction>` — constructed once per repository with fixed dependencies, stateless at application time.
+
+**Constructor dependencies** (fixed at construction time):
+- `FluentEntityInformation<T, ID>` — entity metadata
+- `Predicate<ID> existsById` — DB check (bound to `SimpleFluentRepository.existsById`)
+
+**Decision logic**:
+
+| Condition | Result |
+|---|---|
+| Entity implements `Persistable` and `isNew()` = true | `INSERT_PROVIDED_ID` or `INSERT_AUTO_ID` (based on strategy) |
+| Entity implements `Persistable` and `isNew()` = false | `UPDATE` (no DB call) |
+| ID is null | `INSERT_PROVIDED_ID` or `INSERT_AUTO_ID` (based on strategy) |
+| ID non-null and exists in DB | `UPDATE` |
+| ID non-null, not in DB, strategy = PROVIDED | `INSERT_PROVIDED_ID` |
+| ID non-null, not in DB, strategy = IDENTITY | `ERROR` (inconsistent state) |
+
+**Key property**: `Persistable` path never calls `existsById` — the entity declares its own state.
+
+---
+
+### 9. SaveAction
+
+**Location**: `io.github.auspis.fluentrepo4j.repository.SaveAction`
+
+**Purpose**: Enum representing the action to perform in `save()`. Combines operation (INSERT vs UPDATE) with ID mechanism, so `save()` can dispatch with a single exhaustive switch.
+
+```java
+public enum SaveAction {
+    INSERT_PROVIDED_ID,  // INSERT using app-provided ID
+    INSERT_AUTO_ID,      // INSERT, let DB generate ID
+    UPDATE,              // UPDATE WHERE id = ?
+    ERROR                // Inconsistent state, throw
+}
+```
+
+**Extensibility**: adding a new `IdGenerationStrategy` (e.g., `SEQUENCE`) requires adding one value here and one case in `SaveDecisionResolver.insertActionFor()` — the switch in `save()` will fail to compile until the new case is handled.
+
+---
+
+### 10. FluentEntityRowMapper<T>
 
 **Location**: `io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper`
 
@@ -207,7 +255,7 @@ else:
 
 ---
 
-### 9. FluentEntityWriter<T>
+### 11. FluentEntityWriter<T>
 
 **Location**: `io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter`
 
@@ -228,7 +276,7 @@ Parameters: [1, "Alice", "alice@example.com"]
 
 ---
 
-### 10. NamingUtils
+### 12. NamingUtils
 
 **Location**: `io.github.auspis.fluentrepo4j.mapping.NamingUtils`
 
@@ -243,7 +291,7 @@ Parameters: [1, "Alice", "alice@example.com"]
 
 ---
 
-### 11. DialectDetector
+### 13. DialectDetector
 
 **Location**: `io.github.auspis.fluentrepo4j.dialect.DialectDetector`
 
@@ -256,7 +304,7 @@ Parameters: [1, "Alice", "alice@example.com"]
 
 ---
 
-### 12. FluentRepositoriesAutoConfiguration
+### 14. FluentRepositoriesAutoConfiguration
 
 **Location**: `io.github.auspis.fluentrepo4j.autoconfigure.FluentRepositoriesAutoConfiguration`
 
@@ -277,22 +325,25 @@ Parameters: [1, "Alice", "alice@example.com"]
                         ↓
 3. Proxy delegates to: SimpleFluentRepository.save(user)
                         ↓
-4. SimpleFluentRepository checks: entityInformation.isNew(user)
-   - If implements Persistable: calls user.isNew()
-   - Otherwise: checks if user.id == null
+4. SaveDecisionResolver.apply(user)  →  SaveAction
+
+   Case A: user implements Persistable
+     user.isNew() = true  →  INSERT_PROVIDED_ID or INSERT_AUTO_ID (no DB call)
+     user.isNew() = false →  UPDATE (no DB call)
+
+   Case B: standard entity (no Persistable)
+     user.id == null      →  INSERT_PROVIDED_ID or INSERT_AUTO_ID
+     user.id != null:
+       existsById(id) = true  →  UPDATE
+       existsById(id) = false:
+         strategy = PROVIDED  →  INSERT_PROVIDED_ID
+         strategy = IDENTITY  →  ERROR
                         ↓
-5. Based on isNew():
-   If true (new entity):
-     - If user.id == null:
-       - Build INSERT without ID column
-       - Execute query, retrieve generated key
-       - Populate user.id from database response
-     - Else:
-       - Build INSERT with user.id
-       - Execute query
-   If false (existing entity):
-     - Build UPDATE SET ... WHERE id = user.id
-     - Execute query
+5. switch(SaveAction):
+   INSERT_PROVIDED_ID  →  insertWithProvidedId(entity)
+   INSERT_AUTO_ID      →  insertWithIdentity(entity)  (reads generated key, sets entity.id)
+   UPDATE              →  update(entity)  (throws OptimisticLockingFailureException if row count = 0)
+   ERROR               →  throw IllegalStateException
                         ↓
 6. Connection management:
    - FluentConnectionProvider.getConnection() gets a connection

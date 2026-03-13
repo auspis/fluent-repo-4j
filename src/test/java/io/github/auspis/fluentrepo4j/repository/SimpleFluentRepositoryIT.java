@@ -2,19 +2,25 @@ package io.github.auspis.fluentrepo4j.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Optional;
+
 import javax.sql.DataSource;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
+
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.dialect.DialectDetector;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.test.domain.CartItem;
+import io.github.auspis.fluentrepo4j.test.domain.Product;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
@@ -31,7 +37,7 @@ class SimpleFluentRepositoryIT {
      * The application must set the ID before calling save().
      */
     @Nested
-    class ProvidedIdStrategyIT {
+    class ProvidedIdStrategy {
 
         private Connection connection;
         private SimpleFluentRepository<User, Long> repository;
@@ -131,7 +137,7 @@ class SimpleFluentRepositoryIT {
      * The database generates the ID via auto-increment.
      */
     @Nested
-    class IdentityIdStrategyIT {
+    class IdentityIdStrategy {
 
         private Connection connection;
         private SimpleFluentRepository<CartItem, Long> repository;
@@ -204,6 +210,90 @@ class SimpleFluentRepositoryIT {
             Optional<CartItem> found = repository.findById(generatedId);
             assertThat(found).isPresent();
             assertThat(found.get().getQuantity()).isEqualTo(5);
+        }
+
+        @Test
+        void save_identityWithNonNullIdNotInDb_throwsIllegalState() {
+            // An IDENTITY entity with a manually set ID that doesn't exist in DB is inconsistent
+            CartItem item = new CartItem(9999L, 1L, 2L, "Ghost", 1.0, 1);
+
+            assertThatThrownBy(() -> repository.save(item))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("IDENTITY strategy");
+        }
+    }
+
+    /**
+     * Tests for entities implementing {@link org.springframework.data.domain.Persistable}.
+     * The entity controls {@code isNew()} — no database check is performed by the resolver.
+     */
+    @Nested
+    class Persistable {
+
+        private Connection connection;
+        private SimpleFluentRepository<Product, Integer> repository;
+
+        @BeforeEach
+        void setUp() throws SQLException {
+            connection = TestDatabaseUtil.createH2Connection();
+            TestDatabaseUtil.createProductsTable(connection);
+            DataSource dataSource = new SingleConnectionDataSource(connection, true);
+
+            DSLRegistry registry = DSLRegistry.createWithServiceLoader();
+            DSL dsl = DialectDetector.detect(dataSource, registry);
+            FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
+            FluentEntityInformation<Product, Integer> entityInfo = new FluentEntityInformation<>(Product.class);
+
+            repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
+        }
+
+        @AfterEach
+        void tearDown() throws SQLException {
+            TestDatabaseUtil.closeConnection(connection);
+        }
+
+        @Test
+        void save_isNewTrue_insertsEntity() {
+            Product product = new Product(100, "TestWidget", 29.99, 50);
+
+            Product saved = repository.save(product);
+
+            assertThat(saved).isSameAs(product);
+            assertThat(saved.getId()).isEqualTo(100);
+            assertThat(repository.existsById(100)).isTrue();
+
+            Optional<Product> found = repository.findById(100);
+            assertThat(found).isPresent();
+            assertThat(found.get().getName()).isEqualTo("TestWidget");
+            assertThat(found.get().getPrice()).isEqualTo(29.99);
+        }
+
+        @Test
+        void save_isNewFalse_updatesEntity() {
+            Product product = new Product(100, "TestWidget", 29.99, 50);
+            repository.save(product);
+
+            product.markPersisted();
+            product.setName("UpdatedWidget");
+            product.setPrice(39.99);
+            repository.save(product);
+
+            Optional<Product> found = repository.findById(100);
+            assertThat(found).isPresent();
+            assertThat(found.get().getName()).isEqualTo("UpdatedWidget");
+            assertThat(found.get().getPrice()).isEqualTo(39.99);
+        }
+
+        @Test
+        void save_isNewFalse_notInDb_throwsOptimisticLocking() {
+            // Persistable says it's NOT new (→ UPDATE), but entity doesn't exist in DB
+            // The update row count check should catch this
+            Product product = new Product(9999, "Ghost", 0.0, 0);
+            product.markPersisted();
+
+            assertThatThrownBy(() -> repository.save(product))
+                    .isInstanceOf(OptimisticLockingFailureException.class)
+                    .hasMessageContaining("was not found for update");
         }
     }
     
