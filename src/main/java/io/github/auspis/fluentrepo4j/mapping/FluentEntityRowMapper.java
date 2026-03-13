@@ -7,8 +7,11 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.jdbc.core.RowMapper;
+
+import io.github.auspis.fluentrepo4j.FluentPersistable;
 
 /**
  * {@link RowMapper} implementation that maps a {@link ResultSet} row to an entity
@@ -59,6 +62,9 @@ public class FluentEntityRowMapper<T> implements RowMapper<T> {
             }
         }
 
+        if (instance instanceof FluentPersistable<?> fp) {
+            fp.markPersisted();
+        }
         return instance;
     }
 

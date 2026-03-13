@@ -255,25 +255,28 @@ class SimpleFluentRepositoryIT {
         @Test
         void save_isNewTrue_insertsEntity() {
             Product product = new Product(100, "TestWidget", 29.99, 50);
+            assertThat(product.isNew()).isTrue();
 
             Product saved = repository.save(product);
 
             assertThat(saved).isSameAs(product);
             assertThat(saved.getId()).isEqualTo(100);
+            assertThat(saved.isNew()).isFalse(); // library auto-called markPersisted()
             assertThat(repository.existsById(100)).isTrue();
 
             Optional<Product> found = repository.findById(100);
             assertThat(found).isPresent();
             assertThat(found.get().getName()).isEqualTo("TestWidget");
             assertThat(found.get().getPrice()).isEqualTo(29.99);
+            assertThat(found.get().isNew()).isFalse(); // library auto-called markPersisted() on load
         }
 
         @Test
         void save_isNewFalse_updatesEntity() {
             Product product = new Product(100, "TestWidget", 29.99, 50);
-            repository.save(product);
+            repository.save(product); // auto-calls markPersisted()
 
-            product.markPersisted();
+            // no manual markPersisted() needed
             product.setName("UpdatedWidget");
             product.setPrice(39.99);
             repository.save(product);
@@ -286,10 +289,9 @@ class SimpleFluentRepositoryIT {
 
         @Test
         void save_isNewFalse_notInDb_throwsOptimisticLocking() {
-            // Persistable says it's NOT new (→ UPDATE), but entity doesn't exist in DB
-            // The update row count check should catch this
-            Product product = new Product(9999, "Ghost", 0.0, 0);
-            product.markPersisted();
+            // Construct entity already marked as persisted (isNew = false)
+            // but the row doesn't exist in DB → UPDATE will find 0 rows
+            Product product = new Product(9999, "Ghost", 0.0, 0, null, false);
 
             assertThatThrownBy(() -> repository.save(product))
                     .isInstanceOf(OptimisticLockingFailureException.class)

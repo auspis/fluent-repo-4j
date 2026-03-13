@@ -1,7 +1,6 @@
 package io.github.auspis.fluentrepo4j.test.domain;
 
-import org.springframework.data.domain.Persistable;
-
+import io.github.auspis.fluentrepo4j.FluentPersistable;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
@@ -10,14 +9,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Test entity implementing {@link Persistable} for full control over the new/existing distinction.
+ * Test entity implementing {@link FluentPersistable} — the library automatically
+ * calls {@link #markPersisted()} after save() and after loading from the database.
  * Maps to the "products" table created by {@code TestDatabaseUtil.createProductsTable()}.
  */
 @Table(name = "products")
 @NoArgsConstructor(access = lombok.AccessLevel.PRIVATE)
 @AllArgsConstructor(access = lombok.AccessLevel.PUBLIC)
 @Data
-public class Product implements Persistable<Integer> {
+public class Product implements FluentPersistable<Integer> {
 
     @Id
     private Integer id;
@@ -43,7 +43,7 @@ public class Product implements Persistable<Integer> {
         return isNewEntity;
     }
 
-    /** Mark this entity as not new (already persisted). */
+    @Override
     public void markPersisted() {
         this.isNewEntity = false;
     }

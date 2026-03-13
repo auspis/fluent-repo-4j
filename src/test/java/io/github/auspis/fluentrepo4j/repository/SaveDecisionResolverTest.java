@@ -110,8 +110,8 @@ class SaveDecisionResolverTest {
             var resolver = new SaveDecisionResolver<>(entityInfo, id -> {
                 throw new AssertionError("existsById should not be called for Persistable");
             });
-            Product product = new Product(1, "Widget", 19.99, 100);
-            product.markPersisted();
+            // Construct with isNewEntity = false directly (simulates post-save state)
+            Product product = new Product(1, "Widget", 19.99, 100, null, false);
 
             assertThat(resolver.apply(product)).isEqualTo(SaveAction.UPDATE);
         }
