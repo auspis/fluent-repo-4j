@@ -1,0 +1,89 @@
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.fusesource.jansi.internal.JansiLoader in an unnamed module (file:/home/massi/Applications/maven/lib/jansi-2.3.4.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.google.common.util.concurrent.AbstractFuture$UnsafeAtomicHelper (file:/home/massi/Applications/maven/lib/guava-25.1-android.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.common.util.concurrent.AbstractFuture$UnsafeAtomicHelper
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< io.github.auspis:fluent-repo-4j >-------------------
+[INFO] Building fluent-repo-4j 1.0.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-clean-plugin:2.5:clean (default-clean) @ fluent-repo-4j ---
+[INFO] Deleting /home/massi/dev/fluent-repo-4j/target
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ fluent-repo-4j ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 1 resource
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.1:compile (default-compile) @ fluent-repo-4j ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 14 source files to /home/massi/dev/fluent-repo-4j/target/classes
+[WARNING] /home/massi/dev/fluent-repo-4j/src/main/java/io/github/auspis/fluentrepo4j/config/FluentRepositoryConfigExtension.java: /home/massi/dev/fluent-repo-4j/src/main/java/io/github/auspis/fluentrepo4j/config/FluentRepositoryConfigExtension.java uses or overrides a deprecated API.
+[WARNING] /home/massi/dev/fluent-repo-4j/src/main/java/io/github/auspis/fluentrepo4j/config/FluentRepositoryConfigExtension.java: Recompile with -Xlint:deprecation for details.
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:testResources (default-testResources) @ fluent-repo-4j ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 2 resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.1:testCompile (default-testCompile) @ fluent-repo-4j ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 7 source files to /home/massi/dev/fluent-repo-4j/target/test-classes
+[INFO] 
+[INFO] --- maven-surefire-plugin:3.1.2:test (default-test) @ fluent-repo-4j ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running io.github.auspis.fluentrepo4j.example.UserRepositoryIntegrationTest
+07:03:35.367 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [io.github.auspis.fluentrepo4j.example.UserRepositoryIntegrationTest]: UserRepositoryIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+07:03:35.569 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration io.github.auspis.fluentrepo4j.example.TestApplication for test class io.github.auspis.fluentrepo4j.example.UserRepositoryIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::               (v3.5.11)
+
+2026-03-06T07:03:36.365+01:00  INFO 647571 --- [           main] i.g.a.f.e.UserRepositoryIntegrationTest  : Starting UserRepositoryIntegrationTest using Java 25.0.2 with PID 647571 (started by massi in /home/massi/dev/fluent-repo-4j)
+2026-03-06T07:03:36.367+01:00 DEBUG 647571 --- [           main] i.g.a.f.e.UserRepositoryIntegrationTest  : Running with Spring Boot v3.5.11, Spring v6.2.16
+2026-03-06T07:03:36.369+01:00  INFO 647571 --- [           main] i.g.a.f.e.UserRepositoryIntegrationTest  : The following 1 profile is active: "test"
+2026-03-06T07:03:36.808+01:00  INFO 647571 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Fluent repositories in DEFAULT mode.
+2026-03-06T07:03:36.815+01:00 DEBUG 647571 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Scanning for Fluent repositories in packages io.github.auspis.fluentrepo4j.example.
+2026-03-06T07:03:36.823+01:00 DEBUG 647571 --- [           main] o.s.d.r.c.RepositoryComponentProvider    : Identified candidate component class: file [/home/massi/dev/fluent-repo-4j/target/test-classes/io/github/auspis/fluentrepo4j/example/UserRepository.class]
+2026-03-06T07:03:36.862+01:00  INFO 647571 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 44 ms. Found 1 Fluent repository interface.
+2026-03-06T07:03:36.886+01:00  INFO 647571 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Fluent repositories in DEFAULT mode.
+2026-03-06T07:03:36.889+01:00 DEBUG 647571 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Scanning for Fluent repositories in packages io.github.auspis.fluentrepo4j.autoconfigure.
+2026-03-06T07:03:36.892+01:00  INFO 647571 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 2 ms. Found 0 Fluent repository interfaces.
+2026-03-06T07:03:37.097+01:00  INFO 647571 --- [           main] beddedDataSourceBeanFactoryPostProcessor : Replacing 'dataSource' DataSource bean with embedded version
+2026-03-06T07:03:37.392+01:00  INFO 647571 --- [           main] o.s.j.d.e.EmbeddedDatabaseFactory        : Starting embedded database: url='jdbc:h2:mem:809f50e1-0428-43bc-991b-0b95bc46cbad;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false', username='sa'
+2026-03-06T07:03:37.716+01:00  INFO 647571 --- [           main] i.g.a.f.plugin.SqlDialectPluginRegistry  : Loaded 1 plugin(s) for 1 dialect(s)
+2026-03-06T07:03:37.840+01:00 DEBUG 647571 --- [           main] o.s.d.r.c.s.RepositoryFactorySupport     : Initializing repository instance for io.github.auspis.fluentrepo4j.example.UserRepository…
+2026-03-06T07:03:37.917+01:00 DEBUG 647571 --- [           main] o.s.d.r.c.s.RepositoryFactorySupport     : Finished creation of repository instance for io.github.auspis.fluentrepo4j.example.UserRepository.
+2026-03-06T07:03:38.127+01:00  INFO 647571 --- [           main] i.g.a.f.e.UserRepositoryIntegrationTest  : Started UserRepositoryIntegrationTest in 2.323 seconds (process running for 3.874)
+Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (/home/massi/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.639 s -- in io.github.auspis.fluentrepo4j.example.UserRepositoryIntegrationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  10.388 s
+[INFO] Finished at: 2026-03-06T07:03:39+01:00
+[INFO] ------------------------------------------------------------------------
