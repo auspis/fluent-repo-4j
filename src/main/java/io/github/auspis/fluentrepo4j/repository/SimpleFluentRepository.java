@@ -115,8 +115,9 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
         String idColumn = entityInformation.getIdColumnName();
         Connection conn = connectionProvider.getConnection();
         try {
-            var where = dsl.select().countStar().from(table).where().column(idColumn);
-            PreparedStatement ps = DslTypeDispatcher.eq(where, id).build(conn);
+            PreparedStatement ps =
+                    DslTypeDispatcher.eq(dsl.select().countStar().from(table).where().column(idColumn), id)
+                            .build(conn);
             try (ps;
                     ResultSet rs = ps.executeQuery()) {
                 rs.next();
