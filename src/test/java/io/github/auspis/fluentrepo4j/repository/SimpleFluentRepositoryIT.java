@@ -12,6 +12,7 @@ import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 import io.github.auspis.fluentsql4j.test.util.TestDatabaseUtil;
+import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Optional;
@@ -27,6 +28,7 @@ import org.springframework.jdbc.datasource.SingleConnectionDataSource;
  * Integration test for {@link SimpleFluentRepository} using an in-memory H2 database.
  * Tests both PROVIDED (application-set ID) and IDENTITY (database-generated ID) strategies.
  */
+@IntegrationTest
 class SimpleFluentRepositoryIT {
 
     /**

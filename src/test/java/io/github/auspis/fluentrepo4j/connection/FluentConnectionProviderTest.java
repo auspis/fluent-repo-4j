@@ -3,6 +3,7 @@ package io.github.auspis.fluentrepo4j.connection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import io.github.auspis.fluentsql4j.test.util.annotation.ComponentTest;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -19,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Tests for {@link FluentConnectionProvider}.
  * Verifies delegation to {@link DataSourceUtils} with and without active transactions.
  */
+@ComponentTest
 class FluentConnectionProviderTest {
 
     private DataSource dataSource;

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.test.util.QueryUtil;
+import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.springframework.test.context.ActiveProfiles;
  * 5. Entity mapping via @Table/@Column/@Id annotations
  * 6. Connection management via FluentConnectionProvider
  */
+@IntegrationTest
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
 @ActiveProfiles("test")

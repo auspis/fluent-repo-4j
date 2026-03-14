@@ -299,6 +299,55 @@ This library focuses on **simple CRUD operations for single entities**. Be aware
 
 ---
 
+## Building & Testing
+
+### Building the Project
+
+```bash
+./mvnw clean install          # full build with tests
+./mvnw clean install -DskipTests  # build without running tests
+```
+
+### Test Pyramid
+
+Every test class that is not a plain unit test **must** carry the correct annotation. Do not rely solely on naming conventions.
+
+|    Level    |     Annotation     |         Isolation         |         Database         | Speed  |
+|-------------|--------------------|---------------------------|--------------------------|--------|
+| Unit        | *(none)*           | Complete                  | No                       | Fast   |
+| Component   | `@ComponentTest`   | Real classes, mocked JDBC | No (mocked)              | Fast   |
+| Integration | `@IntegrationTest` | Real classes, embedded DB | H2                       | Medium |
+| E2E         | `@E2ETest`         | Full system               | Testcontainers (real DB) | Slow   |
+
+### Running Tests
+
+|               Command                |                    What runs                     | Requires Docker |
+|--------------------------------------|--------------------------------------------------|-----------------|
+| `./mvnw test`                        | Unit + Component (fast, no database)             | No              |
+| `./mvnw verify`                      | All tests (Unit + Component + Integration + E2E) | Yes (for E2E)   |
+| `./mvnw verify -Dgroups=integration` | Integration tests only (H2)                      | No              |
+| `./mvnw verify -Dgroups=e2e`         | E2E tests only (Testcontainers)                  | Yes             |
+| `./mvnw test -Dgroups=component`     | Component tests only                             | No              |
+
+**How it works:** Surefire (invoked by `./mvnw test`) excludes the `integration` and `e2e` tags, so only unit and component tests run in the fast path. Failsafe (invoked during `./mvnw verify`) picks up those same tags and runs integration and E2E tests against real or embedded databases.
+
+### Code Formatting
+
+Formatting is managed by the Spotless plugin:
+
+```bash
+./mvnw spotless:apply   # apply formatting
+./mvnw spotless:check   # verify formatting without changes
+```
+
+A pre-commit hook that runs `spotless:apply` automatically can be installed with:
+
+```bash
+./mvnw process-resources
+```
+
+---
+
 ## Further Reading
 
 For comprehensive architecture details and advanced usage examples, see:
