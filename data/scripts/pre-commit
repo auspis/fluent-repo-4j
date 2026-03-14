@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Run Spotless before commit and restage formatted files.
+# Abort commit if formatting fails.
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=d)
+
+if [ -n "$STAGED_FILES" ]; then
+  echo "Formatting staged files before commit..."
+  ./mvnw spotless:apply
+
+  if [ $? -ne 0 ]; then
+    echo "Spotless formatting failed: commit aborted."
+    exit 1
+  fi
+
+  echo "Formatting complete. Re-adding staged files."
+  git add $STAGED_FILES
+fi
+
+exit 0

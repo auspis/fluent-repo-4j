@@ -1,121 +1,212 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-	<groupId>io.github.auspis</groupId>
-	<artifactId>fluent-repo-4j</artifactId>
-	<version>1.0.0</version>
-	<packaging>jar</packaging>
+  <groupId>io.github.auspis</groupId>
+  <artifactId>fluent-repo-4j</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
 
-	<name>fluent-repo-4j</name>
-	<url>http://maven.apache.org</url>
+  <name>fluent-repo-4j</name>
+  <url>http://maven.apache.org</url>
 
-	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven.compiler.source>21</maven.compiler.source>
-		<maven.compiler.target>21</maven.compiler.target>
-		<!-- TODO: upgrade to Spring Boot 4 -->
-		<spring-boot.version>3.5.11</spring-boot.version>
-		<fluent-sql-4j.version>1.1.2</fluent-sql-4j.version>
-	</properties>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+    <maven.surefire.plugin.version>3.1.2</maven.surefire.plugin.version>
+    <maven.spotless.plugin.version>3.2.1</maven.spotless.plugin.version>
+    <maven.resource.plugin.version>3.3.1</maven.resource.plugin.version>
+    <maven.exec.plugin.version>3.6.3</maven.exec.plugin.version>
+    <!-- TODO: upgrade to Spring Boot 4 -->
+    <spring-boot.version>3.5.11</spring-boot.version>
+    <fluent-sql-4j.version>1.1.2</fluent-sql-4j.version>
+  </properties>
 
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-dependencies</artifactId>
-				<version>${spring-boot.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
-	<dependencies>
-		<!-- Spring Data Commons (Repository SPI, EntityInformation) -->
-		<dependency>
-			<groupId>org.springframework.data</groupId>
-			<artifactId>spring-data-commons</artifactId>
-		</dependency>
+  <dependencies>
+    <!-- Spring Data Commons (Repository SPI, EntityInformation) -->
+    <dependency>
+      <groupId>org.springframework.data</groupId>
+      <artifactId>spring-data-commons</artifactId>
+    </dependency>
 
-		<!-- Spring JDBC (DataSourceUtils, RowMapper, SQLExceptionTranslator) -->
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-jdbc</artifactId>
-		</dependency>
+    <!-- Spring JDBC (DataSourceUtils, RowMapper, SQLExceptionTranslator) -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-jdbc</artifactId>
+    </dependency>
 
-		<!-- JPA annotations (@Table, @Column, @Id) - API only, no runtime -->
-		<dependency>
-			<groupId>jakarta.persistence</groupId>
-			<artifactId>jakarta.persistence-api</artifactId>
-		</dependency>
+    <!-- JPA annotations (@Table, @Column, @Id) - API only, no runtime -->
+    <dependency>
+      <groupId>jakarta.persistence</groupId>
+      <artifactId>jakarta.persistence-api</artifactId>
+    </dependency>
 
-		<!-- fluent-sql-4j DSL -->
-		<dependency>
-			<groupId>io.github.auspis.fluentsql4j</groupId>
-			<artifactId>api</artifactId>
-			<version>${fluent-sql-4j.version}</version>
-		</dependency>
+    <!-- fluent-sql-4j DSL -->
+    <dependency>
+      <groupId>io.github.auspis.fluentsql4j</groupId>
+      <artifactId>api</artifactId>
+      <version>${fluent-sql-4j.version}</version>
+    </dependency>
 
-		<!-- Spring Boot AutoConfiguration (optional) -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-autoconfigure</artifactId>
-			<optional>true</optional>
-		</dependency>
+    <!-- Spring Boot AutoConfiguration (optional) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-autoconfigure</artifactId>
+      <optional>true</optional>
+    </dependency>
 
-		<!-- Test dependencies -->
-		<dependency>
-			<groupId>io.github.auspis.fluentsql4j</groupId>
-			<artifactId>test-support</artifactId>
-			<version>${fluent-sql-4j.version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-jdbc</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.junit.jupiter</groupId>
-			<artifactId>junit-jupiter</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.assertj</groupId>
-			<artifactId>assertj-core</artifactId>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
+    <!-- Test dependencies -->
+    <dependency>
+      <groupId>io.github.auspis.fluentsql4j</groupId>
+      <artifactId>test-support</artifactId>
+      <version>${fluent-sql-4j.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.1.2</version>
-			</plugin>
-		</plugins>
-	</build>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${maven.spotless.plugin.version}</version>
+        <configuration>
+          <java>
+            <palantirJavaFormat/>
+            <encoding>${project.build.sourceEncoding}</encoding>
+            <importOrder>
+              <order>java</order>
+              <order>javax</order>
+              <order>org</order>
+              <order>com</order>
+            </importOrder>
+            <removeUnusedImports/>
+            <formatAnnotations/>
+            <trimTrailingWhitespace/>
+            <endWithNewline/>
+          </java>
+          <pom>
+            <sortPom>
+              <encoding>${project.build.sourceEncoding}</encoding>
+              <expandEmptyElements>false</expandEmptyElements>
+            </sortPom>
+            <trimTrailingWhitespace/>
+            <endWithNewline/>
+          </pom>
+          <markdown>
+            <includes>
+              <include>**/*.md</include>
+            </includes>
+            <flexmark/>
+          </markdown>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>${maven.resource.plugin.version}</version>
+        <inherited>false</inherited>
+        <executions>
+          <execution>
+            <id>install-pre-commit-hook</id>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <phase>generate-resources</phase>
+            <configuration>
+              <outputDirectory>${basedir}/.git/hooks</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${basedir}/data/scripts</directory>
+                  <includes>
+                    <include>pre-commit</include>
+                  </includes>
+                  <filtering>false</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>${maven.exec.plugin.version}</version>
+        <inherited>false</inherited>
+        <executions>
+          <execution>
+            <id>chmod-pre-commit-hook</id>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <phase>process-resources</phase>
+            <configuration>
+              <executable>chmod</executable>
+              <workingDirectory>${basedir}</workingDirectory>
+              <arguments>
+                <argument>+x</argument>
+                <argument>.git/hooks/pre-commit</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven.surefire.plugin.version}</version>
+      </plugin>
+    </plugins>
+  </build>
 </project>
