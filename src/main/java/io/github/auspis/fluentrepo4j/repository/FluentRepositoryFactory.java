@@ -1,13 +1,12 @@
 package io.github.auspis.fluentrepo4j.repository;
 
+import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
+import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
+import io.github.auspis.fluentsql4j.dsl.DSL;
 import org.springframework.data.repository.core.EntityInformation;
 import org.springframework.data.repository.core.RepositoryInformation;
 import org.springframework.data.repository.core.RepositoryMetadata;
 import org.springframework.data.repository.core.support.RepositoryFactorySupport;
-
-import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
-import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
-import io.github.auspis.fluentsql4j.dsl.DSL;
 
 /**
  * Factory that creates {@link SimpleFluentRepository} instances.
@@ -27,8 +26,7 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Object getTargetRepository(RepositoryInformation information) {
-        FluentEntityInformation entityInformation =
-                new FluentEntityInformation<>(information.getDomainType());
+        FluentEntityInformation entityInformation = new FluentEntityInformation<>(information.getDomainType());
         return new SimpleFluentRepository<>(entityInformation, connectionProvider, dsl);
     }
 

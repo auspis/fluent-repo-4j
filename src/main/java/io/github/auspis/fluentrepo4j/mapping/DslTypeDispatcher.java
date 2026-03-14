@@ -1,11 +1,11 @@
 package io.github.auspis.fluentrepo4j.mapping;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import io.github.auspis.fluentsql4j.dsl.clause.SupportsWhere;
 import io.github.auspis.fluentsql4j.dsl.clause.WhereConditionBuilder;
 import io.github.auspis.fluentsql4j.dsl.insert.InsertBuilder;
 import io.github.auspis.fluentsql4j.dsl.update.UpdateBuilder;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * Bridges the gap between Java's generic {@code Object} values and
@@ -18,8 +18,7 @@ import io.github.auspis.fluentsql4j.dsl.update.UpdateBuilder;
  */
 public final class DslTypeDispatcher {
 
-    private DslTypeDispatcher() {
-    }
+    private DslTypeDispatcher() {}
 
     /**
      * Dispatches {@code column.eq(value)} to the correct typed overload.
@@ -36,9 +35,10 @@ public final class DslTypeDispatcher {
             case Boolean b -> column.eq(b);
             case LocalDate d -> column.eq(d);
             case LocalDateTime dt -> column.eq(dt);
-            case null, default -> throw new IllegalArgumentException(
-                    "Unsupported value type for eq(): " + (value == null ? "null" : value.getClass().getName())
-                            + ". Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
+            case null, default ->
+                throw new IllegalArgumentException("Unsupported value type for eq(): "
+                        + (value == null ? "null" : value.getClass().getName())
+                        + ". Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
         };
     }
 
@@ -59,10 +59,11 @@ public final class DslTypeDispatcher {
             case Boolean b -> builder.set(columnName, b);
             case LocalDate d -> builder.set(columnName, d);
             case LocalDateTime dt -> builder.set(columnName, dt);
-            default -> throw new IllegalArgumentException(
-                    "Unsupported value type for INSERT set(): " + value.getClass().getName()
-                            + " (column: " + columnName + ")."
-                            + " Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
+            default ->
+                throw new IllegalArgumentException("Unsupported value type for INSERT set(): "
+                        + value.getClass().getName()
+                        + " (column: " + columnName + ")."
+                        + " Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
         };
     }
 
@@ -83,10 +84,11 @@ public final class DslTypeDispatcher {
             case Boolean b -> builder.set(columnName, b);
             case LocalDate d -> builder.set(columnName, d);
             case LocalDateTime dt -> builder.set(columnName, dt);
-            default -> throw new IllegalArgumentException(
-                    "Unsupported value type for UPDATE set(): " + value.getClass().getName()
-                            + " (column: " + columnName + ")."
-                            + " Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
+            default ->
+                throw new IllegalArgumentException("Unsupported value type for UPDATE set(): "
+                        + value.getClass().getName()
+                        + " (column: " + columnName + ")."
+                        + " Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
         };
     }
 }

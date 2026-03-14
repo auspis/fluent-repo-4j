@@ -1,12 +1,11 @@
 package io.github.auspis.fluentrepo4j.repository;
 
+import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
+import io.github.auspis.fluentsql4j.dsl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.core.support.RepositoryFactorySupport;
 import org.springframework.data.repository.core.support.TransactionalRepositoryFactoryBeanSupport;
-
-import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
-import io.github.auspis.fluentsql4j.dsl.DSL;
 
 /**
  * {@link org.springframework.beans.factory.FactoryBean} that creates Fluent SQL repository proxies.

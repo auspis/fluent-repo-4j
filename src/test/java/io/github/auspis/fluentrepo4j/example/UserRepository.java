@@ -1,7 +1,7 @@
 package io.github.auspis.fluentrepo4j.example;
 
-import org.springframework.data.repository.CrudRepository;
 import io.github.auspis.fluentrepo4j.test.domain.User;
+import org.springframework.data.repository.CrudRepository;
 
 /**
  * Example repository for User entity.
@@ -12,6 +12,4 @@ import io.github.auspis.fluentrepo4j.test.domain.User;
  * - count()
  * - deleteById(Long)
  */
-public interface UserRepository extends CrudRepository<User, Long> {
-}
-
+public interface UserRepository extends CrudRepository<User, Long> {}

@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Run Spotless before commit and restage formatted files.
+# Abort commit if formatting fails.
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=d)
+
+if [ -n "$STAGED_FILES" ]; then
+  # Record currently unstaged modified files so we can detect any new ones
+  # introduced by Spotless outside the staged set.
+  PRE_SPOTLESS_UNSTAGED="$(git diff --name-only)"
+
+  echo "Formatting staged files before commit..."
+  ./mvnw spotless:apply
+
+  if [ $? -ne 0 ]; then
+    echo "Spotless formatting failed: commit aborted."
+    exit 1
+  fi
+
+  echo "Formatting complete. Re-adding staged files."
+  # Re-add the set of staged files using a NUL-delimited list to handle
+  # paths with spaces and newlines robustly.
+  git diff --cached --name-only --diff-filter=d -z | git add -z --pathspec-from-file=- --pathspec-file-nul
+
+  # Check if Spotless modified any additional unstaged files that were not
+  # modified before running the hook and warn the user about them.
+  POST_SPOTLESS_UNSTAGED="$(git diff --name-only)"
+  NEWLY_MODIFIED="$(comm -13 <(printf '%s\n' "$PRE_SPOTLESS_UNSTAGED" | sort) <(printf '%s\n' "$POST_SPOTLESS_UNSTAGED" | sort))"
+
+  if [ -n "$NEWLY_MODIFIED" ]; then
+    echo "Warning: Spotless modified additional unstaged files:"
+    printf '  %s\n' "$NEWLY_MODIFIED"
+    echo "These changes are not included in this commit unless you stage them manually."
+  fi
+fi
+
+exit 0

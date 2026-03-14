@@ -1,9 +1,8 @@
 package io.github.auspis.fluentrepo4j.example;
 
+import io.github.auspis.fluentrepo4j.config.EnableFluentRepositories;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-import io.github.auspis.fluentrepo4j.config.EnableFluentRepositories;
 
 /**
  * Spring Boot application for integration testing fluent-repo4j.

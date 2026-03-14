@@ -1,11 +1,9 @@
 package io.github.auspis.fluentrepo4j.config;
 
+import io.github.auspis.fluentrepo4j.repository.FluentRepositoryFactoryBean;
 import java.util.Collection;
 import java.util.Collections;
-
 import org.springframework.data.repository.config.RepositoryConfigurationExtensionSupport;
-
-import io.github.auspis.fluentrepo4j.repository.FluentRepositoryFactoryBean;
 
 /**
  * {@link org.springframework.data.repository.config.RepositoryConfigurationExtension}

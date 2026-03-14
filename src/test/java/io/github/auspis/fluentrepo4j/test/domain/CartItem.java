@@ -22,10 +22,10 @@ public class CartItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(name = "cart_id")
     private Long cartId;
-    
+
     @Column(name = "product_id")
     private Long productId;
 
@@ -38,8 +38,7 @@ public class CartItem {
     @Column(name = "quantity")
     private Integer quantity;
 
-
-   public CartItem(Long cartId, Long productId, String productName, Double unitPrice, Integer quantity) {
+    public CartItem(Long cartId, Long productId, String productName, Double unitPrice, Integer quantity) {
         this.cartId = cartId;
         this.productId = productId;
         this.productName = productName;
