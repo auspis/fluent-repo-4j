@@ -2,13 +2,12 @@ package io.github.auspis.fluentrepo4j.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.test.domain.CartItem;
 import io.github.auspis.fluentrepo4j.test.domain.Product;
 import io.github.auspis.fluentrepo4j.test.domain.User;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests for {@link SaveDecisionResolver}.
@@ -22,8 +21,7 @@ class SaveDecisionResolverTest {
     @Nested
     class ProvidedStrategy {
 
-        private final FluentEntityInformation<User, Long> entityInfo =
-                new FluentEntityInformation<>(User.class);
+        private final FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
 
         @Test
         void nullId_returnsInsertProvidedId() {

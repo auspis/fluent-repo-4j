@@ -16,23 +16,27 @@ Modulo Spring Data custom basato su fluent-sql-4j per accesso JDBC. Dipende da s
 - FluentRepositoryFactory (extends RepositoryFactorySupport, usa pipeline proxy standard Spring Data)
 
 2. Connection e transazioni:
+
 - FluentConnectionProvider con DataSourceUtils.getConnection/releaseConnection
 - Se esiste @Transactional: aggancio alla connection transazionale
 - Se non esiste: fallback auto-commit
 - Dialect detection da DatabaseMetaData con fallback configurazione esplicita
 
 3. Repository base CRUD:
+
 - FluentEntityInformation<T, ID>
 - SimpleFluentRepository<T, ID> con save, findById, findAll, deleteById, count
 - Scope corrente: niente PartTree e niente FluentQuery annotation
 
 4. Mapping semplice ResultSet → oggetto:
+
 - FluentEntityRowMapper<T>
 - FluentEntityWriter<T>
 - Annotazioni mapping: riuso jakarta.persistence per Table/Column e Id
 - Mapping piatto: nessun caricamento automatico di oggetti annidati
 
 5. AutoConfiguration e robustezza:
+
 - FluentRepositoriesAutoConfiguration
 - Exception translation con SQLExceptionTranslator → DataAccessException
 - Supporto custom fragments (interfaccia + Impl) con accesso DSL/DataSource

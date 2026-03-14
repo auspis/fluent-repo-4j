@@ -10,7 +10,7 @@ A lightweight Spring Boot library for implementing the **Repository Pattern** wi
 ✅ **Simple Entity Mapping** - Jakarta Persistence annotations (`@Table`, `@Column`, `@Id`); automatic snake_case conversion  
 ✅ **ID Generation Strategies** - Support for application-provided IDs and database auto-increment (`@GeneratedValue(IDENTITY)`)  
 ✅ **Type Conversion** - Automatic mapping: strings, numbers, booleans, dates (LocalDate, LocalDateTime)  
-✅ **Exception Translation** - SQL exceptions automatically translated to Spring's `DataAccessException`  
+✅ **Exception Translation** - SQL exceptions automatically translated to Spring's `DataAccessException`
 
 ---
 
@@ -129,7 +129,7 @@ spring:
 - ✅ Auto-detects the database dialect from DataSource metadata  
 - ✅ Scans for `CrudRepository` interfaces and creates beans  
 - ✅ Binds connections to Spring transactions automatically via `DataSourceUtils`  
-- ✅ Maps entities to tables using Jakarta Persistence annotations  
+- ✅ Maps entities to tables using Jakarta Persistence annotations
 
 ---
 
@@ -229,16 +229,16 @@ repository.save(p);  // isNew() = false → UPDATE (no DB call)
 
 The library automatically converts ResultSet columns to Java types:
 
-| Java Type | Supported | Notes |
-|-----------|-----------|-------|
-| String | ✅ | VARCHAR, TEXT, CHAR |
-| Long, Integer, Short, Byte | ✅ | BIGINT, INT, SMALLINT, TINYINT |
-| Double, Float, BigDecimal | ✅ | DOUBLE, FLOAT, DECIMAL |
-| Boolean | ✅ | BOOLEAN, BIT (0/1 converts to false/true) |
-| LocalDate | ✅ | DATE |
-| LocalDateTime | ✅ | TIMESTAMP |
-| UUID | ✅ | VARCHAR/CHAR (stored as string) |
-| Custom types, arrays, LOBs | ❌ | Not supported; implement custom converters or store as JSON strings |
+|         Java Type          | Supported |                                Notes                                |
+|----------------------------|-----------|---------------------------------------------------------------------|
+| String                     | ✅         | VARCHAR, TEXT, CHAR                                                 |
+| Long, Integer, Short, Byte | ✅         | BIGINT, INT, SMALLINT, TINYINT                                      |
+| Double, Float, BigDecimal  | ✅         | DOUBLE, FLOAT, DECIMAL                                              |
+| Boolean                    | ✅         | BOOLEAN, BIT (0/1 converts to false/true)                           |
+| LocalDate                  | ✅         | DATE                                                                |
+| LocalDateTime              | ✅         | TIMESTAMP                                                           |
+| UUID                       | ✅         | VARCHAR/CHAR (stored as string)                                     |
+| Custom types, arrays, LOBs | ❌         | Not supported; implement custom converters or store as JSON strings |
 
 ---
 
@@ -264,20 +264,20 @@ How does the library work?
 
 ## Supported vs Not Supported
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| CRUD operations (`save`, `findById`, `findAll`, `count`, `deleteById`) | ✅ Supported | Core functionality built-in |
-| `@Transactional` integration | ✅ Supported | Automatic connection binding via Spring |
-| `@GeneratedValue(IDENTITY)` | ✅ Supported | Database auto-increment IDs |
-| Application-provided IDs | ✅ Supported | Set ID before `save()` |
-| `Persistable<ID>` for custom `isNew()` logic | ✅ Supported | Fine-grained control over insert/update |
-| Simple entity mapping (Jakarta Persistence annotations) | ✅ Supported | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient` |
-| Exception translation to `DataAccessException` | ✅ Supported | Automatic SQL exception handling |
-| Custom query methods (e.g., `findByEmail()`) | ❌ Not Supported | Use `findAll()` + filter in application code, or implement custom SQL in fragments |
-| Query method derivation (e.g., PartTree) | ❌ Not Supported | Planned for future release |
-| Object relationships (one-to-many, many-to-many) | ❌ Not Supported | Use separate repositories and explicit queries |
-| `@GeneratedValue(SEQUENCE)` | ❌ Not Supported | Planned for future release |
-| Persistence context / first-level cache | ❌ Not Supported | Not applicable to JDBC; each query returns fresh objects |
+|                                Feature                                 |     Status      |                                       Notes                                        |
+|------------------------------------------------------------------------|-----------------|------------------------------------------------------------------------------------|
+| CRUD operations (`save`, `findById`, `findAll`, `count`, `deleteById`) | ✅ Supported     | Core functionality built-in                                                        |
+| `@Transactional` integration                                           | ✅ Supported     | Automatic connection binding via Spring                                            |
+| `@GeneratedValue(IDENTITY)`                                            | ✅ Supported     | Database auto-increment IDs                                                        |
+| Application-provided IDs                                               | ✅ Supported     | Set ID before `save()`                                                             |
+| `Persistable<ID>` for custom `isNew()` logic                           | ✅ Supported     | Fine-grained control over insert/update                                            |
+| Simple entity mapping (Jakarta Persistence annotations)                | ✅ Supported     | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient`                        |
+| Exception translation to `DataAccessException`                         | ✅ Supported     | Automatic SQL exception handling                                                   |
+| Custom query methods (e.g., `findByEmail()`)                           | ❌ Not Supported | Use `findAll()` + filter in application code, or implement custom SQL in fragments |
+| Query method derivation (e.g., PartTree)                               | ❌ Not Supported | Planned for future release                                                         |
+| Object relationships (one-to-many, many-to-many)                       | ❌ Not Supported | Use separate repositories and explicit queries                                     |
+| `@GeneratedValue(SEQUENCE)`                                            | ❌ Not Supported | Planned for future release                                                         |
+| Persistence context / first-level cache                                | ❌ Not Supported | Not applicable to JDBC; each query returns fresh objects                           |
 
 ---
 

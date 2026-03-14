@@ -3,19 +3,6 @@ package io.github.auspis.fluentrepo4j.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.Optional;
-
-import javax.sql.DataSource;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.springframework.dao.OptimisticLockingFailureException;
-import org.springframework.jdbc.datasource.SingleConnectionDataSource;
-
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.dialect.DialectDetector;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
@@ -25,6 +12,16 @@ import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 import io.github.auspis.fluentsql4j.test.util.TestDatabaseUtil;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.Optional;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
 /**
  * Integration test for {@link SimpleFluentRepository} using an in-memory H2 database.
@@ -124,9 +121,9 @@ class SimpleFluentRepositoryIT {
             // The existsById() fallback should detect this and perform UPDATE
             User user = new User("Fallback", "fallback@example.com", 40);
             user.setId(1L);
-            
+
             User saved = repository.save(user);
-            
+
             assertThat(saved.getId()).isEqualTo(1L);
             assertThat(repository.existsById(1L)).isTrue();
         }
@@ -170,7 +167,7 @@ class SimpleFluentRepositoryIT {
             assertThat(saved).isSameAs(product);
             assertThat(saved.getId()).isNotNull();
             assertThat(saved.getId()).isPositive();
-            
+
             Optional<CartItem> found = repository.findById(saved.getId());
             assertThat(found).isPresent();
             assertThat(found.get().getCartId()).isEqualTo(1L);
@@ -298,174 +295,174 @@ class SimpleFluentRepositoryIT {
                     .hasMessageContaining("was not found for update");
         }
     }
-    
-//  @Test
-//  void save_updateExistingEntity() throws Exception {
-//      long id = insertRaw("Alice", "alice@example.com", 30);
-//
-//      User user = new User(id, "Alice Updated", "alice.updated@example.com", 31);
-//      repository.save(user);
-//
-//      Optional<User> found = repository.findById(id);
-//      assertThat(found).isPresent();
-//      assertThat(found.get().getName()).isEqualTo("Alice Updated");
-//      assertThat(found.get().getEmail()).isEqualTo("alice.updated@example.com");
-//      assertThat(found.get().getAge()).isEqualTo(31);
-//  }
-//
-//  @Test
-//  void saveAll_multipleEntities() {
-//      List<User> users = List.of(
-//              new User(null, "Alice", "alice@example.com", 30),
-//              new User(null, "Bob", "bob@example.com", 25)
-//      );
-//
-//      Iterable<User> saved = repository.saveAll(users);
-//
-//      assertThat(saved).hasSize(2);
-//      assertThat(repository.count()).isEqualTo(2);
-//  }
-//
-//  // ---- Find ----
-//
-//  @Test
-//  void findById_existing() throws Exception {
-//      long id = insertRaw("Alice", "alice@example.com", 30);
-//
-//      Optional<User> found = repository.findById(id);
-//
-//      assertThat(found).isPresent();
-//      assertThat(found.get().getName()).isEqualTo("Alice");
-//      assertThat(found.get().getEmail()).isEqualTo("alice@example.com");
-//      assertThat(found.get().getAge()).isEqualTo(30);
-//  }
-//
-//  @Test
-//  void findById_nonExisting() {
-//      Optional<User> found = repository.findById(999L);
-//      assertThat(found).isEmpty();
-//  }
-//
-//  @Test
-//  void findAll_returnsAllEntities() throws Exception {
-//      insertRaw("Alice", "alice@example.com", 30);
-//      insertRaw("Bob", "bob@example.com", 25);
-//
-//      Iterable<User> all = repository.findAll();
-//
-//      assertThat(all).hasSize(2);
-//  }
-//
-//  @Test
-//  void findAllById_returnsMatching() throws Exception {
-//      long id1 = insertRaw("Alice", "alice@example.com", 30);
-//      insertRaw("Bob", "bob@example.com", 25);
-//      long id3 = insertRaw("Charlie", "charlie@example.com", 35);
-//
-//      Iterable<User> found = repository.findAllById(List.of(id1, id3));
-//
-//      List<String> names = StreamSupport.stream(found.spliterator(), false)
-//              .map(User::getName)
-//              .toList();
-//      assertThat(names).containsExactlyInAnyOrder("Alice", "Charlie");
-//  }
-//
-//  // ---- Exists / Count ----
-//
-//  @Test
-//  void existsById_true() throws Exception {
-//      long id = insertRaw("Alice", "alice@example.com", 30);
-//      assertThat(repository.existsById(id)).isTrue();
-//  }
-//
-//  @Test
-//  void existsById_false() {
-//      assertThat(repository.existsById(999L)).isFalse();
-//  }
-//
-//  @Test
-//  void count_emptyTable() {
-//      assertThat(repository.count()).isEqualTo(0);
-//  }
-//
-//  @Test
-//  void count_withData() throws Exception {
-//      insertRaw("Alice", "alice@example.com", 30);
-//      insertRaw("Bob", "bob@example.com", 25);
-//      assertThat(repository.count()).isEqualTo(2);
-//  }
-//
-//  // ---- Delete ----
-//
-//  @Test
-//  void deleteById_removesEntity() throws Exception {
-//      long id = insertRaw("Alice", "alice@example.com", 30);
-//
-//      repository.deleteById(id);
-//
-//      assertThat(repository.existsById(id)).isFalse();
-//      assertThat(repository.count()).isEqualTo(0);
-//  }
-//
-//  @Test
-//  void delete_byEntity() throws Exception {
-//      long id = insertRaw("Alice", "alice@example.com", 30);
-//      User user = new User(id, "Alice", "alice@example.com", 30);
-//
-//      repository.delete(user);
-//
-//      assertThat(repository.count()).isEqualTo(0);
-//  }
-//
-//  @Test
-//  void deleteAllById_removesSelected() throws Exception {
-//      long id1 = insertRaw("Alice", "alice@example.com", 30);
-//      long id2 = insertRaw("Bob", "bob@example.com", 25);
-//      long id3 = insertRaw("Charlie", "charlie@example.com", 35);
-//
-//      repository.deleteAllById(List.of(id1, id3));
-//
-//      assertThat(repository.count()).isEqualTo(1);
-//      assertThat(repository.existsById(id2)).isTrue();
-//  }
-//
-//  @Test
-//  void deleteAll_removesEverything() throws Exception {
-//      insertRaw("Alice", "alice@example.com", 30);
-//      insertRaw("Bob", "bob@example.com", 25);
-//
-//      repository.deleteAll();
-//
-//      assertThat(repository.count()).isEqualTo(0);
-//  }
-//
-//  @Test
-//  void deleteAll_withEntities() throws Exception {
-//      long id1 = insertRaw("Alice", "alice@example.com", 30);
-//      long id2 = insertRaw("Bob", "bob@example.com", 25);
-//      long id3 = insertRaw("Charlie", "charlie@example.com", 35);
-//
-//      User alice = new User(id1, "Alice", "alice@example.com", 30);
-//      User bob = new User(id2, "Bob", "bob@example.com", 25);
-//
-//      repository.deleteAll(List.of(alice, bob));
-//
-//      assertThat(repository.count()).isEqualTo(1);
-//      assertThat(repository.existsById(id3)).isTrue();
-//  }
-//
-//  // ---- Null handling ----
-//
-//  @Test
-//  void save_entityWithNullFields() {
-//      User user = new User(null, "Alice", null, null);
-//      repository.save(user);
-//
-//      Iterable<User> all = repository.findAll();
-//      assertThat(all).hasSize(1);
-//      User found = all.iterator().next();
-//      assertThat(found.getName()).isEqualTo("Alice");
-//      assertThat(found.getEmail()).isNull();
-//      assertThat(found.getAge()).isNull();
-//  }
+
+    //  @Test
+    //  void save_updateExistingEntity() throws Exception {
+    //      long id = insertRaw("Alice", "alice@example.com", 30);
+    //
+    //      User user = new User(id, "Alice Updated", "alice.updated@example.com", 31);
+    //      repository.save(user);
+    //
+    //      Optional<User> found = repository.findById(id);
+    //      assertThat(found).isPresent();
+    //      assertThat(found.get().getName()).isEqualTo("Alice Updated");
+    //      assertThat(found.get().getEmail()).isEqualTo("alice.updated@example.com");
+    //      assertThat(found.get().getAge()).isEqualTo(31);
+    //  }
+    //
+    //  @Test
+    //  void saveAll_multipleEntities() {
+    //      List<User> users = List.of(
+    //              new User(null, "Alice", "alice@example.com", 30),
+    //              new User(null, "Bob", "bob@example.com", 25)
+    //      );
+    //
+    //      Iterable<User> saved = repository.saveAll(users);
+    //
+    //      assertThat(saved).hasSize(2);
+    //      assertThat(repository.count()).isEqualTo(2);
+    //  }
+    //
+    //  // ---- Find ----
+    //
+    //  @Test
+    //  void findById_existing() throws Exception {
+    //      long id = insertRaw("Alice", "alice@example.com", 30);
+    //
+    //      Optional<User> found = repository.findById(id);
+    //
+    //      assertThat(found).isPresent();
+    //      assertThat(found.get().getName()).isEqualTo("Alice");
+    //      assertThat(found.get().getEmail()).isEqualTo("alice@example.com");
+    //      assertThat(found.get().getAge()).isEqualTo(30);
+    //  }
+    //
+    //  @Test
+    //  void findById_nonExisting() {
+    //      Optional<User> found = repository.findById(999L);
+    //      assertThat(found).isEmpty();
+    //  }
+    //
+    //  @Test
+    //  void findAll_returnsAllEntities() throws Exception {
+    //      insertRaw("Alice", "alice@example.com", 30);
+    //      insertRaw("Bob", "bob@example.com", 25);
+    //
+    //      Iterable<User> all = repository.findAll();
+    //
+    //      assertThat(all).hasSize(2);
+    //  }
+    //
+    //  @Test
+    //  void findAllById_returnsMatching() throws Exception {
+    //      long id1 = insertRaw("Alice", "alice@example.com", 30);
+    //      insertRaw("Bob", "bob@example.com", 25);
+    //      long id3 = insertRaw("Charlie", "charlie@example.com", 35);
+    //
+    //      Iterable<User> found = repository.findAllById(List.of(id1, id3));
+    //
+    //      List<String> names = StreamSupport.stream(found.spliterator(), false)
+    //              .map(User::getName)
+    //              .toList();
+    //      assertThat(names).containsExactlyInAnyOrder("Alice", "Charlie");
+    //  }
+    //
+    //  // ---- Exists / Count ----
+    //
+    //  @Test
+    //  void existsById_true() throws Exception {
+    //      long id = insertRaw("Alice", "alice@example.com", 30);
+    //      assertThat(repository.existsById(id)).isTrue();
+    //  }
+    //
+    //  @Test
+    //  void existsById_false() {
+    //      assertThat(repository.existsById(999L)).isFalse();
+    //  }
+    //
+    //  @Test
+    //  void count_emptyTable() {
+    //      assertThat(repository.count()).isEqualTo(0);
+    //  }
+    //
+    //  @Test
+    //  void count_withData() throws Exception {
+    //      insertRaw("Alice", "alice@example.com", 30);
+    //      insertRaw("Bob", "bob@example.com", 25);
+    //      assertThat(repository.count()).isEqualTo(2);
+    //  }
+    //
+    //  // ---- Delete ----
+    //
+    //  @Test
+    //  void deleteById_removesEntity() throws Exception {
+    //      long id = insertRaw("Alice", "alice@example.com", 30);
+    //
+    //      repository.deleteById(id);
+    //
+    //      assertThat(repository.existsById(id)).isFalse();
+    //      assertThat(repository.count()).isEqualTo(0);
+    //  }
+    //
+    //  @Test
+    //  void delete_byEntity() throws Exception {
+    //      long id = insertRaw("Alice", "alice@example.com", 30);
+    //      User user = new User(id, "Alice", "alice@example.com", 30);
+    //
+    //      repository.delete(user);
+    //
+    //      assertThat(repository.count()).isEqualTo(0);
+    //  }
+    //
+    //  @Test
+    //  void deleteAllById_removesSelected() throws Exception {
+    //      long id1 = insertRaw("Alice", "alice@example.com", 30);
+    //      long id2 = insertRaw("Bob", "bob@example.com", 25);
+    //      long id3 = insertRaw("Charlie", "charlie@example.com", 35);
+    //
+    //      repository.deleteAllById(List.of(id1, id3));
+    //
+    //      assertThat(repository.count()).isEqualTo(1);
+    //      assertThat(repository.existsById(id2)).isTrue();
+    //  }
+    //
+    //  @Test
+    //  void deleteAll_removesEverything() throws Exception {
+    //      insertRaw("Alice", "alice@example.com", 30);
+    //      insertRaw("Bob", "bob@example.com", 25);
+    //
+    //      repository.deleteAll();
+    //
+    //      assertThat(repository.count()).isEqualTo(0);
+    //  }
+    //
+    //  @Test
+    //  void deleteAll_withEntities() throws Exception {
+    //      long id1 = insertRaw("Alice", "alice@example.com", 30);
+    //      long id2 = insertRaw("Bob", "bob@example.com", 25);
+    //      long id3 = insertRaw("Charlie", "charlie@example.com", 35);
+    //
+    //      User alice = new User(id1, "Alice", "alice@example.com", 30);
+    //      User bob = new User(id2, "Bob", "bob@example.com", 25);
+    //
+    //      repository.deleteAll(List.of(alice, bob));
+    //
+    //      assertThat(repository.count()).isEqualTo(1);
+    //      assertThat(repository.existsById(id3)).isTrue();
+    //  }
+    //
+    //  // ---- Null handling ----
+    //
+    //  @Test
+    //  void save_entityWithNullFields() {
+    //      User user = new User(null, "Alice", null, null);
+    //      repository.save(user);
+    //
+    //      Iterable<User> all = repository.findAll();
+    //      assertThat(all).hasSize(1);
+    //      User found = all.iterator().next();
+    //      assertThat(found.getName()).isEqualTo("Alice");
+    //      assertThat(found.getEmail()).isNull();
+    //      assertThat(found.getAge()).isNull();
+    //  }
 }

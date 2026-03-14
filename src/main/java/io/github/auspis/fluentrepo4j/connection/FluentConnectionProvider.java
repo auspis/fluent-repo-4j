@@ -1,9 +1,7 @@
 package io.github.auspis.fluentrepo4j.connection;
 
 import java.sql.Connection;
-
 import javax.sql.DataSource;
-
 import org.springframework.jdbc.datasource.DataSourceUtils;
 
 /**
@@ -14,7 +12,6 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
  * is obtained in auto-commit mode.
  * </p>
  */
-
 public class FluentConnectionProvider {
 
     private final DataSource dataSource;

@@ -49,6 +49,7 @@ public class RepositoryConfig {
 3. Registers the bean definition in the Spring application context
 
 **Key method**:
+
 ```java
 void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, 
                              BeanDefinitionRegistry registry)
@@ -85,6 +86,7 @@ void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
 4. Returns a new `SimpleFluentRepository<User, Long>` prepared for that entity
 
 **Key method**:
+
 ```java
 protected Object getTargetRepository(RepositoryInformation repositoryInformation)
 ```
@@ -139,11 +141,11 @@ The decision is entirely delegated to `SaveDecisionResolver`. `update()` checks 
 **How it works**:
 - Stores the `DataSource`
 - `getConnection()` calls `DataSourceUtils.getConnection(dataSource)`
-  - If a transaction is active, returns the transactional connection
-  - Otherwise, returns a new auto-commit connection
+- If a transaction is active, returns the transactional connection
+- Otherwise, returns a new auto-commit connection
 - `releaseConnection(conn)` calls `DataSourceUtils.releaseConnection(conn, dataSource)`
-  - If connection is transactional, does nothing (Spring manages it)
-  - If auto-commit, closes the connection
+- If connection is transactional, does nothing (Spring manages it)
+- If auto-commit, closes the connection
 
 **Why wrap DataSourceUtils?** Provides a clean, testable interface for `SimpleFluentRepository`.
 
@@ -160,11 +162,12 @@ The decision is entirely delegated to `SaveDecisionResolver`. `update()` checks 
 - **Columns**: From `@Column(name = "...")` annotations, or auto-derived field names
 - **ID field**: Identified by `@Id` annotation
 - **ID generation strategy**: Determined by `@GeneratedValue(strategy = ...)` annotation
-  - `@GeneratedValue(IDENTITY)` → `IdGenerationStrategy.IDENTITY`
-  - No annotation → `IdGenerationStrategy.PROVIDED`
+- `@GeneratedValue(IDENTITY)` → `IdGenerationStrategy.IDENTITY`
+- No annotation → `IdGenerationStrategy.PROVIDED`
 - **Transient fields**: Identified by `@Transient` annotation (excluded from mapping)
 
 **Key methods**:
+
 ```java
 String getTableName()              // "users", "orders", etc.
 String getColumnName(Field field)  // "user_name" for field "userName"
@@ -174,6 +177,7 @@ boolean isNew(T entity)            // Check if entity is new (not persisted)
 ```
 
 **isNew() logic** (Spring Data SPI contract, used by callers outside save()):
+
 ```
 if entity instanceof Persistable:
   return entity.isNew()  // developer has full control
@@ -197,14 +201,14 @@ Note: `save()` does not use `isNew()` directly — it delegates to `SaveDecision
 
 **Decision logic**:
 
-| Condition | Result |
-|---|---|
-| Entity implements `Persistable` and `isNew()` = true | `INSERT_PROVIDED_ID` or `INSERT_AUTO_ID` (based on strategy) |
-| Entity implements `Persistable` and `isNew()` = false | `UPDATE` (no DB call) |
-| ID is null | `INSERT_PROVIDED_ID` or `INSERT_AUTO_ID` (based on strategy) |
-| ID non-null and exists in DB | `UPDATE` |
-| ID non-null, not in DB, strategy = PROVIDED | `INSERT_PROVIDED_ID` |
-| ID non-null, not in DB, strategy = IDENTITY | `ERROR` (inconsistent state) |
+|                       Condition                       |                            Result                            |
+|-------------------------------------------------------|--------------------------------------------------------------|
+| Entity implements `Persistable` and `isNew()` = true  | `INSERT_PROVIDED_ID` or `INSERT_AUTO_ID` (based on strategy) |
+| Entity implements `Persistable` and `isNew()` = false | `UPDATE` (no DB call)                                        |
+| ID is null                                            | `INSERT_PROVIDED_ID` or `INSERT_AUTO_ID` (based on strategy) |
+| ID non-null and exists in DB                          | `UPDATE`                                                     |
+| ID non-null, not in DB, strategy = PROVIDED           | `INSERT_PROVIDED_ID`                                         |
+| ID non-null, not in DB, strategy = IDENTITY           | `ERROR` (inconsistent state)                                 |
 
 **Key property**: `Persistable` path never calls `existsById` — the entity declares its own state.
 
@@ -238,10 +242,10 @@ public enum SaveAction {
 **How it works**:
 1. Receives a `ResultSet` from a query result
 2. For each column in the ResultSet:
-   - Gets the column name
-   - Finds the corresponding field in the entity class
-   - Retrieves the value from the ResultSet using the correct type
-   - Uses `DslTypeDispatcher` to handle type conversion
+- Gets the column name
+- Finds the corresponding field in the entity class
+- Retrieves the value from the ResultSet using the correct type
+- Uses `DslTypeDispatcher` to handle type conversion
 3. Creates an entity instance via reflection and populates fields
 
 **Supported types**: String, Long, Integer, Short, Byte, Double, Float, BigDecimal, Boolean, LocalDate, LocalDateTime, UUID.
@@ -268,6 +272,7 @@ public enum SaveAction {
 4. Binds the value to the prepared statement parameter
 
 **Example**:
+
 ```
 Entity: User(id=1, name="Alice", email="alice@example.com")
 SQL: INSERT INTO users (id, name, email) VALUES (?, ?, ?)
@@ -473,14 +478,14 @@ This allows application code to handle database errors using Spring's exception 
 3. **SQL Generation via Fluent-SQL-4J**: The library does not generate SQL directly. Instead, it delegates to the fluent-sql-4j library, which provides DSL-based SQL construction. This ensures compatibility with multiple databases.
 
 4. **No Custom Query Methods**: The library implements only CRUD methods. Custom finders (e.g., `findByEmail()`) are not supported. Users must either:
+
    - Use `findAll()` and filter in application code
    - Implement custom methods using fluent-sql-4j directly
    - Wait for future versions with PartTree support
-
 5. **ID Generation Limited to PROVIDED and IDENTITY**: Only two strategies are currently implemented:
    - `PROVIDED`: Application sets the ID
    - `IDENTITY`: Database auto-increment
-   
+
    `SEQUENCE` support (for databases like PostgreSQL) is planned for future releases.
 
 ---
@@ -503,6 +508,8 @@ When testing repositories:
 1. **Use H2 in-memory database** for test isolation (see main `README.md` for examples).
 2. **Use `@Transactional` on tests** to rollback after each test (Spring's standard practice).
 3. **Enable SQL logging** in application properties:
+
    ```yaml
    logging.level.org.springframework.jdbc: DEBUG
    ```
+

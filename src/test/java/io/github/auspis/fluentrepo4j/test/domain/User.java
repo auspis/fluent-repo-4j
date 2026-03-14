@@ -1,11 +1,10 @@
 package io.github.auspis.fluentrepo4j.test.domain;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,26 +25,26 @@ public class User {
     private String name;
 
     private String email;
-    
+
     private Integer age;
-    
+
     private Boolean active;
-    
+
     private LocalDate birthdate;
-    
+
     @Column(name = "createdAt")
     private LocalDateTime createdAt;
-    
+
     @Column(name = "address")
     private String placeOfResidence;
-    
+
     private String preferences;
 
     public User(String name, String email) {
         this.name = name;
         this.email = email;
     }
-    
+
     public User(String name, String email, Integer age) {
         this.name = name;
         this.email = email;
@@ -58,7 +57,15 @@ public class User {
     }
 
     public User withId(long id) {
-        return new User(id, this.name, this.email, this.age, this.active, this.birthdate, this.createdAt, this.placeOfResidence, this.preferences);
+        return new User(
+                id,
+                this.name,
+                this.email,
+                this.age,
+                this.active,
+                this.birthdate,
+                this.createdAt,
+                this.placeOfResidence,
+                this.preferences);
     }
-
 }

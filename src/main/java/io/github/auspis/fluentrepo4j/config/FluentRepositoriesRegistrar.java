@@ -1,7 +1,6 @@
 package io.github.auspis.fluentrepo4j.config;
 
 import java.lang.annotation.Annotation;
-
 import org.springframework.data.repository.config.RepositoryBeanDefinitionRegistrarSupport;
 import org.springframework.data.repository.config.RepositoryConfigurationExtension;
 

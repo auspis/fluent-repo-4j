@@ -1,12 +1,10 @@
 package io.github.auspis.fluentrepo4j.repository;
 
-import java.util.function.Function;
-import java.util.function.Predicate;
-
-import org.springframework.data.domain.Persistable;
-
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.mapping.IdGenerationStrategy;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import org.springframework.data.domain.Persistable;
 
 /**
  * Determines the {@link SaveAction} to perform for a given entity.
