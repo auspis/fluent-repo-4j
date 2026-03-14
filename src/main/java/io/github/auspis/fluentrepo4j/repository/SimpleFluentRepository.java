@@ -189,8 +189,9 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
         String idColumn = entityInformation.getIdColumnName();
         Connection conn = connectionProvider.getConnection();
         try {
-            var where = dsl.deleteFrom(table).where().column(idColumn);
-            PreparedStatement ps = DslTypeDispatcher.eq(where, id).build(conn);
+            PreparedStatement ps = DslTypeDispatcher
+                    .eq(dsl.deleteFrom(table).where().column(idColumn), id)
+                    .build(conn);
             try (ps) {
                 ps.executeUpdate();
             }
