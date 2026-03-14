@@ -2,8 +2,12 @@ package io.github.auspis.fluentrepo4j.example;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+
+import javax.sql.DataSource;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,10 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.repository.CrudRepository;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import io.github.auspis.fluentrepo4j.test.domain.User;
+import io.github.auspis.fluentsql4j.dsl.DSL;
+import io.github.auspis.fluentsql4j.test.util.QueryUtil;
 
 /**
  * Integration test demonstrating UserRepository usage with Spring Data Fluent SQL.
@@ -32,70 +37,62 @@ import io.github.auspis.fluentrepo4j.test.domain.User;
 @ActiveProfiles("test")
 class UserRepositoryIntegrationTest {
 
+    private static final String USERS_TABLE = "\"users\"";
+    private static final String ID_COLUMN = "\"id\"";
+    private static final String EMAIL_COLUMN = "\"email\"";
+
     @Autowired
     private UserRepository userRepository;
 
-    // TODO: replace JdbcTemplate with fluent-sql-4j DSL
     @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private DataSource dataSource;
+
+    @Autowired
+    private DSL dsl;
 
     @BeforeEach
-    void setUp() {
-        // Clean up before each test - clear all records
-        // Schema was already created by @AutoConfigureTestDatabase which loads schema.sql
-        jdbcTemplate.execute("TRUNCATE TABLE \"users\"");
+    void setUp() throws SQLException {
+        // Clean up before each test - clear all records.
+        // Schema was already created by @AutoConfigureTestDatabase which loads schema.sql.
+        try (Connection connection = dataSource.getConnection();
+                var ps = dsl.truncateTable("users").build(connection)) {
+            ps.executeUpdate();
+        }
     }
 
     @Test
-    void testRepositoryAutomaticallyRegistered() {
+    void repositoryAutomaticallyRegistered() {
         // Verify Spring Data automatically:
         // 1. Scanned the package and found UserRepository interface
         // 2. Created a bean via FluentRepositoryFactoryBean
         // 3. Wrapped it in a proxy implementing CrudRepository
         // 4. Injected it into this test class
 
-        assertThat(userRepository).isNotNull();
-        assertThat(userRepository).isInstanceOf(CrudRepository.class);
+        assertThat(userRepository)
+            .isNotNull()
+            .isInstanceOf(CrudRepository.class);
     }
 
     @Test
-    void testSave_NewUser() {
+    void save_insert() {
         User newUser = new User("John Doe", "john@example.com").withId(1L);
         userRepository.save(newUser);
 
-        // Then: User is persisted in database
-        assertThat(jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM \"users\" WHERE \"email\" = ?",
-            Integer.class,
-            "john@example.com"
-        )).isEqualTo(1);
-        
-        // And: Retrieve from database to get ID
-        Long id = jdbcTemplate.queryForObject(
-            "SELECT \"id\" FROM \"users\" WHERE \"email\" = ?",
-            Long.class,
-            "john@example.com"
-        );
+        assertThat(countUsersByEmail("john@example.com")).isEqualTo(1);
+
+        Long id = findUserIdByEmail("john@example.com").orElseThrow();
         assertThat(id).isPositive();
     }
 
     @Test
-    void testFindById() {
-        // Given: A user in the database
+    void findById() {
         User created = new User("Jane Smith", "jane@example.com").withId(1L);
         userRepository.save(created);
         
-        // Retrieve the ID from database
-        Long userId = jdbcTemplate.queryForObject(
-            "SELECT \"id\" FROM \"users\" WHERE \"email\" = ?",
-            Long.class,
-            "jane@example.com"
-        );
+        Long userId = findUserIdByEmail("jane@example.com").orElseThrow();
 
-        // When: Search by ID
         Optional<User> found = userRepository.findById(userId);
 
-        // Then: User is found with correct data
         assertThat(found)
             .isPresent()
             .hasValueSatisfying(user -> {
@@ -105,25 +102,20 @@ class UserRepositoryIntegrationTest {
     }
 
     @Test
-    void testFindById_NotFound() {
-        // When: Search for non-existent user
+    void findById_NotFound() {
         Optional<User> notFound = userRepository.findById(999L);
 
-        // Then: Optional is empty
         assertThat(notFound).isEmpty();
     }
 
     @Test
-    void testFindAll() {
-        // Given: Multiple users in the database
+    void findAll() {
         userRepository.save(new User("Alice", "alice@example.com").withId(1L));
         userRepository.save(new User("Bob", "bob@example.com").withId(2L));
         userRepository.save(new User("Charlie", "charlie@example.com").withId(3L));
 
-        // When: Retrieve all users
         List<User> allUsers = (List<User>) userRepository.findAll();
 
-        // Then: All users are returned
         assertThat(allUsers)
             .hasSize(3)
             .extracting(User::getName)
@@ -131,31 +123,20 @@ class UserRepositoryIntegrationTest {
     }
 
     @Test
-    void testSave_Update() {
-        // Given: A user in the database
+    void save_update() {
         User original = new User("Original Name", "original@example.com").withId(1L);
         userRepository.save(original);
         
-        // Retrieve the ID from database
-        Long userId = jdbcTemplate.queryForObject(
-            "SELECT \"id\" FROM \"users\" WHERE \"email\" = ?",
-            Long.class,
-            "original@example.com"
-        );
+        Long userId = findUserIdByEmail("original@example.com").orElseThrow();
         
-        // Set ID for update operations
         original.setId(userId);
-
-        // When: Update the user
         original.setName("Updated Name");
         original.setEmail("updated@example.com");
         User updated = userRepository.save(original);
 
-        // Then: Changes are persisted
         assertThat(updated.getName()).isEqualTo("Updated Name");
         assertThat(updated.getEmail()).isEqualTo("updated@example.com");
 
-        // And: Retrieved user has updated data
         Optional<User> reloaded = userRepository.findById(userId);
         assertThat(reloaded)
             .isPresent()
@@ -166,79 +147,76 @@ class UserRepositoryIntegrationTest {
     }
 
     @Test
-    void testDeleteById() {
-        // Given: A user in the database
+    void deleteById() {
         User created = new User("To Delete", "delete@example.com").withId(1L);
         userRepository.save(created);
         
-        // Retrieve the ID from database
-        Long userId = jdbcTemplate.queryForObject(
-            "SELECT \"id\" FROM \"users\" WHERE \"email\" = ?",
-            Long.class,
-            "delete@example.com"
-        );
+        Long userId = findUserIdByEmail("delete@example.com").orElseThrow();
 
-        // When: Delete the user
         userRepository.deleteById(userId);
 
-        // Then: User is removed from database
         assertThat(userRepository.findById(userId)).isEmpty();
     }
 
     @Test
-    void testCount() {
-        // When: Database is empty
+    void count() {
         long initialCount = userRepository.count();
         assertThat(initialCount).isZero();
 
-        // Given: Add some users
         userRepository.save(new User("User 1", "user1@example.com").withId(1L));
         userRepository.save(new User("User 2", "user2@example.com").withId(2L));
         userRepository.save(new User("User 3", "user3@example.com").withId(3L));
 
-        // Then: Count is updated
         long finalCount = userRepository.count();
         assertThat(finalCount).isEqualTo(3);
     }
 
     @Test
-    void testSaveAll() {
-        // When: Save multiple users at once
+    void saveAll() {
         User user1 = new User("User 1", "user1@example.com").withId(1L);
         User user2 = new User("User 2", "user2@example.com").withId(2L);
         User user3 = new User("User 3", "user3@example.com").withId(3L);
 
         userRepository.saveAll(List.of(user1, user2, user3));
 
-        // Then: All users are persisted in database
-        long count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM \"users\" WHERE \"email\" IN (?, ?, ?)",
-            Long.class,
-            "user1@example.com", "user2@example.com", "user3@example.com"
-        );
+        long count = countUsersByEmails("user1@example.com", "user2@example.com", "user3@example.com");
         assertThat(count).isEqualTo(3);
     }
 
     @Test
-    void testExistsById() {
-        // Given: A user in the database
+    void existsById() {
         User created = new User("Existing", "existing@example.com").withId(1L);
         userRepository.save(created);
         
-        // Retrieve the ID from database
-        Long userId = jdbcTemplate.queryForObject(
-            "SELECT \"id\" FROM \"users\" WHERE \"email\" = ?",
-            Long.class,
-            "existing@example.com"
-        );
+        Long userId = findUserIdByEmail("existing@example.com").orElseThrow();
 
-        // When: Check if user exists
         boolean exists = userRepository.existsById(userId);
 
-        // Then: Existence is confirmed
         assertThat(exists).isTrue();
-
-        // And: Non-existent user returns false
         assertThat(userRepository.existsById(999L)).isFalse();
+    }
+
+    private long countUsersByEmail(String email) {
+        try (Connection connection = dataSource.getConnection()) {
+            return QueryUtil.countByColumn(connection, USERS_TABLE, EMAIL_COLUMN, email);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private long countUsersByEmails(String... emails) {
+        try (Connection connection = dataSource.getConnection()) {
+            return QueryUtil.countByColumnIn(connection, USERS_TABLE, EMAIL_COLUMN, (Object[]) emails);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private Optional<Long> findUserIdByEmail(String email) {
+        try (Connection connection = dataSource.getConnection()) {
+            return QueryUtil.getSingleValueByColumn(connection, USERS_TABLE, ID_COLUMN, EMAIL_COLUMN, email, Long.class);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
