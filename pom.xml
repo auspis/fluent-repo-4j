@@ -123,6 +123,8 @@
             <palantirJavaFormat/>
             <encoding>${project.build.sourceEncoding}</encoding>
             <importOrder>
+              <order>io</order>
+              <order>jakarta</order>
               <order>java</order>
               <order>javax</order>
               <order>org</order>
