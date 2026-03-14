@@ -43,8 +43,9 @@ public class FluentEntityWriter<T> {
                 values.put(entry.getKey(), entry.getValue().get(entity));
             } catch (IllegalAccessException e) {
                 throw new IllegalStateException(
-                        "Cannot read field " + entry.getValue().getName()
-                                + " on " + entity.getClass().getSimpleName(), e);
+                        "Cannot read field " + entry.getValue().getName() + " on "
+                                + entity.getClass().getSimpleName(),
+                        e);
             }
         }
         return values;

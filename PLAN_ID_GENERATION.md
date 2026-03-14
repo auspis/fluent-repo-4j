@@ -144,11 +144,13 @@ public boolean isNew(T entity) {
 File: `/home/massi/dev/fluent-repo-4j/src/main/java/io/github/auspis/fluentrepo4j/repository/SimpleFluentRepository.java`
 
 Rimuovere questa riga:
+
 ```java
 values.put("id", "100023");  // ← RIMUOVERE!
 ```
 
 Aggiungere validazione:
+
 ```java
 ID idValue = entityInformation.getId(entity);
 if (idValue == null) {
@@ -160,6 +162,7 @@ if (idValue == null) {
 ```
 
 Usare `getAllColumnValues(entity)` che include l'ID:
+
 ```java
 Map<String, Object> values = entityWriter.getAllColumnValues(entity);
 ```
@@ -214,6 +217,7 @@ insert()   update()
 ## Casi d'Uso Supportati da MVP
 
 ### Caso 1: Entity Semplice (NO Persistable)
+
 ```java
 @Table(name = "users")
 public class User {
@@ -234,6 +238,7 @@ repository.save(user);  // → insert() con id=1
 ⚠️ **NOTA**: Questo è un **PROBLEMA**! Se dev imposta l'ID su entity nuova (non ancora nel DB), `isNew()` ritornerà `false` → UPDATE fallisce silenziosamente!
 
 **Soluzione**: Dev DEVE creare entity con `id=null`, poi impostare ID prima di save:
+
 ```java
 User user = new User("Alice", "alice@example.com", 30);  // id = null
 user.setId(1L);  // ← NOW getId() != null, BUT isNew() was already called!
@@ -242,6 +247,7 @@ user.setId(1L);  // ← NOW getId() != null, BUT isNew() was already called!
 ⚠️ **MEGLIO**: Usare Persistable per controllo esplicito:
 
 ### Caso 2: Entity con Persistable (YES)
+
 ```java
 @Table(name = "events")
 public class Event implements Persistable<UUID> {
@@ -354,3 +360,4 @@ private UUID id;  // Default: PROVIDED
 - Spring Data: `Persistable<ID>` interface
 - Jakarta Persistence: `@GeneratedValue` annotation
 - fluent-repo-4j: `FluentEntityInformation`, `SimpleFluentRepository`
+

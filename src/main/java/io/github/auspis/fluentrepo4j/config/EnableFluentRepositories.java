@@ -1,17 +1,15 @@
 package io.github.auspis.fluentrepo4j.config;
 
+import io.github.auspis.fluentrepo4j.repository.FluentRepositoryFactoryBean;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.repository.query.QueryLookupStrategy;
-
-import io.github.auspis.fluentrepo4j.repository.FluentRepositoryFactoryBean;
 
 /**
  * Annotation to enable Fluent SQL repository support.

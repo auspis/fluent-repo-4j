@@ -1,5 +1,6 @@
 package io.github.auspis.fluentrepo4j.mapping;
 
+import io.github.auspis.fluentrepo4j.FluentPersistable;
 import java.lang.reflect.Field;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -7,11 +8,8 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
-
 import org.springframework.beans.BeanUtils;
 import org.springframework.jdbc.core.RowMapper;
-
-import io.github.auspis.fluentrepo4j.FluentPersistable;
 
 /**
  * {@link RowMapper} implementation that maps a {@link ResultSet} row to an entity
@@ -55,8 +53,8 @@ public class FluentEntityRowMapper<T> implements RowMapper<T> {
                     try {
                         field.set(instance, convertIfNeeded(value, field.getType()));
                     } catch (IllegalAccessException e) {
-                        throw new SQLException("Cannot set field " + field.getName()
-                                + " on " + domainType.getSimpleName(), e);
+                        throw new SQLException(
+                                "Cannot set field " + field.getName() + " on " + domainType.getSimpleName(), e);
                     }
                 }
             }

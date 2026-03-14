@@ -3,17 +3,15 @@ package io.github.auspis.fluentrepo4j.mapping;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.UUID;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Persistable;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Persistable;
 
 class FluentEntityInformationTest {
 
@@ -98,7 +96,7 @@ class FluentEntityInformationTest {
         assertThat(info.isNew(entity)).isFalse();
     }
 
-        // ---- Test entities ----
+    // ---- Test entities ----
 
     @Table(name = "users")
     static class AnnotatedUser {
@@ -110,32 +108,33 @@ class FluentEntityInformationTest {
         private String name;
 
         @SuppressWarnings("unused")
-        private String email;   // no @Column → fallback to "email"
-        
+        private String email; // no @Column → fallback to "email"
+
         @Transient
         private String sessionToken;
     }
-    
+
     static class ConventionEntity {
         @Id
         private Long id;
-        
+
         @SuppressWarnings("unused")
         private String firstName;
+
         @SuppressWarnings("unused")
         private String lastName;
     }
-    
+
     static class NoIdEntity {
         @SuppressWarnings("unused")
         private String name;
     }
-    
+
     @Table(name = "products")
     static class SpringDataIdEntity {
         @org.springframework.data.annotation.Id
         private String productCode;
-        
+
         @SuppressWarnings("unused")
         private String description;
     }

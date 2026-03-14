@@ -2,13 +2,14 @@ package io.github.auspis.fluentrepo4j.example;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.auspis.fluentrepo4j.test.domain.User;
+import io.github.auspis.fluentsql4j.dsl.DSL;
+import io.github.auspis.fluentsql4j.test.util.QueryUtil;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
-
 import javax.sql.DataSource;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,10 +17,6 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.test.context.ActiveProfiles;
-
-import io.github.auspis.fluentrepo4j.test.domain.User;
-import io.github.auspis.fluentsql4j.dsl.DSL;
-import io.github.auspis.fluentsql4j.test.util.QueryUtil;
 
 /**
  * Integration test demonstrating UserRepository usage with Spring Data Fluent SQL.
@@ -68,9 +65,7 @@ class UserRepositoryIntegrationTest {
         // 3. Wrapped it in a proxy implementing CrudRepository
         // 4. Injected it into this test class
 
-        assertThat(userRepository)
-            .isNotNull()
-            .isInstanceOf(CrudRepository.class);
+        assertThat(userRepository).isNotNull().isInstanceOf(CrudRepository.class);
     }
 
     @Test
@@ -88,17 +83,15 @@ class UserRepositoryIntegrationTest {
     void findById() {
         User created = new User("Jane Smith", "jane@example.com").withId(1L);
         userRepository.save(created);
-        
+
         Long userId = findUserIdByEmail("jane@example.com").orElseThrow();
 
         Optional<User> found = userRepository.findById(userId);
 
-        assertThat(found)
-            .isPresent()
-            .hasValueSatisfying(user -> {
-                assertThat(user.getName()).isEqualTo("Jane Smith");
-                assertThat(user.getEmail()).isEqualTo("jane@example.com");
-            });
+        assertThat(found).isPresent().hasValueSatisfying(user -> {
+            assertThat(user.getName()).isEqualTo("Jane Smith");
+            assertThat(user.getEmail()).isEqualTo("jane@example.com");
+        });
     }
 
     @Test
@@ -116,19 +109,16 @@ class UserRepositoryIntegrationTest {
 
         List<User> allUsers = (List<User>) userRepository.findAll();
 
-        assertThat(allUsers)
-            .hasSize(3)
-            .extracting(User::getName)
-            .containsExactlyInAnyOrder("Alice", "Bob", "Charlie");
+        assertThat(allUsers).hasSize(3).extracting(User::getName).containsExactlyInAnyOrder("Alice", "Bob", "Charlie");
     }
 
     @Test
     void save_update() {
         User original = new User("Original Name", "original@example.com").withId(1L);
         userRepository.save(original);
-        
+
         Long userId = findUserIdByEmail("original@example.com").orElseThrow();
-        
+
         original.setId(userId);
         original.setName("Updated Name");
         original.setEmail("updated@example.com");
@@ -138,19 +128,17 @@ class UserRepositoryIntegrationTest {
         assertThat(updated.getEmail()).isEqualTo("updated@example.com");
 
         Optional<User> reloaded = userRepository.findById(userId);
-        assertThat(reloaded)
-            .isPresent()
-            .hasValueSatisfying(user -> {
-                assertThat(user.getName()).isEqualTo("Updated Name");
-                assertThat(user.getEmail()).isEqualTo("updated@example.com");
-            });
+        assertThat(reloaded).isPresent().hasValueSatisfying(user -> {
+            assertThat(user.getName()).isEqualTo("Updated Name");
+            assertThat(user.getEmail()).isEqualTo("updated@example.com");
+        });
     }
 
     @Test
     void deleteById() {
         User created = new User("To Delete", "delete@example.com").withId(1L);
         userRepository.save(created);
-        
+
         Long userId = findUserIdByEmail("delete@example.com").orElseThrow();
 
         userRepository.deleteById(userId);
@@ -187,7 +175,7 @@ class UserRepositoryIntegrationTest {
     void existsById() {
         User created = new User("Existing", "existing@example.com").withId(1L);
         userRepository.save(created);
-        
+
         Long userId = findUserIdByEmail("existing@example.com").orElseThrow();
 
         boolean exists = userRepository.existsById(userId);
@@ -214,7 +202,8 @@ class UserRepositoryIntegrationTest {
 
     private Optional<Long> findUserIdByEmail(String email) {
         try (Connection connection = dataSource.getConnection()) {
-            return QueryUtil.getSingleValueByColumn(connection, USERS_TABLE, ID_COLUMN, EMAIL_COLUMN, email, Long.class);
+            return QueryUtil.getSingleValueByColumn(
+                    connection, USERS_TABLE, ID_COLUMN, EMAIL_COLUMN, email, Long.class);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

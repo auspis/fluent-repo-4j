@@ -1,17 +1,15 @@
 package io.github.auspis.fluentrepo4j.autoconfigure;
 
-import javax.sql.DataSource;
-
-import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.context.annotation.Bean;
-
 import io.github.auspis.fluentrepo4j.config.EnableFluentRepositories;
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.dialect.DialectDetector;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
+import javax.sql.DataSource;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.annotation.Bean;
 
 /**
  * Spring Boot {@link AutoConfiguration} for Fluent SQL repositories.
@@ -31,7 +29,7 @@ import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 public class FluentRepositoriesAutoConfiguration {
 
     // TODO: consider multi datasource support in the future
-    // , e.g. by allowing users to define multiple FluentConnectionProvider 
+    // , e.g. by allowing users to define multiple FluentConnectionProvider
     // beans with qualifiers
     @Bean
     @ConditionalOnMissingBean

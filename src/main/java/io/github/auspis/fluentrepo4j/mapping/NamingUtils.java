@@ -6,8 +6,7 @@ package io.github.auspis.fluentrepo4j.mapping;
  */
 public final class NamingUtils {
 
-    private NamingUtils() {
-    }
+    private NamingUtils() {}
 
     /**
      * Converts a camelCase string to snake_case.

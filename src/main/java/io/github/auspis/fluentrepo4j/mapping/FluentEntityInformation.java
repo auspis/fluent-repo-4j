@@ -1,19 +1,17 @@
 package io.github.auspis.fluentrepo4j.mapping;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import org.springframework.data.domain.Persistable;
-import org.springframework.data.repository.core.support.AbstractEntityInformation;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import org.springframework.data.domain.Persistable;
+import org.springframework.data.repository.core.support.AbstractEntityInformation;
 
 /**
  * Provides entity metadata for Fluent SQL repositories by scanning JPA annotations
@@ -29,8 +27,8 @@ public class FluentEntityInformation<T, ID> extends AbstractEntityInformation<T,
     private final Field idField;
     private final Class<ID> idType;
     private final IdGenerationStrategy idGenerationStrategy;
-    private final Map<String, Field> columnToField;   // column_name → Field
-    private final Map<Field, String> fieldToColumn;    // Field → column_name
+    private final Map<String, Field> columnToField; // column_name → Field
+    private final Map<Field, String> fieldToColumn; // Field → column_name
 
     @SuppressWarnings("unchecked")
     public FluentEntityInformation(Class<T> domainClass) {
@@ -69,10 +67,9 @@ public class FluentEntityInformation<T, ID> extends AbstractEntityInformation<T,
         }
 
         if (foundIdField == null) {
-            throw new IllegalArgumentException(
-                    "No @Id field found on entity " + domainClass.getName()
-                            + ". Annotate the identifier field with @jakarta.persistence.Id"
-                            + " or @org.springframework.data.annotation.Id.");
+            throw new IllegalArgumentException("No @Id field found on entity " + domainClass.getName()
+                    + ". Annotate the identifier field with @jakarta.persistence.Id"
+                    + " or @org.springframework.data.annotation.Id.");
         }
 
         this.idField = foundIdField;
@@ -190,9 +187,8 @@ public class FluentEntityInformation<T, ID> extends AbstractEntityInformation<T,
         if (strategy == GenerationType.IDENTITY) {
             return IdGenerationStrategy.IDENTITY;
         }
-        throw new UnsupportedOperationException(
-                "ID generation strategy " + strategy + " is not supported. "
-                        + "Only GenerationType.IDENTITY is supported. "
-                        + "Remove @GeneratedValue for application-provided IDs.");
+        throw new UnsupportedOperationException("ID generation strategy " + strategy + " is not supported. "
+                + "Only GenerationType.IDENTITY is supported. "
+                + "Remove @GeneratedValue for application-provided IDs.");
     }
 }

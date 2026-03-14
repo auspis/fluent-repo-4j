@@ -1,13 +1,11 @@
 package io.github.auspis.fluentrepo4j.dialect;
 
+import io.github.auspis.fluentsql4j.dsl.DSL;
+import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
-
 import javax.sql.DataSource;
-
-import io.github.auspis.fluentsql4j.dsl.DSL;
-import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 
 /**
  * Detects the database dialect from a {@link DataSource} and returns
@@ -17,11 +15,11 @@ import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
  * </p>
  */
 
-// TODO: is really needed? may we rely on fluent-sql-4j's own auto-detection in the DSLRegistry? maybe we can just delegate to it and let it handle the fallback logic?
+// TODO: is really needed? may we rely on fluent-sql-4j's own auto-detection in the DSLRegistry? maybe we can just
+// delegate to it and let it handle the fallback logic?
 public final class DialectDetector {
 
-    private DialectDetector() {
-    }
+    private DialectDetector() {}
 
     /**
      * Auto-detects the database dialect from the given {@link DataSource}.
@@ -45,10 +43,9 @@ public final class DialectDetector {
             if (fallback.isSuccess()) {
                 return fallback.orElseThrow();
             }
-            throw new IllegalStateException(
-                    "Cannot detect SQL dialect for database: " + productName
-                            + " " + productVersion
-                            + ". Ensure a fluent-sql-4j dialect plugin is on the classpath.");
+            throw new IllegalStateException("Cannot detect SQL dialect for database: " + productName
+                    + " " + productVersion
+                    + ". Ensure a fluent-sql-4j dialect plugin is on the classpath.");
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to detect database dialect from DataSource", e);
         }
