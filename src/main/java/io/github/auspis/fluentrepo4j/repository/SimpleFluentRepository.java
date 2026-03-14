@@ -1,12 +1,5 @@
 package io.github.auspis.fluentrepo4j.repository;
 
-import io.github.auspis.fluentrepo4j.FluentPersistable;
-import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
-import io.github.auspis.fluentrepo4j.mapping.DslTypeDispatcher;
-import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
-import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
-import io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter;
-import io.github.auspis.fluentsql4j.dsl.DSL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,10 +8,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.support.SQLExceptionSubclassTranslator;
 import org.springframework.jdbc.support.SQLExceptionTranslator;
+
+import io.github.auspis.fluentrepo4j.FluentPersistable;
+import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
+import io.github.auspis.fluentrepo4j.mapping.DslTypeDispatcher;
+import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
+import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
+import io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter;
+import io.github.auspis.fluentsql4j.dsl.DSL;
 
 /**
  * Default implementation of {@link CrudRepository} using fluent-sql-4j for SQL generation
@@ -121,10 +123,7 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
             try (ps;
                     ResultSet rs = ps.executeQuery()) {
                 rs.next();
-                boolean result = rs.getLong(1) > 0;
-                System.out.println(
-                        "existsById: Checking existence of ID " + id + " in table " + table + " → " + result);
-                return result;
+                return rs.getLong(1) > 0;
             }
         } catch (SQLException e) {
             throw translateException("existsById", e);
