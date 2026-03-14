@@ -10,7 +10,8 @@ The goal is to provide Spring Data-style repositories backed by pure JDBC and fl
 - Use Spring Data Commons SPI for repository integration.
 - Use Spring JDBC primitives for database access and exception translation.
 - Keep mapping scope simple (flat entity mapping only, no ORM object graph behavior).
-- Do not introduce PartTree query derivation or unsupported custom query systems.
+- PartTree query derivation is not implemented yet; proposals or incremental implementation are allowed when aligned with project roadmap.
+- Do not introduce unsupported custom query systems outside Spring Data extension points.
 
 ## Build and Tooling
 
@@ -35,6 +36,7 @@ The goal is to provide Spring Data-style repositories backed by pure JDBC and fl
 - Prefer clear, explicit types.
 - Prefer immutable fields and constructor injection where possible.
 - Keep classes focused and cohesive.
+- Prefer Java `record` for simple immutable data carriers with a small number of fields.
 
 ### Reflection Policy
 
@@ -45,9 +47,10 @@ The goal is to provide Spring Data-style repositories backed by pure JDBC and fl
 
 ### Helper and Utility Classes
 
-- Helper classes must live in a `*.helper` package.
-- Utility classes must live in a `*.util` package.
-- Utility classes must be `final`, have a private constructor, and expose only `static` methods.
+- Helper classes must use the `Helper` suffix and live in a `*.helper` package.
+- Helper classes must be instantiated and may hold state when that improves readability and reuse.
+- Utility classes must use `Util` suffix and must live in a `*.util` package.
+- Utility classes must be `final`, expose only `static` methods, and define a private no-args constructor.
 
 ## Persistence and Mapping Conventions
 
@@ -62,6 +65,14 @@ The goal is to provide Spring Data-style repositories backed by pure JDBC and fl
 - Use unit tests for isolated mapping/repository decision logic.
 - Use Spring Boot + H2 integration tests for repository/data-access behaviors.
 - Keep test names compact and behavior-oriented.
+- Reuse `fluent-sql-4j` `test-support` custom annotations when applicable:
+  - `io.github.auspis.fluentsql4j.test.util.annotation.ComponentTest`
+  - `io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest`
+  - `io.github.auspis.fluentsql4j.test.util.annotation.E2ETest`
+- Prefer `@ComponentTest` for multi-class tests with mocked JDBC, and `@IntegrationTest` for real H2-backed repository behavior.
+- Reserve `@E2ETest` for full workflow scenarios only when needed; do not overuse slow tests.
+- Use `@E2ETest` when testing with testcontainers or other real databases.
+- Use helpers from `test-support` (for example SQL capture/assert helpers) to reduce repetitive mocked JDBC setup.
 
 ## Command Guidance for Copilot Changes
 
