@@ -22,8 +22,6 @@ import jakarta.persistence.Transient;
  * @param <T>  the entity type
  * @param <ID> the entity's identifier type
  */
-
-// TODO: is there a class in spring-data-commons we can reuse?
 public class FluentEntityInformation<T, ID> extends AbstractEntityInformation<T, ID> {
 
     private final String tableName;

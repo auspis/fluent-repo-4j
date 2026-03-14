@@ -15,7 +15,6 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
  * </p>
  */
 
-//TODO: add test coverage
 public class FluentConnectionProvider {
 
     private final DataSource dataSource;
