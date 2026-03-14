@@ -18,6 +18,7 @@ import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
  */
 
 // TODO: is really needed? may we rely on fluent-sql-4j's own auto-detection in the DSLRegistry? maybe we can just delegate to it and let it handle the fallback logic?
+// TODO: move to fluent-sql-4j in a separate module, e.g. fluent-sql-4j-autodetect, so it can be reused by other projects without depending on fluent-repo4j?
 public final class DialectDetector {
 
     private DialectDetector() {
