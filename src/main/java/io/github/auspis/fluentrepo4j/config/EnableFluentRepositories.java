@@ -1,6 +1,7 @@
 package io.github.auspis.fluentrepo4j.config;
 
 import io.github.auspis.fluentrepo4j.repository.FluentRepositoryFactoryBean;
+
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;

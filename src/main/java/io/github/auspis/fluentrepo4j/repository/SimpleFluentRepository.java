@@ -7,6 +7,7 @@ import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter;
 import io.github.auspis.fluentsql4j.dsl.DSL;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -93,8 +94,9 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
         String idColumn = entityInformation.getIdColumnName();
         Connection conn = connectionProvider.getConnection();
         try {
-            PreparedStatement ps =
-                    DslTypeDispatcher.eq(dsl.selectAll().from(table).where().column(idColumn), id).build(conn);
+            PreparedStatement ps = DslTypeDispatcher.eq(
+                            dsl.selectAll().from(table).where().column(idColumn), id)
+                    .build(conn);
             try (ps;
                     ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -115,9 +117,9 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
         String idColumn = entityInformation.getIdColumnName();
         Connection conn = connectionProvider.getConnection();
         try {
-            PreparedStatement ps =
-                    DslTypeDispatcher.eq(dsl.select().countStar().from(table).where().column(idColumn), id)
-                            .build(conn);
+            PreparedStatement ps = DslTypeDispatcher.eq(
+                            dsl.select().countStar().from(table).where().column(idColumn), id)
+                    .build(conn);
             try (ps;
                     ResultSet rs = ps.executeQuery()) {
                 rs.next();

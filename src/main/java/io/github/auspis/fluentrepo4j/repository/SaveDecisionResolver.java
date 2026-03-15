@@ -2,6 +2,7 @@ package io.github.auspis.fluentrepo4j.repository;
 
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.mapping.IdGenerationStrategy;
+
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.springframework.data.domain.Persistable;

@@ -74,13 +74,36 @@ The goal is to provide Spring Data-style repositories backed by pure JDBC and fl
 - Use `@E2ETest` when testing with testcontainers or other real databases.
 - Use helpers from `test-support` (for example SQL capture/assert helpers) to reduce repetitive mocked JDBC setup.
 
+### Test Pyramid
+
+Every test class that is not a plain unit test **must** have the correct annotation. Do not rely only on naming conventions.
+
+|    Level    |     Annotation     |         Isolation         |         Database         | Speed  |
+|-------------|--------------------|---------------------------|--------------------------|--------|
+| Unit        | *(none)*           | Complete                  | No                       | Fast   |
+| Component   | `@ComponentTest`   | Real classes, mocked JDBC | No (mocked)              | Fast   |
+| Integration | `@IntegrationTest` | Real classes, embedded DB | H2                       | Medium |
+| E2E         | `@E2ETest`         | Full system               | Testcontainers (real DB) | Slow   |
+
+Prefer unit tests (base of the pyramid). Add component tests when verifying multi-class interaction. Use integration tests only when embedded H2 is needed. Reserve E2E for smoke validation on real databases.
+
+### Test Execution Commands
+
+- `./mvnw test` — runs unit + component tests only (fast, no database required).
+- `./mvnw verify` — runs unit + component + integration (H2) + E2E (Testcontainers, requires Docker).
+- `./mvnw verify -Dgroups=e2e` — runs only E2E tests.
+- `./mvnw verify -Dgroups=integration` — runs only integration tests.
+
+Surefire excludes `integration,e2e` tags. Failsafe includes them during the `verify` phase.
+
 ## Command Guidance for Copilot Changes
 
 When implementing code changes, prefer this local sequence:
 
 1. `./mvnw spotless:apply`
 2. `./mvnw clean test`
-3. Optional final validation: `./mvnw spotless:check`
+3. Optional full validation (includes integration and E2E, requires Docker): `./mvnw clean verify`
+4. Optional final formatting check: `./mvnw spotless:check`
 
 If a change touches formatting-sensitive files (`.java`, `pom.xml`, `.md`), always run Spotless before finalizing.
 

@@ -6,6 +6,7 @@ import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.test.domain.CartItem;
 import io.github.auspis.fluentrepo4j.test.domain.Product;
 import io.github.auspis.fluentrepo4j.test.domain.User;
+
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
