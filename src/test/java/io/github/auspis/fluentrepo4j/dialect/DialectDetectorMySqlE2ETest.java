@@ -39,8 +39,7 @@ class DialectDetectorMySqlE2ETest {
 
     @BeforeEach
     void setUp() throws SQLException {
-        dataSource =
-                new SingleConnectionDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword(), true);
+        dataSource = new SingleConnectionDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword(), true);
 
         try (Connection connection = dataSource.getConnection();
                 Statement stmt = connection.createStatement()) {
@@ -69,7 +68,7 @@ class DialectDetectorMySqlE2ETest {
     }
 
     @AfterEach
-    void tearDown() throws SQLException {
+    void tearDown() {
         if (dataSource != null) {
             dataSource.destroy();
         }

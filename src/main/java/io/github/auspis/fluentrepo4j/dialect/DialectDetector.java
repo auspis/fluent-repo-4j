@@ -2,6 +2,7 @@ package io.github.auspis.fluentrepo4j.dialect;
 
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
+import io.github.auspis.fluentsql4j.functional.Result;
 import io.github.auspis.fluentsql4j.plugin.builtin.sql2016.StandardSQLDialectPlugin;
 
 import java.sql.Connection;
@@ -48,11 +49,11 @@ public final class DialectDetector {
             DatabaseMetaData meta = conn.getMetaData();
             String productName = meta.getDatabaseProductName();
 
-            var result = registry.dslFor(productName);
+            Result<DSL> result = registry.dslFor(productName);
             if (result.isSuccess()) {
                 return result.orElseThrow();
             }
-            var fallback = registry.dslFor(StandardSQLDialectPlugin.DIALECT_NAME);
+            Result<DSL> fallback = registry.dslFor(StandardSQLDialectPlugin.DIALECT_NAME);
             if (fallback.isSuccess()) {
                 return fallback.orElseThrow();
             }

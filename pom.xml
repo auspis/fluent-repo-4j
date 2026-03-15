@@ -71,13 +71,6 @@
       <optional>true</optional>
     </dependency>
 
-    <!-- Spring Boot AutoConfiguration (optional) -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-autoconfigure</artifactId>
-      <optional>true</optional>
-    </dependency>
-
     <!-- Test dependencies -->
     <dependency>
       <groupId>io.github.auspis.fluentsql4j</groupId>
