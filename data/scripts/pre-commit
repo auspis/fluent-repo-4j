@@ -4,9 +4,9 @@
 # If formatting fails, the commit is aborted.
 
 # Identify all modified files in the staging area.
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=d)
+mapfile -t STAGED_FILES < <(git diff --cached --name-only --diff-filter=d)
 
-if [ -n "$STAGED_FILES" ]; then
+if [ "${#STAGED_FILES[@]}" -gt 0 ]; then
   echo "Formatting files before committing..."
   ./mvnw spotless:apply
 
@@ -16,7 +16,7 @@ if [ -n "$STAGED_FILES" ]; then
   fi
   
   echo "Formatting complete. Adding the reformatted files to git."
-  git add $STAGED_FILES
+  git add -- "${STAGED_FILES[@]}"
 fi
 
 exit 0
