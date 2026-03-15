@@ -6,7 +6,10 @@ import io.github.auspis.fluentrepo4j.mapping.DslTypeDispatcher;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter;
+import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper;
+import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper.ColumnOrder;
 import io.github.auspis.fluentsql4j.dsl.DSL;
+import io.github.auspis.fluentsql4j.dsl.select.OrderByBuilder;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -17,18 +20,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.jdbc.support.SQLExceptionSubclassTranslator;
 import org.springframework.jdbc.support.SQLExceptionTranslator;
 
 /**
- * Default implementation of {@link CrudRepository} using fluent-sql-4j for SQL generation
- * and Spring's {@link org.springframework.jdbc.datasource.DataSourceUtils} for connection management.
+ * Default implementation of {@link CrudRepository} and {@link PagingAndSortingRepository}
+ * using fluent-sql-4j for SQL generation and Spring's
+ * {@link org.springframework.jdbc.datasource.DataSourceUtils} for connection management.
  *
  * @param <T>  the entity type
  * @param <ID> the entity identifier type
  */
-public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
+public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAndSortingRepository<T, ID> {
 
     private final FluentEntityInformation<T, ID> entityInformation;
     private final FluentConnectionProvider connectionProvider;
@@ -37,6 +46,7 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
     private final FluentEntityWriter<T> entityWriter;
     private final SQLExceptionTranslator exceptionTranslator;
     private final SaveDecisionResolver<T, ID> saveDecisionResolver;
+    private final SortClauseHelper sortClauseHelper;
 
     public SimpleFluentRepository(
             FluentEntityInformation<T, ID> entityInformation, FluentConnectionProvider connectionProvider, DSL dsl) {
@@ -47,6 +57,7 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
         entityWriter = new FluentEntityWriter<>(entityInformation);
         exceptionTranslator = new SQLExceptionSubclassTranslator();
         saveDecisionResolver = new SaveDecisionResolver<>(entityInformation, this::existsById);
+        sortClauseHelper = new SortClauseHelper(entityInformation);
     }
 
     // ---- Save ----
@@ -149,6 +160,83 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
             }
         } catch (SQLException e) {
             throw translateException("findAll", e);
+        } finally {
+            connectionProvider.releaseConnection(conn);
+        }
+    }
+
+    @Override
+    public Iterable<T> findAll(Sort sort) {
+        List<ColumnOrder> orders = sortClauseHelper.resolve(sort);
+        if (orders.isEmpty()) {
+            return findAll();
+        }
+        String table = entityInformation.getTableName();
+        Connection conn = connectionProvider.getConnection();
+        try {
+            OrderByBuilder orderByBuilder = dsl.selectAll().from(table).orderBy();
+            for (ColumnOrder order : orders) {
+                orderByBuilder = order.direction() == Sort.Direction.ASC
+                        ? orderByBuilder.asc(order.columnName())
+                        : orderByBuilder.desc(order.columnName());
+            }
+            try (PreparedStatement ps = orderByBuilder.build(conn);
+                    ResultSet rs = ps.executeQuery()) {
+                List<T> results = new ArrayList<>();
+                int rowNum = 0;
+                while (rs.next()) {
+                    results.add(rowMapper.mapRow(rs, rowNum++));
+                }
+                return results;
+            }
+        } catch (SQLException e) {
+            throw translateException("findAll(Sort)", e);
+        } finally {
+            connectionProvider.releaseConnection(conn);
+        }
+    }
+
+    @Override
+    public Page<T> findAll(Pageable pageable) {
+        long totalElements = count();
+        if (totalElements == 0 || pageable.getOffset() >= totalElements) {
+            return new PageImpl<>(List.of(), pageable, totalElements);
+        }
+
+        List<ColumnOrder> orders = sortClauseHelper.resolve(pageable.getSort());
+        String table = entityInformation.getTableName();
+        Connection conn = connectionProvider.getConnection();
+        try {
+            PreparedStatement ps;
+            if (orders.isEmpty()) {
+                ps = dsl.selectAll()
+                        .from(table)
+                        .fetch(pageable.getPageSize())
+                        .offset(pageable.getOffset())
+                        .build(conn);
+            } else {
+                OrderByBuilder orderByBuilder = dsl.selectAll().from(table).orderBy();
+                for (ColumnOrder order : orders) {
+                    orderByBuilder = order.direction() == Sort.Direction.ASC
+                            ? orderByBuilder.asc(order.columnName())
+                            : orderByBuilder.desc(order.columnName());
+                }
+                ps = orderByBuilder
+                        .fetch(pageable.getPageSize())
+                        .offset(pageable.getOffset())
+                        .build(conn);
+            }
+            try (ps;
+                    ResultSet rs = ps.executeQuery()) {
+                List<T> results = new ArrayList<>();
+                int rowNum = 0;
+                while (rs.next()) {
+                    results.add(rowMapper.mapRow(rs, rowNum++));
+                }
+                return new PageImpl<>(results, pageable, totalElements);
+            }
+        } catch (SQLException e) {
+            throw translateException("findAll(Pageable)", e);
         } finally {
             connectionProvider.releaseConnection(conn);
         }
