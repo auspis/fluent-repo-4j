@@ -1,0 +1,25 @@
+{
+    "cSpell.words": [
+        "assertj",
+        "auspis",
+        "fluentrepo",
+        "fluentsql",
+        "springframework",
+        "standardsql"
+    ],
+    "java.completion.importOrder": [
+        "jakarta",
+        "java",
+        "javax",
+        "org",
+        "com",
+        "io"
+    ],
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "never"
+    },
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "maven.view": "flat",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.debug.settings.onBuildFailureProceed": true
+}
