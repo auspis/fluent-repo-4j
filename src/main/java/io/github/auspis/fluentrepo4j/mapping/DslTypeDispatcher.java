@@ -4,6 +4,7 @@ import io.github.auspis.fluentsql4j.dsl.clause.SupportsWhere;
 import io.github.auspis.fluentsql4j.dsl.clause.WhereConditionBuilder;
 import io.github.auspis.fluentsql4j.dsl.insert.InsertBuilder;
 import io.github.auspis.fluentsql4j.dsl.update.UpdateBuilder;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 

@@ -10,6 +10,7 @@ import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 import io.github.auspis.fluentsql4j.plugin.builtin.mysql.dsl.MysqlDSL;
 import io.github.auspis.fluentsql4j.test.util.annotation.E2ETest;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;

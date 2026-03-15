@@ -13,6 +13,7 @@ import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 import io.github.auspis.fluentsql4j.test.util.TestDatabaseUtil;
 import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Optional;

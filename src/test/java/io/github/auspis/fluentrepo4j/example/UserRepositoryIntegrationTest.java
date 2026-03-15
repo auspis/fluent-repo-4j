@@ -6,6 +6,7 @@ import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.test.util.QueryUtil;
 import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;

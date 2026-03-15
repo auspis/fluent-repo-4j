@@ -1,6 +1,7 @@
 package io.github.auspis.fluentrepo4j.test.domain;
 
 import io.github.auspis.fluentrepo4j.FluentPersistable;
+
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;

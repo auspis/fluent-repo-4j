@@ -1,6 +1,7 @@
 package io.github.auspis.fluentrepo4j.mapping;
 
 import io.github.auspis.fluentrepo4j.FluentPersistable;
+
 import java.lang.reflect.Field;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;

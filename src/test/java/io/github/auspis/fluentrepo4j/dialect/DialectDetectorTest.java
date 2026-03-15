@@ -11,6 +11,7 @@ import io.github.auspis.fluentsql4j.functional.Result;
 import io.github.auspis.fluentsql4j.plugin.builtin.mysql.MysqlDialectPlugin;
 import io.github.auspis.fluentsql4j.plugin.builtin.sql2016.StandardSQLDialectPlugin;
 import io.github.auspis.fluentsql4j.test.util.annotation.ComponentTest;
+
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;

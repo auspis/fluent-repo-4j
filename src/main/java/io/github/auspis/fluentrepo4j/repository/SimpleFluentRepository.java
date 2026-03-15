@@ -7,6 +7,7 @@ import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter;
 import io.github.auspis.fluentsql4j.dsl.DSL;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
