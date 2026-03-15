@@ -16,6 +16,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Optional;
 import javax.sql.DataSource;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
@@ -34,16 +35,16 @@ class DialectDetectorPostgresE2ETest {
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15");
 
-    private Connection connection;
+    private SingleConnectionDataSource dataSource;
     private SimpleFluentRepository<User, Long> repository;
 
     @BeforeEach
     void setUp() throws SQLException {
-        DataSource dataSource = new SingleConnectionDataSource(
+        dataSource = new SingleConnectionDataSource(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword(), true);
-        connection = dataSource.getConnection();
 
-        try (Statement stmt = connection.createStatement()) {
+        try (Connection connection = dataSource.getConnection();
+                Statement stmt = connection.createStatement()) {
             stmt.execute("DROP TABLE IF EXISTS \"users\"");
             stmt.execute("""
                     CREATE TABLE "users" (
@@ -68,10 +69,16 @@ class DialectDetectorPostgresE2ETest {
         repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
     }
 
+    @AfterEach
+    void tearDown() {
+        if (dataSource != null) {
+            dataSource.destroy();
+            dataSource = null;
+        }
+    }
+
     @Test
-    void detectReturnsDsl() throws SQLException {
-        DataSource dataSource = new SingleConnectionDataSource(
-                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword(), true);
+    void detectReturnsDsl() {
         DSLRegistry registry = DSLRegistry.createWithServiceLoader();
 
         DSL dsl = DialectDetector.detect(dataSource, registry);
