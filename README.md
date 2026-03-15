@@ -325,9 +325,9 @@ Every test class that is not a plain unit test **must** carry the correct annota
 |--------------------------------------|--------------------------------------------------|-----------------|
 | `./mvnw test`                        | Unit + Component (fast, no database)             | No              |
 | `./mvnw verify`                      | All tests (Unit + Component + Integration + E2E) | Yes (for E2E)   |
+| `./mvnw test -Dgroups=component`     | Component tests only                             | No              |
 | `./mvnw verify -Dgroups=integration` | Integration tests only (H2)                      | No              |
 | `./mvnw verify -Dgroups=e2e`         | E2E tests only (Testcontainers)                  | Yes             |
-| `./mvnw test -Dgroups=component`     | Component tests only                             | No              |
 
 **How it works:** Surefire (invoked by `./mvnw test`) excludes the `integration` and `e2e` tags, so only unit and component tests run in the fast path. Failsafe (invoked during `./mvnw verify`) picks up those same tags and runs integration and E2E tests against real or embedded databases.
 

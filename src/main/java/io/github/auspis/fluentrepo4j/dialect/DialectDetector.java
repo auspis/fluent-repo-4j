@@ -25,6 +25,8 @@ import javax.sql.DataSource;
  * {@link DatabaseMetaData} — belongs to the integration layer.
  * </p>
  */
+
+// TODO: move to a new module in fluent-sql-4j, e.g. fluent-sql-4j-autodetect
 public final class DialectDetector {
 
     private DialectDetector() {}

@@ -64,7 +64,21 @@
       <version>${fluent-sql-4j.version}</version>
     </dependency>
 
-    <!-- fluent-sql-4j dialect plugins (test only, for E2E dialect detection) -->
+    <!-- Spring Boot AutoConfiguration (optional) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-autoconfigure</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- Spring Boot AutoConfiguration (optional) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-autoconfigure</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- Test dependencies -->
     <dependency>
       <groupId>io.github.auspis.fluentsql4j</groupId>
       <artifactId>plugin-mysql</artifactId>
@@ -78,14 +92,6 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Spring Boot AutoConfiguration (optional) -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-autoconfigure</artifactId>
-      <optional>true</optional>
-    </dependency>
-
-    <!-- Test dependencies -->
     <dependency>
       <groupId>io.github.auspis.fluentsql4j</groupId>
       <artifactId>test-support</artifactId>
@@ -253,21 +259,13 @@
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>${maven.surefire.plugin.version}</version>
-        <configuration>
-          <excludedGroups>${test.groups.slow}</excludedGroups>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
         <version>${maven.failsafe.plugin.version}</version>
         <configuration>
           <includes>
             <include>**/*Test.java</include>
             <include>**/*IT.java</include>
-            <include>**/*E2E.java</include>
+            <include>**/*E2ETest.java</include>
           </includes>
           <groups>${test.groups.slow}</groups>
         </configuration>
@@ -280,9 +278,17 @@
           </execution>
         </executions>
       </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven.surefire.plugin.version}</version>
+        <configuration>
+          <excludedGroups>${test.groups.slow}</excludedGroups>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
-
   <!--
     Profiles to support selective test execution via -Dgroups=<value>.
     Problem: Failsafe's <groups>${test.groups.slow}</groups> is resolved from the POM
@@ -333,5 +339,4 @@
       </build>
     </profile>
   </profiles>
-
 </project>
