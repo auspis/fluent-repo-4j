@@ -38,6 +38,7 @@ class UserPagingRepositoryIntegrationTest {
 
     @BeforeEach
     void setUp() throws SQLException {
+        // TODO: reuse TestDatabaseUtil.insertSampleUsers()/truncate/delete
         try (Connection connection = dataSource.getConnection();
                 var ps = dsl.truncateTable("users").build(connection)) {
             ps.executeUpdate();
@@ -51,21 +52,21 @@ class UserPagingRepositoryIntegrationTest {
     }
 
     @Test
-    void findAllSorted_ascByName() {
+    void findAll_sortedByName() {
         Iterable<User> users = userPagingRepository.findAll(Sort.by("name"));
 
         assertThat(users).extracting(User::getName).containsExactly("Alice", "Bob", "Charlie", "Diana", "Eve");
     }
 
     @Test
-    void findAllSorted_descByAge() {
+    void findAll_sortedByAgeDesc() {
         Iterable<User> users = userPagingRepository.findAll(Sort.by(Sort.Direction.DESC, "age"));
 
         assertThat(users).extracting(User::getAge).containsExactly(35, 30, 28, 25, 25);
     }
 
     @Test
-    void findAllSorted_columnAnnotationOverride() {
+    void findAll_sortingWithColumnAnnotationOverride() {
         // placeOfResidence maps to "address" column via @Column(name="address")
         // Insert users with different addresses to verify sorting works
         Iterable<User> users = userPagingRepository.findAll(Sort.by("id"));
@@ -74,7 +75,7 @@ class UserPagingRepositoryIntegrationTest {
     }
 
     @Test
-    void findAllSorted_multipleFields() {
+    void findAll_sortedByMultipleFields() {
         Iterable<User> users = userPagingRepository.findAll(Sort.by(Sort.Order.asc("age"), Sort.Order.asc("name")));
 
         // age 25: Alice, Eve; age 28: Diana; age 30: Charlie; age 35: Bob
