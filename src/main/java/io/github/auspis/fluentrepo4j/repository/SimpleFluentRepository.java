@@ -10,6 +10,7 @@ import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper;
 import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper.ColumnOrder;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.select.OrderByBuilder;
+import io.github.auspis.fluentsql4j.dsl.select.SelectBuilder;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -18,6 +19,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
@@ -145,16 +147,13 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID>, Pag
 
     @Override
     public Iterable<T> findAll() {
-        return executeFindAll("findAll", new NoOrderingStrategy(), new NoPagingStrategy());
+        return findAll("findAll", new NoOrderingStrategy(), new NoPagingStrategy());
     }
 
     @Override
     public Iterable<T> findAll(Sort sort) {
         List<ColumnOrder> orders = sortClauseHelper.resolve(sort);
-        if (orders.isEmpty()) {
-            return findAll();
-        }
-        return executeFindAll("findAll(Sort)", new ColumnOrderingStrategy(orders), new NoPagingStrategy());
+        return findAll("findAll(Sort)", new SortOrderingStrategy(orders), new NoPagingStrategy());
     }
 
     @Override
@@ -165,10 +164,8 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID>, Pag
         }
 
         List<ColumnOrder> orders = sortClauseHelper.resolve(pageable.getSort());
-        OrderingStrategy orderingStrategy =
-                orders.isEmpty() ? new NoOrderingStrategy() : new ColumnOrderingStrategy(orders);
         List<T> results =
-                executeFindAll("findAll(Pageable)", orderingStrategy, new LimitOffsetPagingStrategy(pageable));
+                findAll("findAll(Pageable)", new SortOrderingStrategy(orders), new PageablePagingStrategy(pageable));
         return new PageImpl<>(results, pageable, totalElements);
     }
 
@@ -350,11 +347,16 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID>, Pag
         }
     }
 
-    private List<T> executeFindAll(String task, OrderingStrategy orderingStrategy, PagingStrategy pagingStrategy) {
+    private List<T> findAll(String task, QueryPlanStrategy... strategies) {
         String table = entityInformation.getTableName();
+        QueryPlan plan = QueryPlan.base(table);
+        for (QueryPlanStrategy strategy : strategies) {
+            plan = strategy.apply(plan);
+        }
+
         Connection conn = connectionProvider.getConnection();
         try {
-            PreparedStatement ps = buildFindAllStatement(conn, table, orderingStrategy, pagingStrategy);
+            PreparedStatement ps = buildFindAllStatement(conn, plan);
             return executeAndMapRows(ps);
         } catch (SQLException e) {
             throw translateException(task, e);
@@ -363,16 +365,27 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID>, Pag
         }
     }
 
-    private PreparedStatement buildFindAllStatement(
-            Connection conn, String table, OrderingStrategy orderingStrategy, PagingStrategy pagingStrategy)
-            throws SQLException {
-        if (orderingStrategy.isNoOp()) {
-            return pagingStrategy.buildWithoutOrdering(dsl, table, conn);
+    private PreparedStatement buildFindAllStatement(Connection conn, QueryPlan plan) throws SQLException {
+        SelectBuilder selectBuilder = dsl.selectAll().from(plan.table());
+        Optional<PageWindow> optionalOfPageWindow = plan.pageWindow();
+        List<ColumnOrder> orders = plan.orders();
+
+        if (optionalOfPageWindow.isPresent()) {
+            PageWindow pageWindow = optionalOfPageWindow.get();
+            selectBuilder.fetch(pageWindow.limit()).offset(pageWindow.offset());
         }
 
-        OrderByBuilder orderByBuilder =
-                orderingStrategy.apply(dsl.selectAll().from(table).orderBy());
-        return pagingStrategy.buildWithOrdering(orderByBuilder, conn);
+        if (orders.isEmpty()) {
+            return selectBuilder.build(conn);
+        }
+
+        OrderByBuilder orderByBuilder = selectBuilder.orderBy();
+        for (ColumnOrder order : orders) {
+            orderByBuilder = order.direction() == Sort.Direction.ASC
+                    ? orderByBuilder.asc(order.columnName())
+                    : orderByBuilder.desc(order.columnName());
+        }
+        return orderByBuilder.build(conn);
     }
 
     private List<T> executeAndMapRows(PreparedStatement ps) throws SQLException {
@@ -387,94 +400,82 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID>, Pag
         }
     }
 
-    private interface OrderingStrategy {
-
-        boolean isNoOp();
-
-        OrderByBuilder apply(OrderByBuilder builder);
+    private interface QueryPlanStrategy {
+        QueryPlan apply(QueryPlan plan);
     }
 
-    private static final class NoOrderingStrategy implements OrderingStrategy {
-
+    private static final class NoOrderingStrategy implements QueryPlanStrategy {
         @Override
-        public boolean isNoOp() {
-            return true;
-        }
-
-        @Override
-        public OrderByBuilder apply(OrderByBuilder builder) {
-            return builder;
+        public QueryPlan apply(QueryPlan plan) {
+            return plan;
         }
     }
 
-    private static final class ColumnOrderingStrategy implements OrderingStrategy {
+    private static final class SortOrderingStrategy implements QueryPlanStrategy {
 
         private final List<ColumnOrder> orders;
 
-        private ColumnOrderingStrategy(List<ColumnOrder> orders) {
-            this.orders = orders;
+        private SortOrderingStrategy(List<ColumnOrder> orders) {
+            this.orders = List.copyOf(orders);
         }
 
         @Override
-        public boolean isNoOp() {
-            return false;
-        }
-
-        @Override
-        public OrderByBuilder apply(OrderByBuilder builder) {
-            OrderByBuilder current = builder;
-            for (ColumnOrder order : orders) {
-                current = order.direction() == Sort.Direction.ASC
-                        ? current.asc(order.columnName())
-                        : current.desc(order.columnName());
-            }
-            return current;
+        public QueryPlan apply(QueryPlan plan) {
+            return plan.withOrders(orders);
         }
     }
 
-    private interface PagingStrategy {
-
-        PreparedStatement buildWithoutOrdering(DSL dsl, String table, Connection conn) throws SQLException;
-
-        PreparedStatement buildWithOrdering(OrderByBuilder orderByBuilder, Connection conn) throws SQLException;
-    }
-
-    private static final class NoPagingStrategy implements PagingStrategy {
+    private static final class NoPagingStrategy implements QueryPlanStrategy {
 
         @Override
-        public PreparedStatement buildWithoutOrdering(DSL dsl, String table, Connection conn) throws SQLException {
-            return dsl.selectAll().from(table).build(conn);
-        }
-
-        @Override
-        public PreparedStatement buildWithOrdering(OrderByBuilder orderByBuilder, Connection conn) throws SQLException {
-            return orderByBuilder.build(conn);
+        public QueryPlan apply(QueryPlan plan) {
+            return plan;
         }
     }
 
-    private static final class LimitOffsetPagingStrategy implements PagingStrategy {
+    private static final class PageablePagingStrategy implements QueryPlanStrategy {
 
         private final Pageable pageable;
 
-        private LimitOffsetPagingStrategy(Pageable pageable) {
+        private PageablePagingStrategy(Pageable pageable) {
             this.pageable = pageable;
         }
 
         @Override
-        public PreparedStatement buildWithoutOrdering(DSL dsl, String table, Connection conn) throws SQLException {
-            return dsl.selectAll()
-                    .from(table)
-                    .fetch(pageable.getPageSize())
-                    .offset(pageable.getOffset())
-                    .build(conn);
+        public QueryPlan apply(QueryPlan plan) {
+            return plan.withPage(pageable.getPageSize(), pageable.getOffset());
+        }
+    }
+
+    private record QueryPlan(String table, List<ColumnOrder> orders, Optional<PageWindow> pageWindow) {
+
+        private QueryPlan {
+            orders = List.copyOf(Objects.requireNonNull(orders, "orders must not be null"));
+            Objects.requireNonNull(pageWindow, "pageWindow must not be null");
         }
 
-        @Override
-        public PreparedStatement buildWithOrdering(OrderByBuilder orderByBuilder, Connection conn) throws SQLException {
-            return orderByBuilder
-                    .fetch(pageable.getPageSize())
-                    .offset(pageable.getOffset())
-                    .build(conn);
+        private static QueryPlan base(String table) {
+            return new QueryPlan(table, List.of(), Optional.empty());
+        }
+
+        private QueryPlan withOrders(List<ColumnOrder> newOrders) {
+            return new QueryPlan(table, newOrders, pageWindow);
+        }
+
+        private QueryPlan withPage(int newLimit, long newOffset) {
+            return new QueryPlan(table, orders, Optional.of(new PageWindow(newLimit, newOffset)));
+        }
+    }
+
+    private record PageWindow(int limit, long offset) {
+
+        private PageWindow {
+            if (limit <= 0) {
+                throw new IllegalArgumentException("Page limit must be greater than 0");
+            }
+            if (offset < 0) {
+                throw new IllegalArgumentException("Page offset must be >= 0");
+            }
         }
     }
 

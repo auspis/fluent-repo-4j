@@ -141,6 +141,16 @@ class UserPagingRepositoryIntegrationTest {
     }
 
     @Test
+    void findAllPaged_withSortTieAndTieBreaker() {
+        Page<User> page = userPagingRepository.findAll(
+                PageRequest.of(1, 2, Sort.by(Sort.Order.asc("age"), Sort.Order.asc("id"))));
+
+        assertThat(page.getContent()).hasSize(2);
+        assertThat(page.getContent()).extracting(User::getName).containsExactly("Diana", "Charlie");
+        assertThat(page.getTotalElements()).isEqualTo(5);
+    }
+
+    @Test
     void findAllPaged_emptyTable() throws SQLException {
         try (Connection connection = dataSource.getConnection();
                 var ps = dsl.truncateTable("users").build(connection)) {
