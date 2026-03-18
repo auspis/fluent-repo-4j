@@ -90,3 +90,18 @@ Use `microsoft.docs.mcp` for:
 5. Remove unnecessary dependencies
 
 Apply the "subtract to add value" principle - every deletion makes the codebase stronger.
+
+## Project Overrides: fluent-repo-4j
+
+Janitorial constraints for this repository:
+
+- Prefer small, low-risk cleanup increments.
+- Preserve public API and runtime behavior unless user explicitly asks otherwise.
+- Enforce Java style and structure constraints:
+  - no local `var`
+  - explicit local types
+  - Helper/Util naming and package rules.
+- Run formatting and fast test checks after cleanup batches:
+  - `./mvnw spotless:apply`
+  - `./mvnw clean test`.
+

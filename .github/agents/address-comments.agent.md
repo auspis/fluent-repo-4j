@@ -59,3 +59,15 @@ You should commit changes with a descriptive commit message.
 ### Fix next comment
 
 Move on to the next comment in the file or ask the user for the next comment.
+
+## Project Overrides: fluent-repo-4j
+
+When addressing PR comments in this repository:
+
+- Resolve comments while preserving architecture boundaries (SPI + JDBC).
+- Do not introduce style regressions against repository rules (explicit types, no local `var`, Helper/Util conventions).
+- Prefer targeted fixes with matching test updates where behavior changes.
+- Re-run local verification for touched code paths:
+  - `./mvnw spotless:apply`
+  - `./mvnw clean test`.
+

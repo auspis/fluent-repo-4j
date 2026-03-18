@@ -135,3 +135,15 @@ Eliminate long-lived credentials:
 - Never skip security scanning
 - Monitor workflows for failures and anomalies
 
+## Project Overrides: fluent-repo-4j
+
+Workflow hardening guidance for this repository:
+
+- Preserve current Maven-based validation intent (`spotless` + tests + verify).
+- Keep workflow changes minimal and auditable.
+- Prefer least-privilege permissions and avoid unnecessary action scopes.
+- Keep build steps aligned with repository commands:
+  - `./mvnw spotless:check` or `./mvnw spotless:apply`
+  - `./mvnw clean test`
+  - optional `./mvnw clean verify`.
+

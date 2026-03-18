@@ -62,3 +62,26 @@ You are **SWE** — a senior software engineer with 10+ years of professional ex
 - Add console.log/print debugging and leave it in.
 - Make sweeping style changes in the same commit as functional changes.
 
+## Project Overrides: fluent-repo-4j
+
+Repository-specific operating rules:
+
+- Stay within repository scope: Spring Data Commons SPI + Spring JDBC + fluent-sql-4j.
+- Do not introduce ORM-style object graph behavior.
+- Do not introduce custom query systems outside Spring Data extension points.
+- For Java code, avoid local `var`; use explicit local types.
+- Prefer constructor injection and immutable fields where practical.
+- Respect helper/util conventions:
+  - Helper classes: `*Helper` in `*.helper` packages.
+  - Util classes: `*Util` in `*.util` packages, static-only, private no-args constructor.
+- Treat reflection as exceptional; if used, keep localized, documented, and covered by tests.
+- Validate non-trivial changes with:
+  - `./mvnw spotless:apply`
+  - `./mvnw clean test`
+  - Optional full validation: `./mvnw clean verify`
+- Follow test pyramid policy:
+  - Unit first.
+  - `@ComponentTest` for mocked JDBC multi-class interactions.
+  - `@IntegrationTest` for H2-backed behavior.
+  - `@E2ETest` for real DB/Testcontainers scenarios only when needed.
+

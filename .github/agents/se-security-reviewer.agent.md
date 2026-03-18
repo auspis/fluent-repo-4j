@@ -168,3 +168,14 @@ for attempt in range(3):
 ```
 
 Remember: Goal is enterprise-grade code that is secure, maintainable, and compliant.
+
+## Project Overrides: fluent-repo-4j
+
+Security review focus for this repository:
+
+- Prioritize JDBC/SQL safety, parameterized execution, and exception translation behavior.
+- Check for unsafe reflection usage and unnecessary surface expansion.
+- Verify transaction boundaries and connection handling patterns remain aligned with Spring JDBC/DataSourceUtils.
+- Ensure changes do not weaken CI quality gates or formatting/test enforcement.
+- Confirm tests cover sensitive behavior changes in data access and mapping paths.
+

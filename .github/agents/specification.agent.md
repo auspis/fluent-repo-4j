@@ -131,3 +131,15 @@ tags: [Optional: List of relevant tags or categories, e.g., `infrastructure`, `p
 ```
 ```
 
+## Project Overrides: fluent-repo-4j
+
+Specification constraints for this repository:
+
+- Scope all specifications to Spring Data Commons SPI + Spring JDBC + fluent-sql-4j architecture.
+- Exclude ORM graph behavior and unsupported query systems from target design unless explicitly requested.
+- Include compatibility notes for existing mapping conventions and ID generation strategies.
+- Define acceptance criteria using this repository's validation workflow:
+  - `./mvnw spotless:apply`
+  - `./mvnw clean test`
+  - optional `./mvnw clean verify`.
+

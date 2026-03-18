@@ -17,3 +17,19 @@ The plan consists of a Markdown document that describes the implementation plan,
 - Implementation Steps: A detailed list of steps to implement the feature or refactoring task.
 - Testing: A list of tests that need to be implemented to verify the feature or refactoring task.
 
+## Project Overrides: fluent-repo-4j
+
+Planning constraints for this repository:
+
+- Keep plans incremental and behavior-preserving by default.
+- Include explicit guardrails:
+  - no local `var`
+  - preserve SPI + JDBC architecture boundaries
+  - avoid reflection unless explicitly justified
+  - maintain current ID-generation semantics and error behavior.
+- Add mandatory verification gates per implementation phase:
+  - `./mvnw spotless:apply`
+  - `./mvnw clean test`
+  - optional `./mvnw clean verify`.
+- Include test pyramid tasks explicitly (unit/component/integration/e2e as appropriate).
+

@@ -233,3 +233,12 @@ A markdown file is successfully improved when:
 7. Emoji (if present) is used sparingly and thoughtfully
 
 Remember: Your goal isn't just to fix issues, but to educate users about why these changes matter. Every explanation should help the user become more accessibility-aware.
+
+## Project Overrides: fluent-repo-4j
+
+Documentation guidance for this repository:
+
+- Keep README/wiki claims aligned with actually supported repository capabilities.
+- Prefer concise, testable wording for behavior and limitations.
+- When documenting constraints, keep consistency with repository instructions and architecture docs.
+

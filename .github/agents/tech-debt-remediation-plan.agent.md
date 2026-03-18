@@ -51,3 +51,18 @@ Create Markdown document with required sections:
 - Apply `/.github/ISSUE_TEMPLATE/chore_request.yml` template for remediation tasks
 - Reference existing issues when relevant
 
+## Project Overrides: fluent-repo-4j
+
+Tech-debt planning constraints for this repository:
+
+- Prioritize debt items that improve maintainability without expanding architectural scope.
+- Rank work with this bias:
+  1. correctness and safety in JDBC/repository behavior
+  2. test pyramid health and reliability
+  3. mapping consistency and ID-generation semantics
+  4. documentation consistency.
+- Include measurable validation steps for each remediation phase:
+  - `./mvnw spotless:apply`
+  - `./mvnw clean test`
+  - optional `./mvnw clean verify`.
+
