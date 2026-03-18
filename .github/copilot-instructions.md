@@ -74,6 +74,12 @@ The goal is to provide Spring Data-style repositories backed by pure JDBC and fl
 - Use `@E2ETest` when testing with testcontainers or other real databases.
 - Use helpers from `test-support` (for example SQL capture/assert helpers) to reduce repetitive mocked JDBC setup.
 
+### Test Fixtures and Test Entities
+
+- Prefer using `io.github.auspis.fluentsql4j.test.util.TestDatabaseUtil` for reusable test database setup/cleanup and baseline fixtures instead of ad-hoc SQL in tests.
+- Prefer reusing entities from `io.github.auspis.fluentrepo4j.test.domain` (`User`, `CartItem`, `Product`) rather than introducing duplicated local test entities.
+- When the required dataset is not fully covered by `TestDatabaseUtil`, compose tests by combining utility methods with a minimal, scenario-specific fixture extension.
+
 ### Test Pyramid
 
 Every test class that is not a plain unit test **must** have the correct annotation. Do not rely only on naming conventions.

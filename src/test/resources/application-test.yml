@@ -1,12 +1,9 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:test;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
     driver-class-name: org.h2.Driver
     username: sa
     password: ""
-
-  jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
 
 logging:
   level:
