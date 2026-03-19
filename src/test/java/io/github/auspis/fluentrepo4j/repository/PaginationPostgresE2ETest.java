@@ -8,11 +8,12 @@ import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
+import io.github.auspis.fluentsql4j.test.util.TestDatabaseUtil;
 import io.github.auspis.fluentsql4j.test.util.annotation.E2ETest;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.Comparator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,30 +40,10 @@ class PaginationPostgresE2ETest {
         dataSource = new SingleConnectionDataSource(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword(), true);
 
-        try (Connection connection = dataSource.getConnection();
-                Statement stmt = connection.createStatement()) {
-            stmt.execute("DROP TABLE IF EXISTS \"users\"");
-            stmt.execute("""
-                    CREATE TABLE "users" (
-                        "id" BIGINT PRIMARY KEY,
-                        "name" VARCHAR(50),
-                        "email" VARCHAR(100),
-                        "age" INT,
-                        "active" BOOLEAN,
-                        "birthdate" DATE,
-                        "createdAt" TIMESTAMP,
-                        "address" TEXT,
-                        "preferences" TEXT
-                    )
-                    """);
-            stmt.execute(
-                    "INSERT INTO \"users\" (\"id\", \"name\", \"email\", \"age\", \"active\") VALUES (1, 'Charlie', 'charlie@example.com', 30, true)");
-            stmt.execute(
-                    "INSERT INTO \"users\" (\"id\", \"name\", \"email\", \"age\", \"active\") VALUES (2, 'Alice', 'alice@example.com', 25, true)");
-            stmt.execute(
-                    "INSERT INTO \"users\" (\"id\", \"name\", \"email\", \"age\", \"active\") VALUES (3, 'Bob', 'bob@example.com', 35, true)");
-            stmt.execute(
-                    "INSERT INTO \"users\" (\"id\", \"name\", \"email\", \"age\", \"active\") VALUES (4, 'Diana', 'diana@example.com', 28, true)");
+        try (Connection connection = dataSource.getConnection()) {
+            TestDatabaseUtil.PostgreSQL.dropUsersTable(connection);
+            TestDatabaseUtil.PostgreSQL.createUsersTable(connection);
+            TestDatabaseUtil.PostgreSQL.insertSampleUsers(connection);
         }
 
         DSLRegistry registry = DSLRegistry.createWithServiceLoader();
@@ -84,14 +65,18 @@ class PaginationPostgresE2ETest {
     void findAllSorted_ascByName() {
         Iterable<User> users = repository.findAll(Sort.by("name"));
 
-        assertThat(users).extracting(User::getName).containsExactly("Alice", "Bob", "Charlie", "Diana");
+        assertThat(users)
+                .extracting(User::getName)
+                .containsExactly(
+                        "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry", "Jane Smith", "John Doe");
     }
 
     @Test
     void findAllSorted_descByAge() {
         Iterable<User> users = repository.findAll(Sort.by(Sort.Direction.DESC, "age"));
 
-        assertThat(users).extracting(User::getAge).containsExactly(35, 30, 28, 25);
+        assertThat(users).extracting(User::getAge).isSortedAccordingTo(Comparator.reverseOrder());
+        assertThat(users).hasSize(10);
     }
 
     @Test
@@ -99,15 +84,15 @@ class PaginationPostgresE2ETest {
         Page<User> page = repository.findAll(PageRequest.of(0, 2, Sort.by("name")));
 
         assertThat(page.getContent()).extracting(User::getName).containsExactly("Alice", "Bob");
-        assertThat(page.getTotalElements()).isEqualTo(4);
-        assertThat(page.getTotalPages()).isEqualTo(2);
+        assertThat(page.getTotalElements()).isEqualTo(10);
+        assertThat(page.getTotalPages()).isEqualTo(5);
     }
 
     @Test
-    void findAllPaged_secondPage() {
-        Page<User> page = repository.findAll(PageRequest.of(1, 2, Sort.by("name")));
+    void findAllPaged_lastPage() {
+        Page<User> page = repository.findAll(PageRequest.of(4, 2, Sort.by("name")));
 
-        assertThat(page.getContent()).extracting(User::getName).containsExactly("Charlie", "Diana");
+        assertThat(page.getContent()).extracting(User::getName).containsExactly("Jane Smith", "John Doe");
         assertThat(page.isLast()).isTrue();
     }
 
@@ -116,6 +101,6 @@ class PaginationPostgresE2ETest {
         Page<User> page = repository.findAll(PageRequest.of(5, 2));
 
         assertThat(page.getContent()).isEmpty();
-        assertThat(page.getTotalElements()).isEqualTo(4);
+        assertThat(page.getTotalElements()).isEqualTo(10);
     }
 }

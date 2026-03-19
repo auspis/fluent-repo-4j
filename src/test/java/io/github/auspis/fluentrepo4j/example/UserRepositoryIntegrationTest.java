@@ -54,8 +54,8 @@ class UserRepositoryIntegrationTest {
     @BeforeEach
     void setUp() throws SQLException {
         try (Connection connection = dataSource.getConnection()) {
-            TestDatabaseUtil.truncateUsers(connection);
-            TestDatabaseUtil.insertSampleUsers(connection);
+            TestDatabaseUtil.H2.truncateUsers(connection);
+            TestDatabaseUtil.H2.insertSampleUsers(connection);
         }
     }
 
@@ -268,7 +268,7 @@ class UserRepositoryIntegrationTest {
         @Test
         void findAllPaged_emptyTable() throws SQLException {
             try (Connection connection = dataSource.getConnection()) {
-                TestDatabaseUtil.truncateUsers(connection);
+                TestDatabaseUtil.H2.truncateUsers(connection);
             }
             Page<User> page = userRepository.findAll(PageRequest.of(0, 10));
             assertThat(page.getContent()).isEmpty();

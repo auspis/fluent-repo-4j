@@ -9,11 +9,11 @@ import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 import io.github.auspis.fluentsql4j.plugin.builtin.postgre.dsl.PostgreSqlDSL;
+import io.github.auspis.fluentsql4j.test.util.TestDatabaseUtil;
 import io.github.auspis.fluentsql4j.test.util.annotation.E2ETest;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,22 +42,9 @@ class DialectDetectorPostgresE2ETest {
         dataSource = new SingleConnectionDataSource(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword(), true);
 
-        try (Connection connection = dataSource.getConnection();
-                Statement stmt = connection.createStatement()) {
-            stmt.execute("DROP TABLE IF EXISTS \"users\"");
-            stmt.execute("""
-                    CREATE TABLE "users" (
-                        "id" BIGINT PRIMARY KEY,
-                        "name" VARCHAR(50),
-                        "email" VARCHAR(100),
-                        "age" INT,
-                        "active" BOOLEAN,
-                        "birthdate" DATE,
-                        "createdAt" TIMESTAMP,
-                        "address" TEXT,
-                        "preferences" TEXT
-                    )
-                    """);
+        try (Connection connection = dataSource.getConnection()) {
+            TestDatabaseUtil.PostgreSQL.dropUsersTable(connection);
+            TestDatabaseUtil.PostgreSQL.createUsersTable(connection);
         }
 
         DSLRegistry registry = DSLRegistry.createWithServiceLoader();

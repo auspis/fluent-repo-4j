@@ -9,11 +9,11 @@ import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 import io.github.auspis.fluentsql4j.plugin.builtin.mysql.dsl.MysqlDSL;
+import io.github.auspis.fluentsql4j.test.util.TestDatabaseUtil;
 import io.github.auspis.fluentsql4j.test.util.annotation.E2ETest;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,22 +41,9 @@ class DialectDetectorMySqlE2ETest {
     void setUp() throws SQLException {
         dataSource = new SingleConnectionDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword(), true);
 
-        try (Connection connection = dataSource.getConnection();
-                Statement stmt = connection.createStatement()) {
-            stmt.execute("DROP TABLE IF EXISTS `users`");
-            stmt.execute("""
-                    CREATE TABLE `users` (
-                        `id` BIGINT PRIMARY KEY,
-                        `name` VARCHAR(50),
-                        `email` VARCHAR(100),
-                        `age` INT,
-                        `active` BOOLEAN,
-                        `birthdate` DATE,
-                        `createdAt` TIMESTAMP NULL,
-                        `address` TEXT,
-                        `preferences` TEXT
-                    )
-                    """);
+        try (Connection connection = dataSource.getConnection()) {
+            TestDatabaseUtil.MySQL.dropUsersTable(connection);
+            TestDatabaseUtil.MySQL.createUsersTable(connection);
         }
 
         DSLRegistry registry = DSLRegistry.createWithServiceLoader();
