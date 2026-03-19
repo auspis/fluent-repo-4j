@@ -3,7 +3,6 @@ package io.github.auspis.fluentrepo4j.mapping.helper;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,8 +20,8 @@ public class SortClauseHelper {
     public record ColumnOrder(String columnName, Sort.Direction direction) {}
 
     public SortClauseHelper(FluentEntityInformation<?, ?> entityInformation) {
-        this.fieldNameToColumn = Collections.unmodifiableMap(entityInformation.getFieldToColumnMap().entrySet().stream()
-                .collect(Collectors.toMap(e -> e.getKey().getName(), Map.Entry::getValue)));
+        this.fieldNameToColumn = entityInformation.getFieldToColumnMap().entrySet().stream()
+                .collect(Collectors.toUnmodifiableMap(e -> e.getKey().getName(), Map.Entry::getValue));
     }
 
     /**
