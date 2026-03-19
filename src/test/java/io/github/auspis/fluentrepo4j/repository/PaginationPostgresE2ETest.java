@@ -13,7 +13,6 @@ import io.github.auspis.fluentsql4j.test.util.annotation.E2ETest;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,14 +82,14 @@ class PaginationPostgresE2ETest {
 
     @Test
     void findAllSorted_ascByName() {
-        List<User> users = (List<User>) repository.findAll(Sort.by("name"));
+        Iterable<User> users = repository.findAll(Sort.by("name"));
 
         assertThat(users).extracting(User::getName).containsExactly("Alice", "Bob", "Charlie", "Diana");
     }
 
     @Test
     void findAllSorted_descByAge() {
-        List<User> users = (List<User>) repository.findAll(Sort.by(Sort.Direction.DESC, "age"));
+        Iterable<User> users = repository.findAll(Sort.by(Sort.Direction.DESC, "age"));
 
         assertThat(users).extracting(User::getAge).containsExactly(35, 30, 28, 25);
     }
