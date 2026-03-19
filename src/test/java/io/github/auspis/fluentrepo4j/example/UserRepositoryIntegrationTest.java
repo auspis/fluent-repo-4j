@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Optional;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +60,6 @@ class UserRepositoryIntegrationTest {
     }
 
     @Test
-    @DisplayName("Repository bean is registered with CRUD and paging capabilities")
     void repositoryAutomaticallyRegistered() {
         assertThat(userRepository)
                 .isNotNull()
@@ -70,11 +68,9 @@ class UserRepositoryIntegrationTest {
     }
 
     @Nested
-    @DisplayName("CRUD Scenarios")
     class CrudScenarios {
 
         @Test
-        @DisplayName("save inserts a new entity")
         void save_insert() {
             long countBefore = userRepository.count();
             userRepository.save(new User("New User", "newuser@example.com").withId(11L));
@@ -82,7 +78,6 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("findById returns existing entity")
         void findById() {
             Optional<User> found = userRepository.findById(1L);
             assertThat(found).isPresent().hasValueSatisfying(user -> {
@@ -92,20 +87,17 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("findById returns empty for unknown id")
         void findById_notFound() {
             assertThat(userRepository.findById(999L)).isEmpty();
         }
 
         @Test
-        @DisplayName("findAll returns all entities")
         void findAll() {
             Iterable<User> allUsers = userRepository.findAll();
             assertThat(allUsers).hasSize(10);
         }
 
         @Test
-        @DisplayName("save updates an existing entity")
         void save_update() {
             User user = userRepository.findById(1L).orElseThrow();
             user.setName("Updated John");
@@ -122,14 +114,12 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("deleteById removes the entity")
         void deleteById() {
             userRepository.deleteById(1L);
             assertThat(userRepository.findById(1L)).isEmpty();
         }
 
         @Test
-        @DisplayName("count returns total number of entities")
         void count() {
             assertThat(userRepository.count()).isEqualTo(10);
             userRepository.save(new User("Extra User", "extra@example.com").withId(11L));
@@ -137,7 +127,6 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("saveAll inserts multiple entities")
         void saveAll() {
             long countBefore = userRepository.count();
             userRepository.saveAll(List.of(
@@ -148,7 +137,6 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("existsById returns true for existing and false for missing")
         void existsById() {
             assertThat(userRepository.existsById(1L)).isTrue();
             assertThat(userRepository.existsById(999L)).isFalse();
@@ -156,15 +144,9 @@ class UserRepositoryIntegrationTest {
     }
 
     @Nested
-    @DisplayName("Sorting and Paging Scenarios")
     class SortingAndPagingScenarios {
 
-        // No additional @BeforeEach needed: the 10 users from TestDatabaseUtil.insertSampleUsers()
-        // (IDs 1-10, names Alice/Bob/Charlie/Diana/Eve/Frank/Grace/Henry/Jane Smith/John Doe)
-        // are sufficient for all sorting and paging assertions.
-
         @Test
-        @DisplayName("findAll sorted by name returns alphabetical order")
         void findAll_sortedByName() {
             Iterable<User> users = userRepository.findAll(Sort.by("name"));
             assertThat(users)
@@ -183,21 +165,18 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("findAll sorted by age descending returns descending order")
         void findAll_sortedByAgeDesc() {
             Iterable<User> users = userRepository.findAll(Sort.by(Sort.Direction.DESC, "age"));
             assertThat(users).extracting(User::getAge).isSortedAccordingTo(Comparator.reverseOrder());
         }
 
         @Test
-        @DisplayName("findAll sorted by id returns ascending id order")
         void findAll_sortedById() {
             Iterable<User> users = userRepository.findAll(Sort.by("id"));
             assertThat(users).extracting(User::getId).containsExactly(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L);
         }
 
         @Test
-        @DisplayName("findAll sorted by multiple fields resolves ties deterministically")
         void findAll_sortedByMultipleFields() {
             Iterable<User> users = userRepository.findAll(Sort.by(Sort.Order.asc("age"), Sort.Order.asc("name")));
             // age asc, then name asc for ties:
@@ -218,15 +197,14 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("findAll with unknown sort property throws exception")
         void findAllSorted_unknownProperty_throwsException() {
-            assertThatThrownBy(() -> userRepository.findAll(Sort.by("nonExistent")))
+            Sort sortBy = Sort.by("nonExistent");
+            assertThatThrownBy(() -> userRepository.findAll(sortBy))
                     .isInstanceOf(InvalidDataAccessApiUsageException.class)
                     .hasMessageContaining("nonExistent");
         }
 
         @Test
-        @DisplayName("findAll first page returns correct page metadata")
         void findAllPaged_firstPage() {
             Page<User> page = userRepository.findAll(PageRequest.of(0, 3));
             assertThat(page.getContent()).hasSize(3);
@@ -238,7 +216,6 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("findAll second page returns correct slice")
         void findAllPaged_secondPage() {
             Page<User> page = userRepository.findAll(PageRequest.of(1, 3));
             assertThat(page.getContent()).hasSize(3);
@@ -247,7 +224,6 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("findAll last page returns partial page")
         void findAllPaged_lastPagePartial() {
             Page<User> page = userRepository.findAll(PageRequest.of(3, 3));
             assertThat(page.getContent()).hasSize(1);
@@ -257,7 +233,6 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("findAll beyond last page returns empty content")
         void findAllPaged_beyondLastPage() {
             Page<User> page = userRepository.findAll(PageRequest.of(10, 3));
             assertThat(page.getContent()).isEmpty();
@@ -266,7 +241,6 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("findAll paged with sort returns correctly ordered page")
         void findAllPaged_withSort() {
             Page<User> page = userRepository.findAll(PageRequest.of(0, 5, Sort.by("name")));
             assertThat(page.getContent()).hasSize(5);
@@ -277,7 +251,6 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("findAll paged with tie-breaking sort returns deterministic order")
         void findAllPaged_withSortTieAndTieBreaker() {
             // All rows sorted by (age ASC, id ASC):
             // Bob(15,3), JaneSmith(25,2), Diana(25,6), Grace(28,9),
@@ -293,7 +266,6 @@ class UserRepositoryIntegrationTest {
         }
 
         @Test
-        @DisplayName("findAll paged on empty table returns empty page")
         void findAllPaged_emptyTable() throws SQLException {
             try (Connection connection = dataSource.getConnection()) {
                 TestDatabaseUtil.truncateUsers(connection);
