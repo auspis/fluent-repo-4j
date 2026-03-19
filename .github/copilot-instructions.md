@@ -119,3 +119,55 @@ If a change touches formatting-sensitive files (`.java`, `pom.xml`, `.md`), alwa
 - Document important constraints and decisions near the code when behavior is non-obvious.
 - Ensure generated guidance and examples are aligned with currently supported repository capabilities.
 
+## Consolidated Project Rules
+
+### Code Review Focus
+
+- Prioritize regressions in repository CRUD behavior, mapping, pagination, and sorting paths.
+- Enforce architecture boundaries: Spring Data Commons SPI + Spring JDBC + fluent-sql-4j only.
+- Verify Java style constraints:
+  - no local `var`
+  - explicit local types
+  - helper/util conventions from this file.
+- Require appropriate test-pyramid placement:
+  - unit first
+  - `@ComponentTest` for mocked JDBC integration across classes
+  - `@IntegrationTest` for H2 behavior
+  - `@E2ETest` only for real DB/Testcontainers scenarios.
+
+### Security Focus
+
+- Prioritize SQL safety for JDBC usage: parameterized execution only.
+- Verify connection and transaction handling remains aligned with Spring JDBC/DataSourceUtils patterns.
+- Treat reflection as exceptional and document/cover it with focused tests when used.
+- Prevent architecture drift that expands attack surface beyond SPI + JDBC scope.
+- Re-check security-relevant changes with tests before merge.
+
+### Performance Focus
+
+- Prioritize JDBC query efficiency, pagination/sorting correctness, and mapper overhead reduction.
+- Avoid premature abstractions that conflict with SPI + JDBC architecture.
+- Measure before optimizing and preserve current semantics, especially ID generation and mapping behavior.
+- Validate performance-sensitive changes with representative tests.
+
+### Spring and SQL Scope
+
+- Keep implementation within Spring Data Commons SPI + Spring JDBC + fluent-sql-4j boundaries.
+- Do not introduce ORM-style object graph behavior.
+- Do not add custom query frameworks outside Spring Data extension points.
+- Prefer explicit local types (no local `var`) in Java code.
+- Prefer constructor injection and immutable fields when practical.
+- Generate SQL compatible with Spring JDBC usage patterns.
+- Favor parameterized statements and clear column lists.
+- Keep SQL aligned with flat entity mapping conventions used by the mapping package.
+- Avoid introducing assumptions that imply ORM-style relationship traversal.
+
+### CI Workflow Alignment
+
+- Keep Maven validation steps aligned with project conventions:
+  - `./mvnw spotless:check` (or `spotless:apply` in local remediation)
+  - `./mvnw clean test`
+  - optional `./mvnw clean verify`.
+- Prefer least-privilege workflow permissions and pinned actions.
+- Keep workflow changes minimal, auditable, and consistent with current branch protections.
+
