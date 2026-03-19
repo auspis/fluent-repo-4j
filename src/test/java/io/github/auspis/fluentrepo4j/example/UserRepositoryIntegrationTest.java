@@ -100,7 +100,7 @@ class UserRepositoryIntegrationTest {
         @Test
         @DisplayName("findAll returns all entities")
         void findAll() {
-            List<User> allUsers = (List<User>) userRepository.findAll();
+            Iterable<User> allUsers = userRepository.findAll();
             assertThat(allUsers).hasSize(10);
         }
 
