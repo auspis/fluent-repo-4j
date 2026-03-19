@@ -15,7 +15,7 @@ import org.springframework.data.repository.query.QueryLookupStrategy;
 /**
  * Annotation to enable Fluent SQL repository support.
  * Scans for interfaces extending Spring Data {@code Repository} and creates
- * proxy beans backed by {@link io.github.auspis.fluentrepo4j.repository.SimpleFluentRepository}.
+ * proxy beans backed by {@link io.github.auspis.fluentrepo4j.repository.FluentRepository}.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

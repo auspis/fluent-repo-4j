@@ -32,7 +32,7 @@ class PaginationMySqlE2ETest {
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0");
 
     private SingleConnectionDataSource dataSource;
-    private SimpleFluentRepository<User, Long> repository;
+    private FluentRepository<User, Long> repository;
 
     @BeforeEach
     void setUp() throws SQLException {
@@ -69,7 +69,7 @@ class PaginationMySqlE2ETest {
         FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
         FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
 
-        repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
+        repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
     }
 
     @AfterEach

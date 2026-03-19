@@ -10,7 +10,7 @@ import org.springframework.data.repository.core.RepositoryMetadata;
 import org.springframework.data.repository.core.support.RepositoryFactorySupport;
 
 /**
- * Factory that creates {@link SimpleFluentRepository} instances.
+ * Factory that creates {@link FluentRepository} instances.
  * Extends Spring Data's {@link RepositoryFactorySupport} to integrate with the
  * standard repository proxy infrastructure.
  */
@@ -28,12 +28,12 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Object getTargetRepository(RepositoryInformation information) {
         FluentEntityInformation entityInformation = new FluentEntityInformation<>(information.getDomainType());
-        return new SimpleFluentRepository<>(entityInformation, connectionProvider, dsl);
+        return new FluentRepository<>(entityInformation, connectionProvider, dsl);
     }
 
     @Override
     protected Class<?> getRepositoryBaseClass(RepositoryMetadata metadata) {
-        return SimpleFluentRepository.class;
+        return FluentRepository.class;
     }
 
     @Override

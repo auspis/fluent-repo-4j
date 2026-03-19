@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
-import io.github.auspis.fluentrepo4j.repository.SimpleFluentRepository;
+import io.github.auspis.fluentrepo4j.repository.FluentRepository;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
@@ -35,7 +35,7 @@ class DialectDetectorMySqlE2ETest {
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0");
 
     private SingleConnectionDataSource dataSource;
-    private SimpleFluentRepository<User, Long> repository;
+    private FluentRepository<User, Long> repository;
 
     @BeforeEach
     void setUp() throws SQLException {
@@ -64,7 +64,7 @@ class DialectDetectorMySqlE2ETest {
         FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
         FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
 
-        repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
+        repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
     }
 
     @AfterEach

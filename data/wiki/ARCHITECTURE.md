@@ -66,7 +66,7 @@ void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
 **How it works**:
 1. Gets the `DataSource` and `DSL` (fluent-sql-4j provider) from the application context
 2. Creates a `FluentRepositoryFactory` passing the DataSource and DSL
-3. `getObject()` delegates to the factory to create the `SimpleFluentRepository<T, ID>` instance
+3. `getObject()` delegates to the factory to create the `FluentRepository<T, ID>` instance
 4. Spring Data wraps the implementation with a proxy for transaction handling and method interception
 
 **Why FactoryBean?** Allows initialization of complex bean dependencies (DataSource lookup, DSL instantiation) before the repository bean is created.
@@ -77,13 +77,13 @@ void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
 
 **Location**: `io.github.auspis.fluentrepo4j.repository.FluentRepositoryFactory`
 
-**Purpose**: Creates `SimpleFluentRepository<T, ID>` instances for a given entity type. Implements Spring Data's `RepositoryFactorySupport` SPI.
+**Purpose**: Creates `FluentRepository<T, ID>` instances for a given entity type. Implements Spring Data's `RepositoryFactorySupport` SPI.
 
 **How it works**:
 1. Analyzes the repository interface (e.g., `UserRepository extends CrudRepository<User, Long>`)
 2. Extracts entity type and ID type via Spring Data metadata
 3. Instantiates `FluentEntityInformation<User, Long>` to get metadata (table name, columns, ID strategy)
-4. Returns a new `SimpleFluentRepository<User, Long>` prepared for that entity
+4. Returns a new `FluentRepository<User, Long>` prepared for that entity
 
 **Key method**:
 
@@ -93,9 +93,9 @@ protected Object getTargetRepository(RepositoryInformation repositoryInformation
 
 ---
 
-### 5. SimpleFluentRepository<T, ID> (CrudRepository Implementation)
+### 5. FluentRepository<T, ID> (CrudRepository Implementation)
 
-**Location**: `io.github.auspis.fluentrepo4j.repository.SimpleFluentRepository`
+**Location**: `io.github.auspis.fluentrepo4j.repository.FluentRepository`
 
 **Purpose**: The actual CRUD implementation. Executes SQL operations against the database using fluent-sql-4j DSL and Spring's `DataSourceUtils`.
 
@@ -147,7 +147,7 @@ The decision is entirely delegated to `SaveDecisionResolver`. `update()` checks 
 - If connection is transactional, does nothing (Spring manages it)
 - If auto-commit, closes the connection
 
-**Why wrap DataSourceUtils?** Provides a clean, testable interface for `SimpleFluentRepository`.
+**Why wrap DataSourceUtils?** Provides a clean, testable interface for `FluentRepository`.
 
 ---
 
@@ -197,7 +197,7 @@ Note: `save()` does not use `isNew()` directly — it delegates to `SaveDecision
 
 **Constructor dependencies** (fixed at construction time):
 - `FluentEntityInformation<T, ID>` — entity metadata
-- `Predicate<ID> existsById` — DB check (bound to `SimpleFluentRepository.existsById`)
+- `Predicate<ID> existsById` — DB check (bound to `FluentRepository.existsById`)
 
 **Decision logic**:
 
@@ -328,7 +328,7 @@ Parameters: [1, "Alice", "alice@example.com"]
                         ↓
 2. Spring Data proxy intercepts the call
                         ↓
-3. Proxy delegates to: SimpleFluentRepository.save(user)
+3. Proxy delegates to: FluentRepository.save(user)
                         ↓
 4. SaveDecisionResolver.apply(user)  →  SaveAction
 
@@ -370,9 +370,9 @@ Parameters: [1, "Alice", "alice@example.com"]
                         ↓
 2. Spring Data proxy intercepts the call
                         ↓
-3. Proxy delegates to: SimpleFluentRepository.findById(1L)
+3. Proxy delegates to: FluentRepository.findById(1L)
                         ↓
-4. SimpleFluentRepository:
+4. FluentRepository:
    - Builds SQL: SELECT * FROM users WHERE id = ?
    - Parameters: [1]
                         ↓
@@ -427,7 +427,7 @@ Parameters: [1, "Alice", "alice@example.com"]
 ```
 1. Application calls repository.findById(1L) (no @Transactional)
                         ↓
-2. SimpleFluentRepository.findById() calls FluentConnectionProvider.getConnection()
+2. FluentRepository.findById() calls FluentConnectionProvider.getConnection()
                         ↓
 3. DataSourceUtils checks: is there an active transaction?
    NO → DataSource.getConnection() returns a new connection (auto-commit mode)

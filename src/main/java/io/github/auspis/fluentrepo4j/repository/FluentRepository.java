@@ -39,7 +39,7 @@ import org.springframework.jdbc.support.SQLExceptionTranslator;
  * @param <T>  the entity type
  * @param <ID> the entity identifier type
  */
-public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAndSortingRepository<T, ID> {
+public class FluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAndSortingRepository<T, ID> {
 
     private final FluentEntityInformation<T, ID> entityInformation;
     private final FluentConnectionProvider connectionProvider;
@@ -50,7 +50,7 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID>, Pag
     private final SaveDecisionResolver<T, ID> saveDecisionResolver;
     private final SortClauseHelper sortClauseHelper;
 
-    public SimpleFluentRepository(
+    public FluentRepository(
             FluentEntityInformation<T, ID> entityInformation, FluentConnectionProvider connectionProvider, DSL dsl) {
         this.entityInformation = entityInformation;
         this.connectionProvider = connectionProvider;
@@ -480,10 +480,9 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID>, Pag
     }
 
     private DataAccessException translateException(String task, SQLException ex) {
-        DataAccessException translated =
-                exceptionTranslator.translate("SimpleFluentRepository." + task, ex.getMessage(), ex);
+        DataAccessException translated = exceptionTranslator.translate("FluentRepository." + task, ex.getMessage(), ex);
         return translated != null
                 ? translated
-                : new org.springframework.jdbc.UncategorizedSQLException("SimpleFluentRepository." + task, null, ex);
+                : new org.springframework.jdbc.UncategorizedSQLException("FluentRepository." + task, null, ex);
     }
 }

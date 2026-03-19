@@ -139,9 +139,9 @@ public boolean isNew(T entity) {
 }
 ```
 
-**Step 2: Modificare `SimpleFluentRepository.insert()`**
+**Step 2: Modificare `FluentRepository.insert()`**
 
-File: `/home/massi/dev/fluent-repo-4j/src/main/java/io/github/auspis/fluentrepo4j/repository/SimpleFluentRepository.java`
+File: `/home/massi/dev/fluent-repo-4j/src/main/java/io/github/auspis/fluentrepo4j/repository/FluentRepository.java`
 
 Rimuovere questa riga:
 
@@ -169,7 +169,7 @@ Map<String, Object> values = entityWriter.getAllColumnValues(entity);
 
 **Step 3: Aggiornare Test**
 
-File: `/home/massi/dev/fluent-repo-4j/src/test/java/io/github/auspis/fluentrepo4j/repository/SimpleFluentRepositoryIT.java`
+File: `/home/massi/dev/fluent-repo-4j/src/test/java/io/github/auspis/fluentrepo4j/repository/FluentRepositoryIT.java`
 
 Il test deve impostare l'ID **prima** di `save()`:
 
@@ -346,7 +346,7 @@ private UUID id;  // Default: PROVIDED
 ## Checklist Implementativa
 
 - [X] Step 1: Override `isNew()` in `FluentEntityInformation` per supportare `Persistable<ID>`
-- [X] Step 2: Modificare `SimpleFluentRepository.insert()` per rimuovere ID hardcoded
+- [X] Step 2: Modificare `FluentRepository.insert()` per rimuovere ID hardcoded
 - [X] Step 3: Validare che ID != null prima di INSERT
 - [X] Step 4: Aggiornare test `save_insertNewEntity()` per impostare ID
 - [X] Step 5: Aggiungere test per `Persistable<ID>` (opzionale per MVP)
@@ -359,5 +359,5 @@ private UUID id;  // Default: PROVIDED
 - Spring Data Commons: `AbstractEntityInformation.isNew()`
 - Spring Data: `Persistable<ID>` interface
 - Jakarta Persistence: `@GeneratedValue` annotation
-- fluent-repo-4j: `FluentEntityInformation`, `SimpleFluentRepository`
+- fluent-repo-4j: `FluentEntityInformation`, `FluentRepository`
 

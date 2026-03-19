@@ -247,14 +247,14 @@ The library automatically converts ResultSet columns to Java types:
 How does the library work?
 
 1. **Application startup**: Spring Boot detects `@EnableFluentRepositories` (or auto-configuration) and triggers repository scanning.
-2. **Repository bean creation**: For each `CrudRepository` interface, a `FluentRepositoryFactoryBean` creates a `SimpleFluentRepository<Entity, ID>` implementation and wraps it with Spring Data's proxy.
-3. **Method invocation**: When you call `repository.save(entity)`, the proxy invokes `SimpleFluentRepository.save()`.
+2. **Repository bean creation**: For each `CrudRepository` interface, a `FluentRepositoryFactoryBean` creates a `FluentRepository<Entity, ID>` implementation and wraps it with Spring Data's proxy.
+3. **Method invocation**: When you call `repository.save(entity)`, the proxy invokes `FluentRepository.save()`.
 4. **Save logic via SaveDecisionResolver**:
    - If entity implements `Persistable`: uses `entity.isNew()` directly, no DB call
    - If id is null: INSERT (auto-id or provided, based on strategy)
    - If id is non-null: `existsById()` check → UPDATE or INSERT (PROVIDED) or error (IDENTITY)
    - `update()` checks the affected row count; throws `OptimisticLockingFailureException` if the row has disappeared
-5. **SQL execution**: `SimpleFluentRepository` builds SQL using fluent-sql-4j, prepares statements via `FluentConnectionProvider`, and executes against the DataSource.
+5. **SQL execution**: `FluentRepository` builds SQL using fluent-sql-4j, prepares statements via `FluentConnectionProvider`, and executes against the DataSource.
 6. **Transaction binding**: Connections are obtained via Spring's `DataSourceUtils`, automatically bound to the active `@Transactional` scope.
 7. **Results mapping**: `FluentEntityRowMapper` converts ResultSet rows to entity instances using Jakarta Persistence metadata.
 

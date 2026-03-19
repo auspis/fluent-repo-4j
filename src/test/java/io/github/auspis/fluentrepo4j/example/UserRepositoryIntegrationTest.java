@@ -36,7 +36,7 @@ import org.springframework.test.context.ActiveProfiles;
  *   <li>Auto-configuration of FluentRepositoriesAutoConfiguration
  *   <li>Repository scanning and bean creation via FluentRepositoriesRegistrar
  *   <li>Proxy creation via FluentRepositoryFactoryBean
- *   <li>CRUD operations via SimpleFluentRepository implementation
+ *   <li>CRUD operations via FluentRepository implementation
  *   <li>Entity mapping via @Table/@Column/@Id annotations
  *   <li>Connection management via FluentConnectionProvider
  * </ol>

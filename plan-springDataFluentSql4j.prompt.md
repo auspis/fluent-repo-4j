@@ -25,7 +25,7 @@ Modulo Spring Data custom basato su fluent-sql-4j per accesso JDBC. Dipende da s
 3. Repository base CRUD:
 
 - FluentEntityInformation<T, ID>
-- SimpleFluentRepository<T, ID> con save, findById, findAll, deleteById, count
+- FluentRepository<T, ID> con save, findById, findAll, deleteById, count
 - Scope corrente: niente PartTree e niente FluentQuery annotation
 
 4. Mapping semplice ResultSet → oggetto:

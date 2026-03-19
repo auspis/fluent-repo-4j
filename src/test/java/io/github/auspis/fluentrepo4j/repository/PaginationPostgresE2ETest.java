@@ -32,7 +32,7 @@ class PaginationPostgresE2ETest {
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15");
 
     private SingleConnectionDataSource dataSource;
-    private SimpleFluentRepository<User, Long> repository;
+    private FluentRepository<User, Long> repository;
 
     @BeforeEach
     void setUp() throws SQLException {
@@ -70,7 +70,7 @@ class PaginationPostgresE2ETest {
         FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
         FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
 
-        repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
+        repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
     }
 
     @AfterEach

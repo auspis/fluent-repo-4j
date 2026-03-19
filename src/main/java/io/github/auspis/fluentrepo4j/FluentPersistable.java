@@ -9,7 +9,7 @@ import org.springframework.data.domain.Persistable;
  * <p>Implementing this interface allows the entity to control the INSERT vs UPDATE
  * decision via {@link #isNew()}, while delegating state management to the library:
  * <ul>
- *   <li>{@link #markPersisted()} is called automatically by {@code SimpleFluentRepository}
+ *   <li>{@link #markPersisted()} is called automatically by {@code FluentRepository}
  *       after a successful {@code save()} (INSERT or UPDATE).</li>
  *   <li>{@link #markPersisted()} is called automatically by {@code FluentEntityRowMapper}
  *       after loading an entity from the database.</li>
