@@ -69,6 +69,44 @@ public @interface EnableFluentRepositories {
     String transactionManagerRef() default "transactionManager";
 
     /**
+     * Configures the name of the {@link javax.sql.DataSource} bean to be used for the
+     * repositories detected by this annotation.
+     * <p>
+     * When set, fluent-repo-4j derives a {@link io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider}
+     * and a dialect-specific {@link io.github.auspis.fluentsql4j.dsl.DSL} for this repository group.
+     * Use this for the common multi-datasource scenario where each repository group should bind
+     * to a dedicated {@code DataSource}.
+     * </p>
+     */
+    String dataSourceRef() default "";
+
+    /**
+     * Configures the name of the {@link io.github.auspis.fluentsql4j.dsl.DSLRegistry} bean to use
+     * when {@link #dataSourceRef()} is set and fluent-repo-4j needs to auto-detect the SQL dialect.
+     */
+    String dslRegistryRef() default "";
+
+    /**
+     * Configures the name of the {@link io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider}
+     * bean to be used directly for the repositories detected by this annotation.
+     * <p>
+     * This takes precedence over {@link #dataSourceRef()} and is intended for advanced scenarios
+     * where the application wants to provide a fully customized connection provider.
+     * </p>
+     */
+    String connectionProviderRef() default "";
+
+    /**
+     * Configures the name of the {@link io.github.auspis.fluentsql4j.dsl.DSL} bean to be used
+     * directly for the repositories detected by this annotation.
+     * <p>
+     * This takes precedence over {@link #dataSourceRef()} and is intended for advanced scenarios
+     * where the application wants to provide a fully customized DSL instance.
+     * </p>
+     */
+    String dslRef() default "";
+
+    /**
      * Configures the location of where to find Spring Data named queries.
      * Will default to {@code classpath*:META-INF/jpa-named-queries.properties}.
      */

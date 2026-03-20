@@ -10,7 +10,8 @@ A lightweight Spring Boot library for implementing the **Repository Pattern** wi
 ✅ **Simple Entity Mapping** - Jakarta Persistence annotations (`@Table`, `@Column`, `@Id`); automatic snake_case conversion  
 ✅ **ID Generation Strategies** - Support for application-provided IDs and database auto-increment (`@GeneratedValue(IDENTITY)`)  
 ✅ **Type Conversion** - Automatic mapping: strings, numbers, booleans, dates (LocalDate, LocalDateTime)  
-✅ **Exception Translation** - SQL exceptions automatically translated to Spring's `DataAccessException`
+✅ **Exception Translation** - SQL exceptions automatically translated to Spring's `DataAccessException`  
+✅ **Multi-DataSource Repository Groups** - Bind different repository groups to different `DataSource` beans using explicit Spring-style refs
 
 ---
 
@@ -130,6 +131,83 @@ spring:
 - ✅ Scans for `CrudRepository` interfaces and creates beans  
 - ✅ Binds connections to Spring transactions automatically via `DataSourceUtils`  
 - ✅ Maps entities to tables using Jakarta Persistence annotations
+
+### 5. Configure Multiple DataSources
+
+When an application uses more than one `DataSource`, configure one `@EnableFluentRepositories` block per repository group, following the same explicit binding model used by Spring Data modules.
+
+The repository group can bind infrastructure in two ways:
+
+1. Common case: point to a `DataSource` with `dataSourceRef`
+2. Advanced case: point directly to a `FluentConnectionProvider` and `DSL` with `connectionProviderRef` and `dslRef`
+
+Example with two repository groups:
+
+```java
+@Configuration(proxyBeanMethods = false)
+@EnableFluentRepositories(
+        basePackages = "com.example.billing",
+        dataSourceRef = "billingDataSource",
+        transactionManagerRef = "billingTransactionManager")
+class BillingRepositoriesConfiguration {
+
+    @Bean
+    DataSource billingDataSource() {
+        return ...;
+    }
+
+    @Bean
+    PlatformTransactionManager billingTransactionManager(DataSource billingDataSource) {
+        return new DataSourceTransactionManager(billingDataSource);
+    }
+}
+
+@Configuration(proxyBeanMethods = false)
+@EnableFluentRepositories(
+        basePackages = "com.example.reporting",
+        connectionProviderRef = "reportingConnectionProvider",
+        dslRef = "reportingDsl",
+        transactionManagerRef = "reportingTransactionManager")
+class ReportingRepositoriesConfiguration {
+
+    @Bean
+    DataSource reportingDataSource() {
+        return ...;
+    }
+
+    @Bean
+    FluentConnectionProvider reportingConnectionProvider(DataSource reportingDataSource) {
+        return new FluentConnectionProvider(reportingDataSource);
+    }
+
+    @Bean
+    DSL reportingDsl(DataSource reportingDataSource, DSLRegistry registry) {
+        return DialectDetector.detect(reportingDataSource, registry);
+    }
+
+    @Bean
+    PlatformTransactionManager reportingTransactionManager(DataSource reportingDataSource) {
+        return new DataSourceTransactionManager(reportingDataSource);
+    }
+}
+```
+
+Recommended practices:
+
+- Keep repository groups separated by package
+- Set `transactionManagerRef` for each repository group
+- Prefer `dataSourceRef` first; add `connectionProviderRef` and `dslRef` only when you need explicit control
+- If multiple `DataSource` beans exist and no explicit ref is provided, fluent-repo-4j follows Spring resolution rules: a single candidate or `@Primary` works; otherwise startup fails with a clear error
+
+Decision matrix:
+
+|                              Scenario                              |                      What the user configures                       |                                 Required beans                                 |                          Framework behavior                           |
+|--------------------------------------------------------------------|---------------------------------------------------------------------|--------------------------------------------------------------------------------|-----------------------------------------------------------------------|
+| Single `DataSource`                                                | Nothing extra                                                       | One `DataSource`                                                               | Uses the single candidate and auto-detects the dialect                |
+| Multiple `DataSource`, one `@Primary`                              | Nothing extra                                                       | Multiple `DataSource`, one marked `@Primary`                                   | Uses the primary candidate for repositories without explicit refs     |
+| Multiple `DataSource`, repository group bound to one DB            | `dataSourceRef`, optional `dslRegistryRef`, `transactionManagerRef` | Named `DataSource`, optional named `DSLRegistry`, matching transaction manager | Builds `FluentConnectionProvider` and `DSL` for that repository group |
+| Full manual control                                                | `connectionProviderRef`, `dslRef`, `transactionManagerRef`          | Named `FluentConnectionProvider`, named `DSL`, matching transaction manager    | Uses the provided infrastructure directly                             |
+| Multiple `DataSource` without explicit refs and without `@Primary` | Nothing extra                                                       | Two or more `DataSource` beans                                                 | Fails fast at startup and asks for `dataSourceRef` or `@Primary`      |
 
 ---
 
@@ -273,6 +351,7 @@ How does the library work?
 | `Persistable<ID>` for custom `isNew()` logic                           | ✅ Supported     | Fine-grained control over insert/update                                            |
 | Simple entity mapping (Jakarta Persistence annotations)                | ✅ Supported     | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient`                        |
 | Exception translation to `DataAccessException`                         | ✅ Supported     | Automatic SQL exception handling                                                   |
+| Multi-datasource repository groups                                     | ✅ Supported     | Configure one `@EnableFluentRepositories` block per repository group               |
 | Custom query methods (e.g., `findByEmail()`)                           | ❌ Not Supported | Use `findAll()` + filter in application code, or implement custom SQL in fragments |
 | Query method derivation (e.g., PartTree)                               | ❌ Not Supported | Planned for future release                                                         |
 | Object relationships (one-to-many, many-to-many)                       | ❌ Not Supported | Use separate repositories and explicit queries                                     |
@@ -296,6 +375,8 @@ This library focuses on **simple CRUD operations for single entities**. Be aware
 5. **Transaction management**: Relies entirely on Spring's `@Transactional` and `DataSourceUtils`. Manual connection management is not exposed to application code.
 
 6. **No bulk operations**: `saveAll()` and `deleteAll()` execute in loops, not as batch statements. For high-volume inserts, consider batch APIs provided by the database driver directly.
+
+7. **Explicit multi-datasource wiring**: When multiple `DataSource` beans exist, repository groups must be wired explicitly with `dataSourceRef` or advanced refs unless one candidate is marked `@Primary`.
 
 ---
 
