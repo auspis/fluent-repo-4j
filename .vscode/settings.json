@@ -4,6 +4,7 @@
         "auspis",
         "fluentrepo",
         "fluentsql",
+        "Persistable",
         "springframework",
         "standardsql"
     ],

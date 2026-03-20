@@ -6,7 +6,11 @@ import io.github.auspis.fluentrepo4j.mapping.DslTypeDispatcher;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter;
+import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper;
+import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper.ColumnOrder;
 import io.github.auspis.fluentsql4j.dsl.DSL;
+import io.github.auspis.fluentsql4j.dsl.select.OrderByBuilder;
+import io.github.auspis.fluentsql4j.dsl.select.SelectBuilder;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,20 +19,27 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.jdbc.support.SQLExceptionSubclassTranslator;
 import org.springframework.jdbc.support.SQLExceptionTranslator;
 
 /**
- * Default implementation of {@link CrudRepository} using fluent-sql-4j for SQL generation
- * and Spring's {@link org.springframework.jdbc.datasource.DataSourceUtils} for connection management.
+ * Default implementation of {@link CrudRepository} and {@link PagingAndSortingRepository}
+ * using fluent-sql-4j for SQL generation and Spring's
+ * {@link org.springframework.jdbc.datasource.DataSourceUtils} for connection management.
  *
  * @param <T>  the entity type
  * @param <ID> the entity identifier type
  */
-public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
+public class FluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAndSortingRepository<T, ID> {
 
     private final FluentEntityInformation<T, ID> entityInformation;
     private final FluentConnectionProvider connectionProvider;
@@ -37,8 +48,9 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
     private final FluentEntityWriter<T> entityWriter;
     private final SQLExceptionTranslator exceptionTranslator;
     private final SaveDecisionResolver<T, ID> saveDecisionResolver;
+    private final SortClauseHelper sortClauseHelper;
 
-    public SimpleFluentRepository(
+    public FluentRepository(
             FluentEntityInformation<T, ID> entityInformation, FluentConnectionProvider connectionProvider, DSL dsl) {
         this.entityInformation = entityInformation;
         this.connectionProvider = connectionProvider;
@@ -47,6 +59,7 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
         entityWriter = new FluentEntityWriter<>(entityInformation);
         exceptionTranslator = new SQLExceptionSubclassTranslator();
         saveDecisionResolver = new SaveDecisionResolver<>(entityInformation, this::existsById);
+        sortClauseHelper = new SortClauseHelper(entityInformation);
     }
 
     // ---- Save ----
@@ -134,24 +147,26 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
 
     @Override
     public Iterable<T> findAll() {
-        String table = entityInformation.getTableName();
-        Connection conn = connectionProvider.getConnection();
-        try {
-            PreparedStatement ps = dsl.selectAll().from(table).build(conn);
-            try (ps;
-                    ResultSet rs = ps.executeQuery()) {
-                List<T> results = new ArrayList<>();
-                int rowNum = 0;
-                while (rs.next()) {
-                    results.add(rowMapper.mapRow(rs, rowNum++));
-                }
-                return results;
-            }
-        } catch (SQLException e) {
-            throw translateException("findAll", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
+        return findAll("findAll", new NoOrderingStrategy(), new NoPagingStrategy());
+    }
+
+    @Override
+    public Iterable<T> findAll(Sort sort) {
+        List<ColumnOrder> orders = sortClauseHelper.resolve(sort);
+        return findAll("findAll(Sort)", new SortOrderingStrategy(orders), new NoPagingStrategy());
+    }
+
+    @Override
+    public Page<T> findAll(Pageable pageable) {
+        long totalElements = count();
+        if (totalElements == 0 || pageable.getOffset() >= totalElements) {
+            return new PageImpl<>(List.of(), pageable, totalElements);
         }
+
+        List<ColumnOrder> orders = sortClauseHelper.resolve(pageable.getSort());
+        List<T> results =
+                findAll("findAll(Pageable)", new SortOrderingStrategy(orders), new PageablePagingStrategy(pageable));
+        return new PageImpl<>(results, pageable, totalElements);
     }
 
     @Override
@@ -332,11 +347,142 @@ public class SimpleFluentRepository<T, ID> implements CrudRepository<T, ID> {
         }
     }
 
+    private List<T> findAll(String task, QueryPlanStrategy... strategies) {
+        String table = entityInformation.getTableName();
+        QueryPlan plan = QueryPlan.base(table);
+        for (QueryPlanStrategy strategy : strategies) {
+            plan = strategy.apply(plan);
+        }
+
+        Connection conn = connectionProvider.getConnection();
+        try {
+            PreparedStatement ps = buildFindAllStatement(conn, plan);
+            return executeAndMapRows(ps);
+        } catch (SQLException e) {
+            throw translateException(task, e);
+        } finally {
+            connectionProvider.releaseConnection(conn);
+        }
+    }
+
+    private PreparedStatement buildFindAllStatement(Connection conn, QueryPlan plan) throws SQLException {
+        SelectBuilder selectBuilder = dsl.selectAll().from(plan.table());
+        Optional<PageWindow> optionalOfPageWindow = plan.pageWindow();
+        List<ColumnOrder> orders = plan.orders();
+
+        if (optionalOfPageWindow.isPresent()) {
+            PageWindow pageWindow = optionalOfPageWindow.get();
+            selectBuilder.fetch(pageWindow.limit()).offset(pageWindow.offset());
+        }
+
+        if (orders.isEmpty()) {
+            return selectBuilder.build(conn);
+        }
+
+        OrderByBuilder orderByBuilder = selectBuilder.orderBy();
+        for (ColumnOrder order : orders) {
+            orderByBuilder = order.direction() == Sort.Direction.ASC
+                    ? orderByBuilder.asc(order.columnName())
+                    : orderByBuilder.desc(order.columnName());
+        }
+        return orderByBuilder.build(conn);
+    }
+
+    private List<T> executeAndMapRows(PreparedStatement ps) throws SQLException {
+        try (ps;
+                ResultSet rs = ps.executeQuery()) {
+            List<T> results = new ArrayList<>();
+            int rowNum = 0;
+            while (rs.next()) {
+                results.add(rowMapper.mapRow(rs, rowNum++));
+            }
+            return results;
+        }
+    }
+
+    private interface QueryPlanStrategy {
+        QueryPlan apply(QueryPlan plan);
+    }
+
+    private static final class NoOrderingStrategy implements QueryPlanStrategy {
+        @Override
+        public QueryPlan apply(QueryPlan plan) {
+            return plan;
+        }
+    }
+
+    private static final class SortOrderingStrategy implements QueryPlanStrategy {
+
+        private final List<ColumnOrder> orders;
+
+        private SortOrderingStrategy(List<ColumnOrder> orders) {
+            this.orders = List.copyOf(orders);
+        }
+
+        @Override
+        public QueryPlan apply(QueryPlan plan) {
+            return plan.withOrders(orders);
+        }
+    }
+
+    private static final class NoPagingStrategy implements QueryPlanStrategy {
+
+        @Override
+        public QueryPlan apply(QueryPlan plan) {
+            return plan;
+        }
+    }
+
+    private static final class PageablePagingStrategy implements QueryPlanStrategy {
+
+        private final Pageable pageable;
+
+        private PageablePagingStrategy(Pageable pageable) {
+            this.pageable = pageable;
+        }
+
+        @Override
+        public QueryPlan apply(QueryPlan plan) {
+            return plan.withPage(pageable.getPageSize(), pageable.getOffset());
+        }
+    }
+
+    private record QueryPlan(String table, List<ColumnOrder> orders, Optional<PageWindow> pageWindow) {
+
+        private QueryPlan {
+            orders = List.copyOf(Objects.requireNonNull(orders, "orders must not be null"));
+            Objects.requireNonNull(pageWindow, "pageWindow must not be null");
+        }
+
+        private static QueryPlan base(String table) {
+            return new QueryPlan(table, List.of(), Optional.empty());
+        }
+
+        private QueryPlan withOrders(List<ColumnOrder> newOrders) {
+            return new QueryPlan(table, newOrders, pageWindow);
+        }
+
+        private QueryPlan withPage(int newLimit, long newOffset) {
+            return new QueryPlan(table, orders, Optional.of(new PageWindow(newLimit, newOffset)));
+        }
+    }
+
+    private record PageWindow(int limit, long offset) {
+
+        private PageWindow {
+            if (limit <= 0) {
+                throw new IllegalArgumentException("Page limit must be greater than 0");
+            }
+            if (offset < 0) {
+                throw new IllegalArgumentException("Page offset must be >= 0");
+            }
+        }
+    }
+
     private DataAccessException translateException(String task, SQLException ex) {
-        DataAccessException translated =
-                exceptionTranslator.translate("SimpleFluentRepository." + task, ex.getMessage(), ex);
+        DataAccessException translated = exceptionTranslator.translate("FluentRepository." + task, ex.getMessage(), ex);
         return translated != null
                 ? translated
-                : new org.springframework.jdbc.UncategorizedSQLException("SimpleFluentRepository." + task, null, ex);
+                : new org.springframework.jdbc.UncategorizedSQLException("FluentRepository." + task, null, ex);
     }
 }

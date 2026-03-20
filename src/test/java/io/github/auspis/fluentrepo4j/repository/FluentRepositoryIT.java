@@ -11,8 +11,8 @@ import io.github.auspis.fluentrepo4j.test.domain.Product;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
-import io.github.auspis.fluentsql4j.test.util.TestDatabaseUtil;
 import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
+import io.github.auspis.fluentsql4j.test.util.database.TestDatabaseUtil;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -26,11 +26,11 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
 /**
- * Integration test for {@link SimpleFluentRepository} using an in-memory H2 database.
+ * Integration test for {@link FluentRepository} using an in-memory H2 database.
  * Tests both PROVIDED (application-set ID) and IDENTITY (database-generated ID) strategies.
  */
 @IntegrationTest
-class SimpleFluentRepositoryIT {
+class FluentRepositoryIT {
 
     /**
      * Tests for entities using PROVIDED ID strategy (User: no @GeneratedValue).
@@ -40,13 +40,13 @@ class SimpleFluentRepositoryIT {
     class ProvidedIdStrategy {
 
         private Connection connection;
-        private SimpleFluentRepository<User, Long> repository;
+        private FluentRepository<User, Long> repository;
 
         @BeforeEach
         void setUp() throws SQLException {
-            connection = TestDatabaseUtil.createH2Connection();
-            TestDatabaseUtil.createUsersTable(connection);
-            TestDatabaseUtil.insertSampleUsers(connection);
+            connection = TestDatabaseUtil.H2.createConnection();
+            TestDatabaseUtil.H2.createUsersTable(connection);
+            TestDatabaseUtil.H2.insertSampleUsers(connection);
             DataSource dataSource = new SingleConnectionDataSource(connection, true);
 
             DSLRegistry registry = DSLRegistry.createWithServiceLoader();
@@ -54,12 +54,12 @@ class SimpleFluentRepositoryIT {
             FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
             FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
 
-            repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
+            repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
         }
 
         @AfterEach
         void tearDown() throws SQLException {
-            TestDatabaseUtil.closeConnection(connection);
+            TestDatabaseUtil.H2.closeConnection(connection);
         }
 
         @Test
@@ -140,12 +140,12 @@ class SimpleFluentRepositoryIT {
     class IdentityIdStrategy {
 
         private Connection connection;
-        private SimpleFluentRepository<CartItem, Long> repository;
+        private FluentRepository<CartItem, Long> repository;
 
         @BeforeEach
         void setUp() throws SQLException {
-            connection = TestDatabaseUtil.createH2Connection();
-            TestDatabaseUtil.createCartItemsTable(connection);
+            connection = TestDatabaseUtil.H2.createConnection();
+            TestDatabaseUtil.H2.createCartItemsTable(connection);
             DataSource dataSource = new SingleConnectionDataSource(connection, true);
 
             DSLRegistry registry = DSLRegistry.createWithServiceLoader();
@@ -153,12 +153,12 @@ class SimpleFluentRepositoryIT {
             FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
             FluentEntityInformation<CartItem, Long> entityInfo = new FluentEntityInformation<>(CartItem.class);
 
-            repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
+            repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
         }
 
         @AfterEach
         void tearDown() throws SQLException {
-            TestDatabaseUtil.closeConnection(connection);
+            TestDatabaseUtil.H2.closeConnection(connection);
         }
 
         @Test
@@ -231,12 +231,12 @@ class SimpleFluentRepositoryIT {
     class Persistable {
 
         private Connection connection;
-        private SimpleFluentRepository<Product, Integer> repository;
+        private FluentRepository<Product, Integer> repository;
 
         @BeforeEach
         void setUp() throws SQLException {
-            connection = TestDatabaseUtil.createH2Connection();
-            TestDatabaseUtil.createProductsTable(connection);
+            connection = TestDatabaseUtil.H2.createConnection();
+            TestDatabaseUtil.H2.createProductsTable(connection);
             DataSource dataSource = new SingleConnectionDataSource(connection, true);
 
             DSLRegistry registry = DSLRegistry.createWithServiceLoader();
@@ -244,12 +244,12 @@ class SimpleFluentRepositoryIT {
             FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
             FluentEntityInformation<Product, Integer> entityInfo = new FluentEntityInformation<>(Product.class);
 
-            repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
+            repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
         }
 
         @AfterEach
         void tearDown() throws SQLException {
-            TestDatabaseUtil.closeConnection(connection);
+            TestDatabaseUtil.H2.closeConnection(connection);
         }
 
         @Test

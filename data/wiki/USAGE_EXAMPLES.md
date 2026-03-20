@@ -268,7 +268,7 @@ This applies to:
 class UserRepositoryIT {
 
     private Connection connection;
-    private SimpleFluentRepository<User, Long> repository;
+    private FluentRepository<User, Long> repository;
 
     @BeforeEach
     void setUp() throws SQLException {
@@ -280,7 +280,7 @@ class UserRepositoryIT {
         FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
         FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
 
-        repository = new SimpleFluentRepository<>(entityInfo, connectionProvider, dsl);
+        repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
     }
 
     @AfterEach

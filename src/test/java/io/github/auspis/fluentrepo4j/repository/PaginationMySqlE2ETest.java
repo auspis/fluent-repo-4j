@@ -1,35 +1,33 @@
-package io.github.auspis.fluentrepo4j.dialect;
+package io.github.auspis.fluentrepo4j.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
+import io.github.auspis.fluentrepo4j.dialect.DialectDetector;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
-import io.github.auspis.fluentrepo4j.repository.FluentRepository;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
-import io.github.auspis.fluentsql4j.plugin.builtin.mysql.dsl.MysqlDSL;
 import io.github.auspis.fluentsql4j.test.util.annotation.E2ETest;
 import io.github.auspis.fluentsql4j.test.util.database.TestDatabaseUtil;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Optional;
+import java.util.Comparator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/**
- * E2E smoke test verifying {@link DialectDetector} and basic CRUD
- * against a real MySQL database via Testcontainers.
- */
 @E2ETest
 @Testcontainers
-class DialectDetectorMySqlE2ETest {
+class PaginationMySqlE2ETest {
 
     @Container
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0");
@@ -44,6 +42,7 @@ class DialectDetectorMySqlE2ETest {
         try (Connection connection = dataSource.getConnection()) {
             TestDatabaseUtil.MySQL.dropUsersTable(connection);
             TestDatabaseUtil.MySQL.createUsersTable(connection);
+            TestDatabaseUtil.MySQL.insertSampleUsers(connection);
         }
 
         DSLRegistry registry = DSLRegistry.createWithServiceLoader();
@@ -62,38 +61,45 @@ class DialectDetectorMySqlE2ETest {
     }
 
     @Test
-    void detectReturnsDsl() {
-        DSLRegistry registry = DSLRegistry.createWithServiceLoader();
+    void findAllSorted_ascByName() {
+        Iterable<User> users = repository.findAll(Sort.by("name"));
 
-        DSL dsl = DialectDetector.detect(dataSource, registry);
-
-        assertThat(dsl).isNotNull().isInstanceOf(MysqlDSL.class);
+        assertThat(users)
+                .extracting(User::getName)
+                .containsExactly(
+                        "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry", "Jane Smith", "John Doe");
     }
 
     @Test
-    void saveAndFindById() {
-        User user = new User("Alice", "alice@example.com");
-        user.setId(1L);
+    void findAllSorted_descByAge() {
+        Iterable<User> users = repository.findAll(Sort.by(Sort.Direction.DESC, "age"));
 
-        repository.save(user);
-
-        Optional<User> found = repository.findById(1L);
-        assertThat(found).isPresent();
-        assertThat(found.get().getName()).isEqualTo("Alice");
-        assertThat(found.get().getEmail()).isEqualTo("alice@example.com");
+        assertThat(users).extracting(User::getAge).isSortedAccordingTo(Comparator.reverseOrder());
+        assertThat(users).hasSize(10);
     }
 
     @Test
-    void saveUpdate() {
-        User user = new User("Bob", "bob@example.com");
-        user.setId(2L);
-        repository.save(user);
+    void findAllPaged_firstPage() {
+        Page<User> page = repository.findAll(PageRequest.of(0, 2, Sort.by("name")));
 
-        user.setName("Bob Updated");
-        repository.save(user);
+        assertThat(page.getContent()).extracting(User::getName).containsExactly("Alice", "Bob");
+        assertThat(page.getTotalElements()).isEqualTo(10);
+        assertThat(page.getTotalPages()).isEqualTo(5);
+    }
 
-        Optional<User> found = repository.findById(2L);
-        assertThat(found).isPresent();
-        assertThat(found.get().getName()).isEqualTo("Bob Updated");
+    @Test
+    void findAllPaged_lastPage() {
+        Page<User> page = repository.findAll(PageRequest.of(4, 2, Sort.by("name")));
+
+        assertThat(page.getContent()).extracting(User::getName).containsExactly("Jane Smith", "John Doe");
+        assertThat(page.isLast()).isTrue();
+    }
+
+    @Test
+    void findAllPaged_beyondLastPage() {
+        Page<User> page = repository.findAll(PageRequest.of(5, 2));
+
+        assertThat(page.getContent()).isEmpty();
+        assertThat(page.getTotalElements()).isEqualTo(10);
     }
 }

@@ -1,45 +1,49 @@
 package io.github.auspis.fluentrepo4j.example;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.auspis.fluentrepo4j.test.domain.User;
-import io.github.auspis.fluentsql4j.dsl.DSL;
-import io.github.auspis.fluentsql4j.test.util.QueryUtil;
 import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
+import io.github.auspis.fluentsql4j.test.util.database.TestDatabaseUtil;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Integration test demonstrating UserRepository usage with Spring Data Fluent SQL.
  *
- * This test verifies:
- * 1. Auto-configuration of FluentRepositoriesAutoConfiguration
- * 2. Repository scanning and bean creation via FluentRepositoriesRegistrar
- * 3. Proxy creation via FluentRepositoryFactoryBean
- * 4. CRUD operations via SimpleFluentRepository implementation
- * 5. Entity mapping via @Table/@Column/@Id annotations
- * 6. Connection management via FluentConnectionProvider
+ * <p>This test verifies:
+ *
+ * <ol>
+ *   <li>Auto-configuration of FluentRepositoriesAutoConfiguration
+ *   <li>Repository scanning and bean creation via FluentRepositoriesRegistrar
+ *   <li>Proxy creation via FluentRepositoryFactoryBean
+ *   <li>CRUD operations via FluentRepository implementation
+ *   <li>Entity mapping via @Table/@Column/@Id annotations
+ *   <li>Connection management via FluentConnectionProvider
+ * </ol>
  */
 @IntegrationTest
 @SpringBootTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
 @ActiveProfiles("test")
 class UserRepositoryIntegrationTest {
-
-    private static final String USERS_TABLE = "\"users\"";
-    private static final String ID_COLUMN = "\"id\"";
-    private static final String EMAIL_COLUMN = "\"email\"";
 
     @Autowired
     private UserRepository userRepository;
@@ -47,168 +51,229 @@ class UserRepositoryIntegrationTest {
     @Autowired
     private DataSource dataSource;
 
-    @Autowired
-    private DSL dsl;
-
     @BeforeEach
     void setUp() throws SQLException {
-        // Clean up before each test - clear all records.
-        // Schema was already created by @AutoConfigureTestDatabase which loads schema.sql.
-        try (Connection connection = dataSource.getConnection();
-                var ps = dsl.truncateTable("users").build(connection)) {
-            ps.executeUpdate();
+        try (Connection connection = dataSource.getConnection()) {
+            TestDatabaseUtil.H2.truncateUsers(connection);
+            TestDatabaseUtil.H2.insertSampleUsers(connection);
         }
     }
 
     @Test
     void repositoryAutomaticallyRegistered() {
-        // Verify Spring Data automatically:
-        // 1. Scanned the package and found UserRepository interface
-        // 2. Created a bean via FluentRepositoryFactoryBean
-        // 3. Wrapped it in a proxy implementing CrudRepository
-        // 4. Injected it into this test class
-
-        assertThat(userRepository).isNotNull().isInstanceOf(CrudRepository.class);
+        assertThat(userRepository)
+                .isNotNull()
+                .isInstanceOf(CrudRepository.class)
+                .isInstanceOf(PagingAndSortingRepository.class);
     }
 
-    @Test
-    void save_insert() {
-        User newUser = new User("John Doe", "john@example.com").withId(1L);
-        userRepository.save(newUser);
+    @Nested
+    class CrudScenarios {
 
-        assertThat(countUsersByEmail("john@example.com")).isEqualTo(1);
+        @Test
+        void save_insert() {
+            long countBefore = userRepository.count();
+            userRepository.save(new User("New User", "newuser@example.com").withId(11L));
+            assertThat(userRepository.count()).isEqualTo(countBefore + 1);
+        }
 
-        Long id = findUserIdByEmail("john@example.com").orElseThrow();
-        assertThat(id).isPositive();
-    }
+        @Test
+        void findById() {
+            Optional<User> found = userRepository.findById(1L);
+            assertThat(found).isPresent().hasValueSatisfying(user -> {
+                assertThat(user.getName()).isEqualTo("John Doe");
+                assertThat(user.getEmail()).isEqualTo("john@example.com");
+            });
+        }
 
-    @Test
-    void findById() {
-        User created = new User("Jane Smith", "jane@example.com").withId(1L);
-        userRepository.save(created);
+        @Test
+        void findById_notFound() {
+            assertThat(userRepository.findById(999L)).isEmpty();
+        }
 
-        Long userId = findUserIdByEmail("jane@example.com").orElseThrow();
+        @Test
+        void findAll() {
+            Iterable<User> allUsers = userRepository.findAll();
+            assertThat(allUsers).hasSize(10);
+        }
 
-        Optional<User> found = userRepository.findById(userId);
+        @Test
+        void save_update() {
+            User user = userRepository.findById(1L).orElseThrow();
+            user.setName("Updated John");
+            user.setEmail("updated-john@example.com");
+            User updated = userRepository.save(user);
 
-        assertThat(found).isPresent().hasValueSatisfying(user -> {
-            assertThat(user.getName()).isEqualTo("Jane Smith");
-            assertThat(user.getEmail()).isEqualTo("jane@example.com");
-        });
-    }
+            assertThat(updated.getName()).isEqualTo("Updated John");
+            assertThat(updated.getEmail()).isEqualTo("updated-john@example.com");
 
-    @Test
-    void findById_NotFound() {
-        Optional<User> notFound = userRepository.findById(999L);
+            assertThat(userRepository.findById(1L)).isPresent().hasValueSatisfying(reloaded -> {
+                assertThat(reloaded.getName()).isEqualTo("Updated John");
+                assertThat(reloaded.getEmail()).isEqualTo("updated-john@example.com");
+            });
+        }
 
-        assertThat(notFound).isEmpty();
-    }
+        @Test
+        void deleteById() {
+            userRepository.deleteById(1L);
+            assertThat(userRepository.findById(1L)).isEmpty();
+        }
 
-    @Test
-    void findAll() {
-        userRepository.save(new User("Alice", "alice@example.com").withId(1L));
-        userRepository.save(new User("Bob", "bob@example.com").withId(2L));
-        userRepository.save(new User("Charlie", "charlie@example.com").withId(3L));
+        @Test
+        void count() {
+            assertThat(userRepository.count()).isEqualTo(10);
+            userRepository.save(new User("Extra User", "extra@example.com").withId(11L));
+            assertThat(userRepository.count()).isEqualTo(11);
+        }
 
-        List<User> allUsers = (List<User>) userRepository.findAll();
+        @Test
+        void saveAll() {
+            long countBefore = userRepository.count();
+            userRepository.saveAll(List.of(
+                    new User("Extra 1", "extra1@example.com").withId(11L),
+                    new User("Extra 2", "extra2@example.com").withId(12L),
+                    new User("Extra 3", "extra3@example.com").withId(13L)));
+            assertThat(userRepository.count()).isEqualTo(countBefore + 3);
+        }
 
-        assertThat(allUsers).hasSize(3).extracting(User::getName).containsExactlyInAnyOrder("Alice", "Bob", "Charlie");
-    }
-
-    @Test
-    void save_update() {
-        User original = new User("Original Name", "original@example.com").withId(1L);
-        userRepository.save(original);
-
-        Long userId = findUserIdByEmail("original@example.com").orElseThrow();
-
-        original.setId(userId);
-        original.setName("Updated Name");
-        original.setEmail("updated@example.com");
-        User updated = userRepository.save(original);
-
-        assertThat(updated.getName()).isEqualTo("Updated Name");
-        assertThat(updated.getEmail()).isEqualTo("updated@example.com");
-
-        Optional<User> reloaded = userRepository.findById(userId);
-        assertThat(reloaded).isPresent().hasValueSatisfying(user -> {
-            assertThat(user.getName()).isEqualTo("Updated Name");
-            assertThat(user.getEmail()).isEqualTo("updated@example.com");
-        });
-    }
-
-    @Test
-    void deleteById() {
-        User created = new User("To Delete", "delete@example.com").withId(1L);
-        userRepository.save(created);
-
-        Long userId = findUserIdByEmail("delete@example.com").orElseThrow();
-
-        userRepository.deleteById(userId);
-
-        assertThat(userRepository.findById(userId)).isEmpty();
-    }
-
-    @Test
-    void count() {
-        long initialCount = userRepository.count();
-        assertThat(initialCount).isZero();
-
-        userRepository.save(new User("User 1", "user1@example.com").withId(1L));
-        userRepository.save(new User("User 2", "user2@example.com").withId(2L));
-        userRepository.save(new User("User 3", "user3@example.com").withId(3L));
-
-        long finalCount = userRepository.count();
-        assertThat(finalCount).isEqualTo(3);
-    }
-
-    @Test
-    void saveAll() {
-        User user1 = new User("User 1", "user1@example.com").withId(1L);
-        User user2 = new User("User 2", "user2@example.com").withId(2L);
-        User user3 = new User("User 3", "user3@example.com").withId(3L);
-
-        userRepository.saveAll(List.of(user1, user2, user3));
-
-        long count = countUsersByEmails("user1@example.com", "user2@example.com", "user3@example.com");
-        assertThat(count).isEqualTo(3);
-    }
-
-    @Test
-    void existsById() {
-        User created = new User("Existing", "existing@example.com").withId(1L);
-        userRepository.save(created);
-
-        Long userId = findUserIdByEmail("existing@example.com").orElseThrow();
-
-        boolean exists = userRepository.existsById(userId);
-
-        assertThat(exists).isTrue();
-        assertThat(userRepository.existsById(999L)).isFalse();
-    }
-
-    private long countUsersByEmail(String email) {
-        try (Connection connection = dataSource.getConnection()) {
-            return QueryUtil.countByColumn(connection, USERS_TABLE, EMAIL_COLUMN, email);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        @Test
+        void existsById() {
+            assertThat(userRepository.existsById(1L)).isTrue();
+            assertThat(userRepository.existsById(999L)).isFalse();
         }
     }
 
-    private long countUsersByEmails(String... emails) {
-        try (Connection connection = dataSource.getConnection()) {
-            return QueryUtil.countByColumnIn(connection, USERS_TABLE, EMAIL_COLUMN, (Object[]) emails);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    @Nested
+    class SortingAndPagingScenarios {
 
-    private Optional<Long> findUserIdByEmail(String email) {
-        try (Connection connection = dataSource.getConnection()) {
-            return QueryUtil.getSingleValueByColumn(
-                    connection, USERS_TABLE, ID_COLUMN, EMAIL_COLUMN, email, Long.class);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        @Test
+        void findAll_sortedByName() {
+            Iterable<User> users = userRepository.findAll(Sort.by("name"));
+            assertThat(users)
+                    .extracting(User::getName)
+                    .containsExactly(
+                            "Alice",
+                            "Bob",
+                            "Charlie",
+                            "Diana",
+                            "Eve",
+                            "Frank",
+                            "Grace",
+                            "Henry",
+                            "Jane Smith",
+                            "John Doe");
+        }
+
+        @Test
+        void findAll_sortedByAgeDesc() {
+            Iterable<User> users = userRepository.findAll(Sort.by(Sort.Direction.DESC, "age"));
+            assertThat(users).extracting(User::getAge).isSortedAccordingTo(Comparator.reverseOrder());
+        }
+
+        @Test
+        void findAll_sortedById() {
+            Iterable<User> users = userRepository.findAll(Sort.by("id"));
+            assertThat(users).extracting(User::getId).containsExactly(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L);
+        }
+
+        @Test
+        void findAll_sortedByMultipleFields() {
+            Iterable<User> users = userRepository.findAll(Sort.by(Sort.Order.asc("age"), Sort.Order.asc("name")));
+            // age asc, then name asc for ties:
+            // 15: Bob | 25: Diana, Jane Smith | 28: Grace | 30: Charlie, Henry, John Doe | 35: Alice, Frank | 40: Eve
+            assertThat(users)
+                    .extracting(User::getName)
+                    .containsExactly(
+                            "Bob",
+                            "Diana",
+                            "Jane Smith",
+                            "Grace",
+                            "Charlie",
+                            "Henry",
+                            "John Doe",
+                            "Alice",
+                            "Frank",
+                            "Eve");
+        }
+
+        @Test
+        void findAllSorted_unknownProperty_throwsException() {
+            Sort sortBy = Sort.by("nonExistent");
+            assertThatThrownBy(() -> userRepository.findAll(sortBy))
+                    .isInstanceOf(InvalidDataAccessApiUsageException.class)
+                    .hasMessageContaining("nonExistent");
+        }
+
+        @Test
+        void findAllPaged_firstPage() {
+            Page<User> page = userRepository.findAll(PageRequest.of(0, 3));
+            assertThat(page.getContent()).hasSize(3);
+            assertThat(page.getTotalElements()).isEqualTo(10);
+            assertThat(page.getTotalPages()).isEqualTo(4);
+            assertThat(page.getNumber()).isZero();
+            assertThat(page.isFirst()).isTrue();
+            assertThat(page.hasNext()).isTrue();
+        }
+
+        @Test
+        void findAllPaged_secondPage() {
+            Page<User> page = userRepository.findAll(PageRequest.of(1, 3));
+            assertThat(page.getContent()).hasSize(3);
+            assertThat(page.getTotalElements()).isEqualTo(10);
+            assertThat(page.getNumber()).isEqualTo(1);
+        }
+
+        @Test
+        void findAllPaged_lastPagePartial() {
+            Page<User> page = userRepository.findAll(PageRequest.of(3, 3));
+            assertThat(page.getContent()).hasSize(1);
+            assertThat(page.getTotalElements()).isEqualTo(10);
+            assertThat(page.isLast()).isTrue();
+            assertThat(page.hasNext()).isFalse();
+        }
+
+        @Test
+        void findAllPaged_beyondLastPage() {
+            Page<User> page = userRepository.findAll(PageRequest.of(10, 3));
+            assertThat(page.getContent()).isEmpty();
+            assertThat(page.getTotalElements()).isEqualTo(10);
+            assertThat(page.getNumber()).isEqualTo(10);
+        }
+
+        @Test
+        void findAllPaged_withSort() {
+            Page<User> page = userRepository.findAll(PageRequest.of(0, 5, Sort.by("name")));
+            assertThat(page.getContent()).hasSize(5);
+            assertThat(page.getContent())
+                    .extracting(User::getName)
+                    .containsExactly("Alice", "Bob", "Charlie", "Diana", "Eve");
+            assertThat(page.getTotalElements()).isEqualTo(10);
+        }
+
+        @Test
+        void findAllPaged_withSortTieAndTieBreaker() {
+            // All rows sorted by (age ASC, id ASC):
+            // Bob(15,3), JaneSmith(25,2), Diana(25,6), Grace(28,9),
+            // JohnDoe(30,1), Charlie(30,5), Henry(30,10), Alice(35,4), Frank(35,8), Eve(40,7)
+            // Page 1 size 4 → indices 4-7: John Doe, Charlie, Henry, Alice
+            Page<User> page =
+                    userRepository.findAll(PageRequest.of(1, 4, Sort.by(Sort.Order.asc("age"), Sort.Order.asc("id"))));
+            assertThat(page.getContent()).hasSize(4);
+            assertThat(page.getContent())
+                    .extracting(User::getName)
+                    .containsExactly("John Doe", "Charlie", "Henry", "Alice");
+            assertThat(page.getTotalElements()).isEqualTo(10);
+        }
+
+        @Test
+        void findAllPaged_emptyTable() throws SQLException {
+            try (Connection connection = dataSource.getConnection()) {
+                TestDatabaseUtil.H2.truncateUsers(connection);
+            }
+            Page<User> page = userRepository.findAll(PageRequest.of(0, 10));
+            assertThat(page.getContent()).isEmpty();
+            assertThat(page.getTotalElements()).isZero();
+            assertThat(page.getTotalPages()).isZero();
         }
     }
 }
