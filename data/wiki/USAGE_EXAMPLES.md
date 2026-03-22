@@ -77,13 +77,15 @@ repository.save(saved);
 
 ---
 
-## 3. Persistable for Explicit State Control
+## 3. FluentPersistable for Explicit State Control
 
-Implement `Persistable<ID>` to control the new/existing decision yourself. The `SaveDecisionResolver` honours `isNew()` and **skips the `existsById()` DB call entirely**.
+Implement `FluentPersistable<ID>` to control the new/existing decision yourself. The `SaveDecisionResolver` honours `isNew()` and **skips the `existsById()` DB call entirely**.
 
 ```java
+import io.github.auspis.fluentrepo4j.FluentPersistable;
+
 @Table(name = "products")
-public class Product implements Persistable<Integer> {
+public class Product implements FluentPersistable<Integer> {
     @Id
     private Integer id;
     private String name;
@@ -98,6 +100,7 @@ public class Product implements Persistable<Integer> {
         return isNewEntity;
     }
 
+    @Override
     public void markPersisted() {
         this.isNewEntity = false;
     }
@@ -111,24 +114,25 @@ public interface ProductRepository extends CrudRepository<Product, Integer> {}
 Product p = new Product(42, "Widget", 19.99, 100);
 repository.save(p);
 
-// UPDATE: must call markPersisted() first
-p.markPersisted();
+// UPDATE: after save/load, FluentPersistable.markPersisted() is called automatically
 p.setPrice(24.99);
 repository.save(p);  // isNew() = false → UPDATE (no existsById call)
 ```
 
 > **Important**: `@PostLoad` / `@PostPersist` are JPA callbacks and are **not** triggered in pure JDBC mode.
-> Call `markPersisted()` manually after saving, or in the constructor for entities loaded from DB.
+> When the entity implements `FluentPersistable`, fluent-repo-4j calls `markPersisted()` automatically after saving and after loading from DB.
 
 ---
 
 ## 4. Persistable with UUID
 
-`Persistable<UUID>` is a natural fit for entities that generate their own UUID at construction time.
+`FluentPersistable<UUID>` is a natural fit for entities that generate their own UUID at construction time.
 
 ```java
+import io.github.auspis.fluentrepo4j.FluentPersistable;
+
 @Table(name = "orders")
-public class Order implements Persistable<UUID> {
+public class Order implements FluentPersistable<UUID> {
     @Id
     private UUID id = UUID.randomUUID();  // always generated at construction
 
@@ -140,6 +144,7 @@ public class Order implements Persistable<UUID> {
     @Override
     public boolean isNew() { return isNewEntity; }
 
+    @Override
     public void markPersisted() { this.isNewEntity = false; }
 }
 ```
@@ -147,7 +152,6 @@ public class Order implements Persistable<UUID> {
 ```java
 Order order = new Order("New order");
 repository.save(order);      // isNew() = true → INSERT
-order.markPersisted();
 
 order.setDescription("Updated order");
 repository.save(order);      // isNew() = false → UPDATE
@@ -204,7 +208,6 @@ public class OrderService {
     public void placeOrder(Order order, List<CartItem> items) {
         // Both operations share the same JDBC connection / transaction
         Order saved = orderRepository.save(order);
-        saved.markPersisted();
         items.forEach(cartItemRepository::save);
         // On exception → automatic rollback
     }

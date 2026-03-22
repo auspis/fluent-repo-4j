@@ -68,7 +68,20 @@ public interface UserRepository extends CrudRepository<User, Long> {
 }
 ```
 
-### 3. Inject and Use
+### 3. Enable Repositories
+
+Register the repository package explicitly.
+
+```java
+import io.github.auspis.fluentrepo4j.config.EnableFluentRepositories;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration(proxyBeanMethods = false)
+@EnableFluentRepositories(basePackageClasses = UserRepository.class)
+class RepositoryConfiguration {}
+```
+
+### 4. Inject and Use
 
 ```java
 import org.springframework.stereotype.Service;
@@ -113,7 +126,7 @@ public class UserService {
 }
 ```
 
-### 4. Configure DataSource
+### 5. Configure DataSource
 
 In `application.yml`:
 
@@ -132,82 +145,11 @@ spring:
 - ✅ Binds connections to Spring transactions automatically via `DataSourceUtils`  
 - ✅ Maps entities to tables using Jakarta Persistence annotations
 
-### 5. Configure Multiple DataSources
+### 6. Configure Multiple DataSources
 
-When an application uses more than one `DataSource`, configure one `@EnableFluentRepositories` block per repository group, following the same explicit binding model used by Spring Data modules.
+For multi-datasource applications, configure one `@EnableFluentRepositories` block per repository group.
 
-The repository group can bind infrastructure in two ways:
-
-1. Common case: point to a `DataSource` with `dataSourceRef`
-2. Advanced case: point directly to a `FluentConnectionProvider` and `DSL` with `connectionProviderRef` and `dslRef`
-
-Example with two repository groups:
-
-```java
-@Configuration(proxyBeanMethods = false)
-@EnableFluentRepositories(
-        basePackages = "com.example.billing",
-        dataSourceRef = "billingDataSource",
-        transactionManagerRef = "billingTransactionManager")
-class BillingRepositoriesConfiguration {
-
-    @Bean
-    DataSource billingDataSource() {
-        return ...;
-    }
-
-    @Bean
-    PlatformTransactionManager billingTransactionManager(DataSource billingDataSource) {
-        return new DataSourceTransactionManager(billingDataSource);
-    }
-}
-
-@Configuration(proxyBeanMethods = false)
-@EnableFluentRepositories(
-        basePackages = "com.example.reporting",
-        connectionProviderRef = "reportingConnectionProvider",
-        dslRef = "reportingDsl",
-        transactionManagerRef = "reportingTransactionManager")
-class ReportingRepositoriesConfiguration {
-
-    @Bean
-    DataSource reportingDataSource() {
-        return ...;
-    }
-
-    @Bean
-    FluentConnectionProvider reportingConnectionProvider(DataSource reportingDataSource) {
-        return new FluentConnectionProvider(reportingDataSource);
-    }
-
-    @Bean
-    DSL reportingDsl(DataSource reportingDataSource, DSLRegistry registry) {
-        return DialectDetector.detect(reportingDataSource, registry);
-    }
-
-    @Bean
-    PlatformTransactionManager reportingTransactionManager(DataSource reportingDataSource) {
-        return new DataSourceTransactionManager(reportingDataSource);
-    }
-}
-```
-
-Recommended practices:
-
-- Keep repository groups separated by package
-- Set `transactionManagerRef` for each repository group
-- Prefer `dataSourceRef` first; add `connectionProviderRef` and `dslRef` only when you need explicit control
-- If multiple `DataSource` beans exist and no explicit ref is provided, fluent-repo-4j follows Spring resolution rules: a single candidate or `@Primary` works; otherwise startup fails with a clear error
-
-Decision matrix:
-
-|                              Scenario                              |                      What the user configures                       |                                 Required beans                                 |                          Framework behavior                           |
-|--------------------------------------------------------------------|---------------------------------------------------------------------|--------------------------------------------------------------------------------|-----------------------------------------------------------------------|
-| Single `DataSource`                                                | Nothing extra                                                       | One `DataSource`                                                               | Uses the single candidate and auto-detects the dialect                |
-| Multiple `DataSource`, one `@Primary`                              | Nothing extra                                                       | Multiple `DataSource`, one marked `@Primary`                                   | Uses the primary candidate for repositories without explicit refs     |
-| Multiple `DataSource`, repository group bound to one DB            | `dataSourceRef`, optional `dslRegistryRef`, `transactionManagerRef` | Named `DataSource`, optional named `DSLRegistry`, matching transaction manager | Builds `FluentConnectionProvider` and `DSL` for that repository group |
-| Full manual control                                                | `connectionProviderRef`, `dslRef`, `transactionManagerRef`          | Named `FluentConnectionProvider`, named `DSL`, matching transaction manager    | Uses the provided infrastructure directly                             |
-| Multiple `DataSource` without explicit refs and without `@Primary` | Nothing extra                                                       | Two or more `DataSource` beans                                                 | Fails fast at startup and asks for `dataSourceRef` or `@Primary`      |
+See [data/wiki/USAGE_EXAMPLES.md](data/wiki/USAGE_EXAMPLES.md) for complete examples, decision matrix, and binding strategies.
 
 ---
 
@@ -259,15 +201,15 @@ repository.save(user);  // id == null → INSERT_AUTO_ID, database sets id on th
 **Error case**: if an entity with `@GeneratedValue(IDENTITY)` has a non-null id that does not exist in the DB, `save()` throws `IllegalStateException` — this is an inconsistent state.  
 **Best for**: Sequential Long IDs (IDENTITY / SERIAL / AUTO_INCREMENT columns).
 
-### Strategy 3: Custom `isNew()` Logic via `Persistable<ID>`
+### Strategy 3: Custom `isNew()` Logic via `FluentPersistable<ID>`
 
-For complete control over the new/existing distinction, implement `Persistable<ID>`. The `SaveDecisionResolver` honours `isNew()` directly and skips the `existsById()` database call.
+For complete control over the new/existing distinction, implement `FluentPersistable<ID>`. The `SaveDecisionResolver` honours `isNew()` directly and skips the `existsById()` database call.
 
 ```java
-import org.springframework.data.domain.Persistable;
+import io.github.auspis.fluentrepo4j.FluentPersistable;
 
 @Table(name = "products")
-public class Product implements Persistable<Integer> {
+public class Product implements FluentPersistable<Integer> {
     @Id
     private Integer id;
 
@@ -282,6 +224,7 @@ public class Product implements Persistable<Integer> {
         return isNewEntity;
     }
 
+    @Override
     public void markPersisted() {
         this.isNewEntity = false;
     }
@@ -292,13 +235,12 @@ Product p = new Product(1, "Widget", 19.99);
 repository.save(p);  // isNew() = true → INSERT_PROVIDED_ID (no DB call)
 
 // Update:
-p.markPersisted();
 p.setPrice(24.99);
 repository.save(p);  // isNew() = false → UPDATE (no DB call)
 ```
 
 **Decision logic**: delegates entirely to `entity.isNew()` — no `existsById()` call.  
-**Note**: `@PostLoad` / `@PostPersist` are JPA callbacks and are **not** fired in pure JDBC mode. Call `markPersisted()` (or equivalent) manually after save.  
+**Note**: `@PostLoad` / `@PostPersist` are JPA callbacks and are **not** fired in pure JDBC mode. When the entity implements `FluentPersistable`, fluent-repo-4j calls `markPersisted()` automatically after `save()` and after loading from the database.  
 **Best for**: explicit state control, complex ID schemes, or performance-sensitive code that avoids the `existsById()` round-trip.
 
 ---
@@ -307,16 +249,15 @@ repository.save(p);  // isNew() = false → UPDATE (no DB call)
 
 The library automatically converts ResultSet columns to Java types:
 
-|         Java Type          | Supported |                                Notes                                |
-|----------------------------|-----------|---------------------------------------------------------------------|
-| String                     | ✅         | VARCHAR, TEXT, CHAR                                                 |
-| Long, Integer, Short, Byte | ✅         | BIGINT, INT, SMALLINT, TINYINT                                      |
-| Double, Float, BigDecimal  | ✅         | DOUBLE, FLOAT, DECIMAL                                              |
-| Boolean                    | ✅         | BOOLEAN, BIT (0/1 converts to false/true)                           |
-| LocalDate                  | ✅         | DATE                                                                |
-| LocalDateTime              | ✅         | TIMESTAMP                                                           |
-| UUID                       | ✅         | VARCHAR/CHAR (stored as string)                                     |
-| Custom types, arrays, LOBs | ❌         | Not supported; implement custom converters or store as JSON strings |
+|         Java Type          | Supported |                   Notes                   |
+|----------------------------|-----------|-------------------------------------------|
+| String                     | ✅         | VARCHAR, TEXT, CHAR                       |
+| Long, Integer, Short, Byte | ✅         | BIGINT, INT, SMALLINT, TINYINT            |
+| Double, Float, BigDecimal  | ✅         | DOUBLE, FLOAT, DECIMAL                    |
+| Boolean                    | ✅         | BOOLEAN, BIT (0/1 converts to false/true) |
+| LocalDate                  | ✅         | DATE                                      |
+| LocalDateTime              | ✅         | TIMESTAMP                                 |
+| UUID                       | ✅         | VARCHAR/CHAR (stored as string)           |
 
 ---
 

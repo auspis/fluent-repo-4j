@@ -3,7 +3,7 @@ package io.github.auspis.fluentrepo4j.autoconfigure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.auspis.fluentrepo4j.config.EnableFluentRepositories;
-import io.github.auspis.fluentrepo4j.multids.PrimaryUserRepository;
+import io.github.auspis.fluentrepo4j.test.autoconfigure.datasource.PrimaryUserRepository;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 
 import javax.sql.DataSource;

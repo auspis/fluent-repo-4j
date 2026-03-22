@@ -1,4 +1,4 @@
-package io.github.auspis.fluentrepo4j.multids;
+package io.github.auspis.fluentrepo4j.test.autoconfigure.datasource;
 
 import io.github.auspis.fluentrepo4j.test.domain.User;
 

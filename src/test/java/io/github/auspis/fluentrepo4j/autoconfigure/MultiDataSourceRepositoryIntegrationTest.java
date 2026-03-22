@@ -2,11 +2,12 @@ package io.github.auspis.fluentrepo4j.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.auspis.fluentrepo4j.autoconfigure.util.AutoConfigureDataSourceTestUtil;
 import io.github.auspis.fluentrepo4j.config.EnableFluentRepositories;
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.dialect.DialectDetector;
-import io.github.auspis.fluentrepo4j.multids.PrimaryUserRepository;
-import io.github.auspis.fluentrepo4j.multids.SecondaryUserRepository;
+import io.github.auspis.fluentrepo4j.test.autoconfigure.datasource.PrimaryUserRepository;
+import io.github.auspis.fluentrepo4j.test.autoconfigure.datasource.SecondaryUserRepository;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
@@ -22,11 +23,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -54,8 +52,9 @@ class MultiDataSourceRepositoryIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        resetDatabase(primaryDataSource, 1L, "Primary User", "primary@example.com");
-        resetDatabase(secondaryDataSource, 2L, "Secondary User", "secondary@example.com");
+        AutoConfigureDataSourceTestUtil.resetUsersTable(primaryDataSource, 1L, "Primary User", "primary@example.com");
+        AutoConfigureDataSourceTestUtil.resetUsersTable(
+                secondaryDataSource, 2L, "Secondary User", "secondary@example.com");
     }
 
     @Test
@@ -81,14 +80,6 @@ class MultiDataSourceRepositoryIntegrationTest {
         assertThat(secondaryUserRepository.count()).isEqualTo(2L);
         assertThat(primaryUserRepository.findById(20L)).isEmpty();
         assertThat(secondaryUserRepository.findById(10L)).isEmpty();
-    }
-
-    private static void resetDatabase(DataSource dataSource, long id, String name, String email) {
-        ResourceDatabasePopulator populator = new ResourceDatabasePopulator(new ClassPathResource("schema.sql"));
-        populator.execute(dataSource);
-
-        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        jdbcTemplate.update("INSERT INTO \"users\" (\"id\", \"name\", \"email\") VALUES (?, ?, ?)", id, name, email);
     }
 
     @EnableAutoConfiguration
