@@ -16,8 +16,8 @@
     <maven.compiler.target>21</maven.compiler.target>
     <maven.surefire.plugin.version>3.5.5</maven.surefire.plugin.version>
     <maven.failsafe.plugin.version>3.5.5</maven.failsafe.plugin.version>
-    <maven.spotless.plugin.version>3.2.1</maven.spotless.plugin.version>
-    <maven.resource.plugin.version>3.3.1</maven.resource.plugin.version>
+    <maven.spotless.plugin.version>3.4.0</maven.spotless.plugin.version>
+    <maven.resource.plugin.version>3.5.0</maven.resource.plugin.version>
     <maven.exec.plugin.version>3.6.3</maven.exec.plugin.version>
     <!-- TODO: upgrade to Spring Boot 4 -->
     <spring-boot.version>3.5.11</spring-boot.version>
