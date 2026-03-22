@@ -77,13 +77,15 @@ repository.save(saved);
 
 ---
 
-## 3. Persistable for Explicit State Control
+## 3. FluentPersistable for Explicit State Control
 
-Implement `Persistable<ID>` to control the new/existing decision yourself. The `SaveDecisionResolver` honours `isNew()` and **skips the `existsById()` DB call entirely**.
+Implement `FluentPersistable<ID>` to control the new/existing decision yourself. The `SaveDecisionResolver` honours `isNew()` and **skips the `existsById()` DB call entirely**.
 
 ```java
+import io.github.auspis.fluentrepo4j.FluentPersistable;
+
 @Table(name = "products")
-public class Product implements Persistable<Integer> {
+public class Product implements FluentPersistable<Integer> {
     @Id
     private Integer id;
     private String name;
@@ -98,6 +100,7 @@ public class Product implements Persistable<Integer> {
         return isNewEntity;
     }
 
+    @Override
     public void markPersisted() {
         this.isNewEntity = false;
     }
@@ -111,24 +114,25 @@ public interface ProductRepository extends CrudRepository<Product, Integer> {}
 Product p = new Product(42, "Widget", 19.99, 100);
 repository.save(p);
 
-// UPDATE: must call markPersisted() first
-p.markPersisted();
+// UPDATE: after save/load, FluentPersistable.markPersisted() is called automatically
 p.setPrice(24.99);
 repository.save(p);  // isNew() = false → UPDATE (no existsById call)
 ```
 
 > **Important**: `@PostLoad` / `@PostPersist` are JPA callbacks and are **not** triggered in pure JDBC mode.
-> Call `markPersisted()` manually after saving, or in the constructor for entities loaded from DB.
+> When the entity implements `FluentPersistable`, fluent-repo-4j calls `markPersisted()` automatically after saving and after loading from DB.
 
 ---
 
 ## 4. Persistable with UUID
 
-`Persistable<UUID>` is a natural fit for entities that generate their own UUID at construction time.
+`FluentPersistable<UUID>` is a natural fit for entities that generate their own UUID at construction time.
 
 ```java
+import io.github.auspis.fluentrepo4j.FluentPersistable;
+
 @Table(name = "orders")
-public class Order implements Persistable<UUID> {
+public class Order implements FluentPersistable<UUID> {
     @Id
     private UUID id = UUID.randomUUID();  // always generated at construction
 
@@ -140,6 +144,7 @@ public class Order implements Persistable<UUID> {
     @Override
     public boolean isNew() { return isNewEntity; }
 
+    @Override
     public void markPersisted() { this.isNewEntity = false; }
 }
 ```
@@ -147,7 +152,6 @@ public class Order implements Persistable<UUID> {
 ```java
 Order order = new Order("New order");
 repository.save(order);      // isNew() = true → INSERT
-order.markPersisted();
 
 order.setDescription("Updated order");
 repository.save(order);      // isNew() = false → UPDATE
@@ -204,7 +208,6 @@ public class OrderService {
     public void placeOrder(Order order, List<CartItem> items) {
         // Both operations share the same JDBC connection / transaction
         Order saved = orderRepository.save(order);
-        saved.markPersisted();
         items.forEach(cartItemRepository::save);
         // On exception → automatic rollback
     }
@@ -261,7 +264,147 @@ This applies to:
 
 ---
 
-## 9. Integration Test Setup (H2)
+## 9. Multi-DataSource Repository Groups
+
+When the application has more than one `DataSource`, configure one `@EnableFluentRepositories` block per repository group.
+
+### Scenario A. Repository Group Bound by `dataSourceRef`
+
+Use this when you want the library to derive `FluentConnectionProvider` and `DSL` from a specific `DataSource`.
+
+```java
+@Configuration(proxyBeanMethods = false)
+@EnableFluentRepositories(
+        basePackages = "com.example.billing",
+        dataSourceRef = "billingDataSource",
+        transactionManagerRef = "billingTransactionManager")
+class BillingRepositoryConfiguration {
+
+    @Bean
+    DataSource billingDataSource() {
+        return ...;
+    }
+
+    @Bean
+    PlatformTransactionManager billingTransactionManager(DataSource billingDataSource) {
+        return new DataSourceTransactionManager(billingDataSource);
+    }
+}
+```
+
+What happens:
+
+- Repositories in `com.example.billing` use `billingDataSource`
+- fluent-repo-4j creates a `FluentConnectionProvider` on demand for that repository group
+- fluent-repo-4j auto-detects the SQL dialect using the configured `DSLRegistry`
+
+### Scenario B. Repository Group Bound by Explicit `connectionProviderRef` and `dslRef`
+
+Use this when you want complete control over the infrastructure beans.
+
+```java
+@Configuration(proxyBeanMethods = false)
+@EnableFluentRepositories(
+        basePackages = "com.example.reporting",
+        connectionProviderRef = "reportingConnectionProvider",
+        dslRef = "reportingDsl",
+        transactionManagerRef = "reportingTransactionManager")
+class ReportingRepositoryConfiguration {
+
+    @Bean
+    DataSource reportingDataSource() {
+        return ...;
+    }
+
+    @Bean
+    FluentConnectionProvider reportingConnectionProvider(DataSource reportingDataSource) {
+        return new FluentConnectionProvider(reportingDataSource);
+    }
+
+    @Bean
+    DSL reportingDsl(DataSource reportingDataSource, DSLRegistry registry) {
+        return DialectDetector.detect(reportingDataSource, registry);
+    }
+
+    @Bean
+    PlatformTransactionManager reportingTransactionManager(DataSource reportingDataSource) {
+        return new DataSourceTransactionManager(reportingDataSource);
+    }
+}
+```
+
+What happens:
+
+- Repositories in `com.example.reporting` use the exact beans you provide
+- No infrastructure is derived automatically for that group
+- This is the most explicit and least ambiguous setup
+
+### Scenario C. Multiple `DataSource` Beans with One `@Primary`
+
+Use this when one datasource is the default and only some repository groups need explicit overrides.
+
+```java
+@Bean
+@Primary
+DataSource mainDataSource() {
+    return ...;
+}
+
+@Bean
+DataSource auditDataSource() {
+    return ...;
+}
+
+@Configuration(proxyBeanMethods = false)
+@EnableFluentRepositories(basePackages = "com.example.main")
+class MainRepositoryConfiguration {
+}
+```
+
+What happens:
+
+- Repository groups without explicit refs bind to the primary datasource
+- Repository groups with `dataSourceRef` or explicit refs override that default
+
+### Scenario D. Ambiguous Setup Without Refs and Without `@Primary`
+
+This configuration is rejected at startup:
+
+```java
+@Bean
+DataSource firstDataSource() {
+    return ...;
+}
+
+@Bean
+DataSource secondDataSource() {
+    return ...;
+}
+
+@Configuration(proxyBeanMethods = false)
+@EnableFluentRepositories(basePackages = "com.example.repositories")
+class RepositoryConfiguration {
+}
+```
+
+Expected result:
+
+- Startup fails fast
+- The error tells you to use `dataSourceRef` or mark one datasource as `@Primary`
+
+### Decision Matrix
+
+|                 Scenario                 |                      What the user configures                       |                            Required beans                             |          Repository binding behavior           |
+|------------------------------------------|---------------------------------------------------------------------|-----------------------------------------------------------------------|------------------------------------------------|
+| Single datasource                        | Nothing extra                                                       | One `DataSource`                                                      | Uses the single candidate                      |
+| Multiple datasources with default        | One `@Primary` datasource                                           | Multiple `DataSource` beans, one `@Primary`                           | Uses the primary datasource when no ref is set |
+| Explicit datasource per repository group | `dataSourceRef`, optional `dslRegistryRef`, `transactionManagerRef` | Named `DataSource`, optional named `DSLRegistry`, transaction manager | Derives provider and DSL from that datasource  |
+| Full manual infrastructure               | `connectionProviderRef`, `dslRef`, `transactionManagerRef`          | Named `FluentConnectionProvider`, named `DSL`, transaction manager    | Uses the exact infrastructure beans provided   |
+| Ambiguous multi-datasource               | Nothing extra                                                       | Two or more `DataSource` beans without `@Primary`                     | Fails fast with configuration error            |
+
+---
+
+## 10. Integration Test Setup (H2)
 
 ```java
 @Nested

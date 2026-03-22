@@ -10,6 +10,7 @@ import javax.sql.DataSource;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate;
 import org.springframework.context.annotation.Bean;
 
 /**
@@ -29,11 +30,9 @@ import org.springframework.context.annotation.Bean;
 @EnableFluentRepositories
 public class FluentRepositoriesAutoConfiguration {
 
-    // TODO: consider multi datasource support in the future
-    // , e.g. by allowing users to define multiple FluentConnectionProvider
-    // beans with qualifiers
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnSingleCandidate(DataSource.class)
     public FluentConnectionProvider fluentConnectionProvider(DataSource dataSource) {
         return new FluentConnectionProvider(dataSource);
     }
@@ -46,6 +45,7 @@ public class FluentRepositoriesAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnSingleCandidate(DataSource.class)
     public DSL fluentDsl(DataSource dataSource, DSLRegistry registry) {
         return DialectDetector.detect(dataSource, registry);
     }

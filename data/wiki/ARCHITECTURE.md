@@ -35,6 +35,18 @@ public class RepositoryConfig {
 }
 ```
 
+For multi-datasource applications, each repository group can also declare explicit infrastructure refs:
+
+```java
+@Configuration
+@EnableFluentRepositories(
+   basePackages = "com.example.billing",
+   dataSourceRef = "billingDataSource",
+   transactionManagerRef = "billingTransactionManager")
+class BillingRepositoryConfig {
+}
+```
+
 ---
 
 ### 2. FluentRepositoriesRegistrar (ImportBeanDefinitionRegistrar)
@@ -64,12 +76,19 @@ void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
 **Purpose**: Spring FactoryBean that instantiates `FluentRepositoryFactory` and creates the actual repository implementation.
 
 **How it works**:
-1. Gets the `DataSource` and `DSL` (fluent-sql-4j provider) from the application context
-2. Creates a `FluentRepositoryFactory` passing the DataSource and DSL
+1. Resolves infrastructure for the repository group using explicit refs when present
+2. Creates a `FluentRepositoryFactory` passing the `FluentConnectionProvider` and DSL (with the connection provider potentially derived from a `DataSource`)
 3. `getObject()` delegates to the factory to create the `FluentRepository<T, ID>` instance
 4. Spring Data wraps the implementation with a proxy for transaction handling and method interception
 
-**Why FactoryBean?** Allows initialization of complex bean dependencies (DataSource lookup, DSL instantiation) before the repository bean is created.
+**Why FactoryBean?** Allows initialization of complex bean dependencies (connection provider / DataSource resolution, DSL instantiation) before the repository bean is created.
+
+**Resolution precedence**:
+
+1. `connectionProviderRef` wins over `dataSourceRef`
+2. `dslRef` wins over dialect auto-detection
+3. If no explicit refs are configured, fluent-repo-4j falls back to a single candidate or `@Primary`
+4. If multiple candidates remain ambiguous, startup fails with a clear error message
 
 ---
 

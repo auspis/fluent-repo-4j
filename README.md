@@ -10,7 +10,8 @@ A lightweight Spring Boot library for implementing the **Repository Pattern** wi
 ✅ **Simple Entity Mapping** - Jakarta Persistence annotations (`@Table`, `@Column`, `@Id`); automatic snake_case conversion  
 ✅ **ID Generation Strategies** - Support for application-provided IDs and database auto-increment (`@GeneratedValue(IDENTITY)`)  
 ✅ **Type Conversion** - Automatic mapping: strings, numbers, booleans, dates (LocalDate, LocalDateTime)  
-✅ **Exception Translation** - SQL exceptions automatically translated to Spring's `DataAccessException`
+✅ **Exception Translation** - SQL exceptions automatically translated to Spring's `DataAccessException`  
+✅ **Multi-DataSource Repository Groups** - Bind different repository groups to different `DataSource` beans using explicit Spring-style refs
 
 ---
 
@@ -67,7 +68,20 @@ public interface UserRepository extends CrudRepository<User, Long> {
 }
 ```
 
-### 3. Inject and Use
+### 3. Enable Repositories
+
+Register the repository package explicitly.
+
+```java
+import io.github.auspis.fluentrepo4j.config.EnableFluentRepositories;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration(proxyBeanMethods = false)
+@EnableFluentRepositories(basePackageClasses = UserRepository.class)
+class RepositoryConfiguration {}
+```
+
+### 4. Inject and Use
 
 ```java
 import org.springframework.stereotype.Service;
@@ -112,7 +126,7 @@ public class UserService {
 }
 ```
 
-### 4. Configure DataSource
+### 5. Configure DataSource
 
 In `application.yml`:
 
@@ -130,6 +144,12 @@ spring:
 - ✅ Scans for `CrudRepository` interfaces and creates beans  
 - ✅ Binds connections to Spring transactions automatically via `DataSourceUtils`  
 - ✅ Maps entities to tables using Jakarta Persistence annotations
+
+### 6. Configure Multiple DataSources
+
+For multi-datasource applications, configure one `@EnableFluentRepositories` block per repository group.
+
+See [data/wiki/USAGE_EXAMPLES.md](data/wiki/USAGE_EXAMPLES.md) for complete examples, decision matrix, and binding strategies.
 
 ---
 
@@ -181,15 +201,15 @@ repository.save(user);  // id == null → INSERT_AUTO_ID, database sets id on th
 **Error case**: if an entity with `@GeneratedValue(IDENTITY)` has a non-null id that does not exist in the DB, `save()` throws `IllegalStateException` — this is an inconsistent state.  
 **Best for**: Sequential Long IDs (IDENTITY / SERIAL / AUTO_INCREMENT columns).
 
-### Strategy 3: Custom `isNew()` Logic via `Persistable<ID>`
+### Strategy 3: Custom `isNew()` Logic via `FluentPersistable<ID>`
 
-For complete control over the new/existing distinction, implement `Persistable<ID>`. The `SaveDecisionResolver` honours `isNew()` directly and skips the `existsById()` database call.
+For complete control over the new/existing distinction, implement `FluentPersistable<ID>`. The `SaveDecisionResolver` honours `isNew()` directly and skips the `existsById()` database call.
 
 ```java
-import org.springframework.data.domain.Persistable;
+import io.github.auspis.fluentrepo4j.FluentPersistable;
 
 @Table(name = "products")
-public class Product implements Persistable<Integer> {
+public class Product implements FluentPersistable<Integer> {
     @Id
     private Integer id;
 
@@ -204,6 +224,7 @@ public class Product implements Persistable<Integer> {
         return isNewEntity;
     }
 
+    @Override
     public void markPersisted() {
         this.isNewEntity = false;
     }
@@ -214,13 +235,12 @@ Product p = new Product(1, "Widget", 19.99);
 repository.save(p);  // isNew() = true → INSERT_PROVIDED_ID (no DB call)
 
 // Update:
-p.markPersisted();
 p.setPrice(24.99);
 repository.save(p);  // isNew() = false → UPDATE (no DB call)
 ```
 
 **Decision logic**: delegates entirely to `entity.isNew()` — no `existsById()` call.  
-**Note**: `@PostLoad` / `@PostPersist` are JPA callbacks and are **not** fired in pure JDBC mode. Call `markPersisted()` (or equivalent) manually after save.  
+**Note**: `@PostLoad` / `@PostPersist` are JPA callbacks and are **not** fired in pure JDBC mode. When the entity implements `FluentPersistable`, fluent-repo-4j calls `markPersisted()` automatically after `save()` and after loading from the database.  
 **Best for**: explicit state control, complex ID schemes, or performance-sensitive code that avoids the `existsById()` round-trip.
 
 ---
@@ -229,16 +249,15 @@ repository.save(p);  // isNew() = false → UPDATE (no DB call)
 
 The library automatically converts ResultSet columns to Java types:
 
-|         Java Type          | Supported |                                Notes                                |
-|----------------------------|-----------|---------------------------------------------------------------------|
-| String                     | ✅         | VARCHAR, TEXT, CHAR                                                 |
-| Long, Integer, Short, Byte | ✅         | BIGINT, INT, SMALLINT, TINYINT                                      |
-| Double, Float, BigDecimal  | ✅         | DOUBLE, FLOAT, DECIMAL                                              |
-| Boolean                    | ✅         | BOOLEAN, BIT (0/1 converts to false/true)                           |
-| LocalDate                  | ✅         | DATE                                                                |
-| LocalDateTime              | ✅         | TIMESTAMP                                                           |
-| UUID                       | ✅         | VARCHAR/CHAR (stored as string)                                     |
-| Custom types, arrays, LOBs | ❌         | Not supported; implement custom converters or store as JSON strings |
+|         Java Type          | Supported |                   Notes                   |
+|----------------------------|-----------|-------------------------------------------|
+| String                     | ✅         | VARCHAR, TEXT, CHAR                       |
+| Long, Integer, Short, Byte | ✅         | BIGINT, INT, SMALLINT, TINYINT            |
+| Double, Float, BigDecimal  | ✅         | DOUBLE, FLOAT, DECIMAL                    |
+| Boolean                    | ✅         | BOOLEAN, BIT (0/1 converts to false/true) |
+| LocalDate                  | ✅         | DATE                                      |
+| LocalDateTime              | ✅         | TIMESTAMP                                 |
+| UUID                       | ✅         | VARCHAR/CHAR (stored as string)           |
 
 ---
 
@@ -273,6 +292,7 @@ How does the library work?
 | `Persistable<ID>` for custom `isNew()` logic                           | ✅ Supported     | Fine-grained control over insert/update                                            |
 | Simple entity mapping (Jakarta Persistence annotations)                | ✅ Supported     | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient`                        |
 | Exception translation to `DataAccessException`                         | ✅ Supported     | Automatic SQL exception handling                                                   |
+| Multi-datasource repository groups                                     | ✅ Supported     | Configure one `@EnableFluentRepositories` block per repository group               |
 | Custom query methods (e.g., `findByEmail()`)                           | ❌ Not Supported | Use `findAll()` + filter in application code, or implement custom SQL in fragments |
 | Query method derivation (e.g., PartTree)                               | ❌ Not Supported | Planned for future release                                                         |
 | Object relationships (one-to-many, many-to-many)                       | ❌ Not Supported | Use separate repositories and explicit queries                                     |
@@ -296,6 +316,8 @@ This library focuses on **simple CRUD operations for single entities**. Be aware
 5. **Transaction management**: Relies entirely on Spring's `@Transactional` and `DataSourceUtils`. Manual connection management is not exposed to application code.
 
 6. **No bulk operations**: `saveAll()` and `deleteAll()` execute in loops, not as batch statements. For high-volume inserts, consider batch APIs provided by the database driver directly.
+
+7. **Explicit multi-datasource wiring**: When multiple `DataSource` beans exist, repository groups must be wired explicitly with `dataSourceRef` or advanced refs unless one candidate is marked `@Primary`.
 
 ---
 

@@ -2,9 +2,15 @@
     "cSpell.words": [
         "assertj",
         "auspis",
+        "codehaus",
+        "Dgroups",
+        "diffplug",
+        "flexmark",
         "fluentrepo",
         "fluentsql",
+        "javax",
         "Persistable",
+        "projectlombok",
         "springframework",
         "standardsql"
     ],
