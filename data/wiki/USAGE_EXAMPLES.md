@@ -404,7 +404,7 @@ Expected result:
 
 ---
 
-## 9. Integration Test Setup (H2)
+## 10. Integration Test Setup (H2)
 
 ```java
 @Nested
