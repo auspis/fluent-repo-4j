@@ -87,7 +87,19 @@ public class FluentRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
             return dsl;
         }
 
-        return DialectDetector.detect(resolveDataSource(), resolveDslRegistry());
+        DSL uniqueDsl = resolveUniqueBean(
+                DSL.class,
+                "Specify dslRef on @EnableFluentRepositories, or define a single DSL bean.",
+                false);
+
+        if (uniqueDsl != null) {
+            this.dsl = uniqueDsl;
+            return uniqueDsl;
+        }
+
+        DSL detectedDsl = DialectDetector.detect(resolveDataSource(), resolveDslRegistry());
+        this.dsl = detectedDsl;
+        return detectedDsl;
     }
 
     private DataSource resolveDataSource() {
