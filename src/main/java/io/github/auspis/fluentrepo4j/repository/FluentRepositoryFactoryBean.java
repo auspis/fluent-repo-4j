@@ -71,6 +71,14 @@ public class FluentRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
             return connectionProvider;
         }
 
+        FluentConnectionProvider uniqueConnectionProvider = resolveUniqueBean(
+                FluentConnectionProvider.class,
+                "Specify connectionProviderRef on @EnableFluentRepositories, or define a single FluentConnectionProvider bean.",
+                false);
+
+        if (uniqueConnectionProvider != null) {
+            return uniqueConnectionProvider;
+        }
         return new FluentConnectionProvider(resolveDataSource());
     }
 
