@@ -71,15 +71,8 @@ public class FluentRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
             return connectionProvider;
         }
 
-        FluentConnectionProvider uniqueConnectionProvider = resolveUniqueBean(
-                FluentConnectionProvider.class,
-                "Specify connectionProviderRef on @EnableFluentRepositories, or define a single FluentConnectionProvider bean.",
-                false);
-
-        if (uniqueConnectionProvider != null) {
-            return uniqueConnectionProvider;
-        }
-        return new FluentConnectionProvider(resolveDataSource());
+        this.connectionProvider = new FluentConnectionProvider(resolveDataSource());
+        return this.connectionProvider;
     }
 
     private DSL resolveDsl() {
@@ -87,19 +80,9 @@ public class FluentRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
             return dsl;
         }
 
-        DSL uniqueDsl = resolveUniqueBean(
-                DSL.class,
-                "Specify dslRef on @EnableFluentRepositories, or define a single DSL bean.",
-                false);
-
-        if (uniqueDsl != null) {
-            this.dsl = uniqueDsl;
-            return uniqueDsl;
-        }
-
-        DSL detectedDsl = DialectDetector.detect(resolveDataSource(), resolveDslRegistry());
-        this.dsl = detectedDsl;
-        return detectedDsl;
+        this.dsl = DialectDetector.detect(resolveDataSource(), resolveDslRegistry());
+        ;
+        return this.dsl;
     }
 
     private DataSource resolveDataSource() {
