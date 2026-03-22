@@ -56,8 +56,8 @@ class AmbiguousMultiDataSourceConfigurationTest {
         }
 
         @Bean
-        PlatformTransactionManager transactionManager() {
-            return new DataSourceTransactionManager(firstDataSource());
+        PlatformTransactionManager transactionManager(DataSource firstDataSource) {
+            return new DataSourceTransactionManager(firstDataSource);
         }
 
         @Bean
