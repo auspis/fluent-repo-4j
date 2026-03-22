@@ -13,16 +13,16 @@ public enum CriterionOperator {
     /** {@code property != ?} (NOT Equals) */
     NOT_EQUALS,
 
-    /** {@code property &lt; ?} */
+    /** {@code property < ?} */
     LESS_THAN,
 
-    /** {@code property &lt;= ?} */
+    /** {@code property <= ?} */
     LESS_THAN_EQUAL,
 
-    /** {@code property &gt; ?} */
+    /** {@code property > ?} */
     GREATER_THAN,
 
-    /** {@code property &gt;= ?} */
+    /** {@code property >= ?} */
     GREATER_THAN_EQUAL,
 
     /** {@code property BETWEEN ? AND ?} (consumes 2 parameters) */

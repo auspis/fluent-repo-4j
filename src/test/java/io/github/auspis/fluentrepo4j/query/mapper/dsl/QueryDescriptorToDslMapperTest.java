@@ -11,6 +11,7 @@ import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 import io.github.auspis.fluentsql4j.test.helper.SqlCaptureHelper;
+import io.github.auspis.fluentsql4j.test.util.annotation.ComponentTest;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Uses {@link SqlCaptureHelper} (Mockito-based) to capture SQL without a real DB.
  */
+@ComponentTest
 class QueryDescriptorToDslMapperTest {
 
     private DSL dsl;

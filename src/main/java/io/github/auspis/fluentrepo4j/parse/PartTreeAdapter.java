@@ -12,7 +12,6 @@ import io.github.auspis.fluentrepo4j.query.criterion.PropertyCriterion;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.query.DefaultParameters;
 import org.springframework.data.repository.query.ParametersSource;
@@ -180,14 +179,5 @@ public final class PartTreeAdapter {
      */
     private static boolean isNegated(Part part) {
         return false; // negation is fully represented by the operator (NOT_EQUALS, NOT_LIKE, etc.)
-    }
-
-    /**
-     * Determines whether the given method parameter type is a "special" Spring
-     * Data parameter that should not be bound to a criterion.
-     */
-    @SuppressWarnings("unused")
-    private static boolean isSpecialParam(Class<?> type) {
-        return Pageable.class.isAssignableFrom(type) || Sort.class.isAssignableFrom(type);
     }
 }

@@ -13,7 +13,7 @@ public enum QueryOperation {
     /** SELECT COUNT(*) query. */
     COUNT,
 
-    /** SELECT COUNT(*) &gt; 0 query returning boolean. */
+    /** SELECT COUNT(*) > 0 query returning boolean. */
     EXISTS,
 
     /** DELETE query returning void or number of deleted rows. */

@@ -231,6 +231,8 @@ public final class QueryDescriptorToDslMapper<T, ID> {
         };
     }
 
+    // Unchecked cast is safe: the Collection/Iterable/Array contains the correct element type
+    // as declared in the repository method signature; the cast happens only inside type checks.
     @SuppressWarnings("unchecked")
     private Predicate buildIn(ColumnReference colRef, PropertyCriterion pc, Object[] args) {
         Object rawArg = args[pc.paramIndex()];
@@ -329,18 +331,6 @@ public final class QueryDescriptorToDslMapper<T, ID> {
                     return orderByBuilder.fetch(maxResults).build(conn);
                 }
                 return orderByBuilder.build(conn);
-            }
-
-            /**
-             * Builds a count query using the same WHERE clause (ignoring ORDER BY / FETCH).
-             * Used for {@link org.springframework.data.domain.Page} total-count queries.
-             */
-            public PreparedStatement buildCountStatement(Connection conn, DSL dsl) throws SQLException {
-                String table = base.getTableReference();
-                SelectBuilder countBase = dsl.select().countStar().from(table);
-                // Reuse the WHERE clause from base by wrapping via a new AddWhereCondition call is not
-                // directly possible; the count query is built separately in FluentRepositoryQuery.
-                return base.build(conn);
             }
 
             private Pageable extractPageable() {

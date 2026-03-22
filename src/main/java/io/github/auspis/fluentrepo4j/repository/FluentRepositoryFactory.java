@@ -63,8 +63,11 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
     }
 
     /**
-     * @deprecated Overridden to delegate to
-     *             {@link #getQueryLookupStrategy(Key, ValueExpressionDelegate)}.
+     * Backward-compatibility override for Spring Data versions that still call the
+     * deprecated two-argument form of {@code getQueryLookupStrategy}. Can be removed
+     * once Spring Data 4.x (which dropped this overload) is the minimum required version.
+     *
+     * @deprecated Use {@link #getQueryLookupStrategy(Key, ValueExpressionDelegate)} instead.
      */
     @Deprecated(forRemoval = false)
     @Override
