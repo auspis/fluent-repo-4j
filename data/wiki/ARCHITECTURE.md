@@ -77,11 +77,11 @@ void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
 
 **How it works**:
 1. Resolves infrastructure for the repository group using explicit refs when present
-2. Creates a `FluentRepositoryFactory` passing the DataSource and DSL
+2. Creates a `FluentRepositoryFactory` passing the `FluentConnectionProvider` and DSL (with the connection provider potentially derived from a `DataSource`)
 3. `getObject()` delegates to the factory to create the `FluentRepository<T, ID>` instance
 4. Spring Data wraps the implementation with a proxy for transaction handling and method interception
 
-**Why FactoryBean?** Allows initialization of complex bean dependencies (DataSource lookup, DSL instantiation) before the repository bean is created.
+**Why FactoryBean?** Allows initialization of complex bean dependencies (connection provider / DataSource resolution, DSL instantiation) before the repository bean is created.
 
 **Resolution precedence**:
 
