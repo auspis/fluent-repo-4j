@@ -2,17 +2,27 @@ package io.github.auspis.fluentrepo4j.repository;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
+import io.github.auspis.fluentrepo4j.query.runtime.FluentQueryLookupStrategy;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 
+import java.util.Optional;
+import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.repository.core.EntityInformation;
 import org.springframework.data.repository.core.RepositoryInformation;
 import org.springframework.data.repository.core.RepositoryMetadata;
 import org.springframework.data.repository.core.support.RepositoryFactorySupport;
+import org.springframework.data.repository.query.QueryLookupStrategy;
+import org.springframework.data.repository.query.QueryLookupStrategy.Key;
+import org.springframework.data.repository.query.ValueExpressionDelegate;
 
 /**
  * Factory that creates {@link FluentRepository} instances.
  * Extends Spring Data's {@link RepositoryFactorySupport} to integrate with the
  * standard repository proxy infrastructure.
+ *
+ * <p>Registers {@link FluentQueryLookupStrategy} so that method-name-derived
+ * queries (e.g. {@code findByEmailAndName}) are resolved at repository
+ * bootstrap time and executed via the fluent-sql-4j DSL.
  */
 public class FluentRepositoryFactory extends RepositoryFactorySupport {
 
@@ -39,5 +49,34 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
     @Override
     public <T, ID> EntityInformation<T, ID> getEntityInformation(Class<T> domainClass) {
         return new FluentEntityInformation<>(domainClass);
+    }
+
+    /**
+     * Returns a {@link FluentQueryLookupStrategy} that resolves repository method
+     * names to {@link io.github.auspis.fluentrepo4j.query.runtime.FluentRepositoryQuery}
+     * instances via Spring Data's {@code PartTree}.
+     */
+    @Override
+    protected Optional<QueryLookupStrategy> getQueryLookupStrategy(
+            Key key, ValueExpressionDelegate valueExpressionDelegate) {
+        return Optional.of(new FluentQueryLookupStrategy(connectionProvider, dsl));
+    }
+
+    /**
+     * @deprecated Overridden to delegate to
+     *             {@link #getQueryLookupStrategy(Key, ValueExpressionDelegate)}.
+     */
+    @Deprecated(forRemoval = false)
+    @Override
+    protected Optional<QueryLookupStrategy> getQueryLookupStrategy(
+            Key key,
+            org.springframework.data.repository.query.QueryMethodEvaluationContextProvider evaluationContextProvider) {
+        return Optional.of(new FluentQueryLookupStrategy(connectionProvider, dsl));
+    }
+
+    /** Exposes the underlying {@link ProjectionFactory} for testing. */
+    @Override
+    public ProjectionFactory getProjectionFactory() {
+        return super.getProjectionFactory();
     }
 }

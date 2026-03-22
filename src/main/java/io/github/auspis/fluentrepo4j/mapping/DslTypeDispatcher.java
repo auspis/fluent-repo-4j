@@ -30,15 +30,19 @@ public final class DslTypeDispatcher {
      * @return the builder after applying the eq condition
      */
     public static <T extends SupportsWhere<T>> T eq(WhereConditionBuilder<T> column, Object value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Unsupported value type for eq(): null."
+                    + " Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
+        }
         return switch (value) {
             case String s -> column.eq(s);
             case Number n -> column.eq(n);
             case Boolean b -> column.eq(b);
             case LocalDate d -> column.eq(d);
             case LocalDateTime dt -> column.eq(dt);
-            case null, default ->
+            default ->
                 throw new IllegalArgumentException("Unsupported value type for eq(): "
-                        + (value == null ? "null" : value.getClass().getName())
+                        + value.getClass().getName()
                         + ". Supported types: String, Number, Boolean, LocalDate, LocalDateTime.");
         };
     }
