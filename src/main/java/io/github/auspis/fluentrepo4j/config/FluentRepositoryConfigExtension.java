@@ -16,7 +16,7 @@ public class FluentRepositoryConfigExtension extends RepositoryConfigurationExte
 
     @Override
     public String getModuleName() {
-        return "Fluent";
+        return "FluentRepo4j";
     }
 
     @Override
@@ -25,7 +25,6 @@ public class FluentRepositoryConfigExtension extends RepositoryConfigurationExte
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     protected String getModulePrefix() {
         return "fluent-repo-4j";
     }

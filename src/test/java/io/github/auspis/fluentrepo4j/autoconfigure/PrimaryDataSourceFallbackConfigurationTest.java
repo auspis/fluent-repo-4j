@@ -2,9 +2,9 @@ package io.github.auspis.fluentrepo4j.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.auspis.fluentrepo4j.autoconfigure.util.AutoConfigureDataSourceTestUtil;
 import io.github.auspis.fluentrepo4j.config.EnableFluentRepositories;
 import io.github.auspis.fluentrepo4j.test.autoconfigure.datasource.PrimaryUserRepository;
+import io.github.auspis.fluentrepo4j.test.util.DataSourceTestUtil;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 
 import javax.sql.DataSource;
@@ -34,10 +34,11 @@ class PrimaryDataSourceFallbackConfigurationTest {
             DataSource secondaryDataSource = context.getBean("secondDataSource", DataSource.class);
             PrimaryUserRepository repository = context.getBean(PrimaryUserRepository.class);
 
-            AutoConfigureDataSourceTestUtil.resetUsersTable(
-                    primaryDataSource, 1L, "Primary User", "primary@example.com");
-            AutoConfigureDataSourceTestUtil.resetUsersTable(
-                    secondaryDataSource, 2L, "Secondary User", "secondary@example.com");
+            DataSourceTestUtil.createUsersTable(primaryDataSource);
+            DataSourceTestUtil.createUsersTable(secondaryDataSource);
+
+            DataSourceTestUtil.insertUser(primaryDataSource, 1L, "Primary User", "primary@example.com");
+            DataSourceTestUtil.insertUser(secondaryDataSource, 2L, "Secondary User", "secondary@example.com");
 
             assertThat(repository.count()).isEqualTo(1L);
             assertThat(repository.findById(1L)).isPresent();

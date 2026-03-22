@@ -2,17 +2,18 @@ package io.github.auspis.fluentrepo4j.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.auspis.fluentrepo4j.autoconfigure.util.AutoConfigureDataSourceTestUtil;
 import io.github.auspis.fluentrepo4j.config.EnableFluentRepositories;
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.dialect.DialectDetector;
 import io.github.auspis.fluentrepo4j.test.autoconfigure.datasource.PrimaryUserRepository;
 import io.github.auspis.fluentrepo4j.test.autoconfigure.datasource.SecondaryUserRepository;
 import io.github.auspis.fluentrepo4j.test.domain.User;
+import io.github.auspis.fluentrepo4j.test.util.DataSourceTestUtil;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
 import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
 
+import java.sql.SQLException;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,10 +52,12 @@ class MultiDataSourceRepositoryIntegrationTest {
     @Qualifier("secondaryDataSource") private DataSource secondaryDataSource;
 
     @BeforeEach
-    void setUp() {
-        AutoConfigureDataSourceTestUtil.resetUsersTable(primaryDataSource, 1L, "Primary User", "primary@example.com");
-        AutoConfigureDataSourceTestUtil.resetUsersTable(
-                secondaryDataSource, 2L, "Secondary User", "secondary@example.com");
+    void setUp() throws SQLException {
+        DataSourceTestUtil.createUsersTable(primaryDataSource);
+        DataSourceTestUtil.createUsersTable(secondaryDataSource);
+
+        DataSourceTestUtil.insertUser(primaryDataSource, 1L, "Primary User", "primary@example.com");
+        DataSourceTestUtil.insertUser(secondaryDataSource, 2L, "Secondary User", "secondary@example.com");
     }
 
     @Test
