@@ -53,7 +53,6 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
     private final FluentConnectionProvider connectionProvider;
     private final FluentEntityRowMapper<T> rowMapper;
     private final SQLExceptionTranslator exceptionTranslator;
-    private final DSL dsl;
 
     public FluentRepositoryQuery(
             Method method,
@@ -62,12 +61,11 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
             FluentEntityInformation<T, ID> entityInformation,
             FluentConnectionProvider connectionProvider,
             DSL dsl) {
-
+        // TODO: [URGENT] switch to non deprecated QueryMethod constructor once we require Spring Data 3.0+
         this.queryMethod = new QueryMethod(method, metadata, projectionFactory);
         this.connectionProvider = connectionProvider;
         this.rowMapper = new FluentEntityRowMapper<>(entityInformation);
         this.exceptionTranslator = new SQLExceptionSubclassTranslator();
-        this.dsl = dsl;
 
         PropertyMetadataProvider<T, ID> metaProvider = new PropertyMetadataProvider<>(entityInformation);
         this.dslMapper = new QueryDescriptorToDslMapper<>(dsl, metaProvider);

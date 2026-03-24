@@ -7,6 +7,7 @@ import io.github.auspis.fluentrepo4j.query.criterion.CompositeCriterion;
 import io.github.auspis.fluentrepo4j.query.criterion.CompositeCriterion.CompositeType;
 import io.github.auspis.fluentrepo4j.query.criterion.Criterion;
 import io.github.auspis.fluentrepo4j.query.criterion.CriterionOperator;
+import io.github.auspis.fluentrepo4j.query.criterion.NullCriterion;
 import io.github.auspis.fluentrepo4j.query.criterion.PropertyCriterion;
 
 import java.lang.reflect.Method;
@@ -85,7 +86,7 @@ public final class PartTreeAdapter {
      */
     private static Criterion buildCriterion(PartTree tree, int pageableParamIndex, int sortParamIndex) {
         if (!tree.hasPredicate()) {
-            return null;
+            return NullCriterion.INSTANCE;
         }
 
         // Calculate which indices are "special" (Pageable/Sort) so we can skip them
@@ -117,7 +118,7 @@ public final class PartTreeAdapter {
         }
 
         if (orParts.isEmpty()) {
-            return null;
+            return NullCriterion.INSTANCE;
         }
         return orParts.size() == 1 ? orParts.get(0) : new CompositeCriterion(CompositeType.OR, orParts);
     }

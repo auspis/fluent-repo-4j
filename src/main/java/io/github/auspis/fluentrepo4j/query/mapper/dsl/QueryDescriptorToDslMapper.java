@@ -4,21 +4,14 @@ import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
 import io.github.auspis.fluentrepo4j.query.OrderByClause;
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
 import io.github.auspis.fluentrepo4j.query.QueryOperation;
-import io.github.auspis.fluentrepo4j.query.criterion.CompositeCriterion;
-import io.github.auspis.fluentrepo4j.query.criterion.Criterion;
-import io.github.auspis.fluentrepo4j.query.criterion.PropertyCriterion;
-import io.github.auspis.fluentsql4j.ast.core.expression.ValueExpression;
 import io.github.auspis.fluentsql4j.ast.core.expression.function.string.UnaryString;
-import io.github.auspis.fluentsql4j.ast.core.expression.scalar.ColumnReference;
-import io.github.auspis.fluentsql4j.ast.core.expression.scalar.ScalarExpression;
-import io.github.auspis.fluentsql4j.ast.core.predicate.AndOr;
 import io.github.auspis.fluentsql4j.ast.core.predicate.Between;
 import io.github.auspis.fluentsql4j.ast.core.predicate.Comparison;
 import io.github.auspis.fluentsql4j.ast.core.predicate.In;
 import io.github.auspis.fluentsql4j.ast.core.predicate.IsNotNull;
 import io.github.auspis.fluentsql4j.ast.core.predicate.IsNull;
 import io.github.auspis.fluentsql4j.ast.core.predicate.Like;
-import io.github.auspis.fluentsql4j.ast.core.predicate.Not;
+import io.github.auspis.fluentsql4j.ast.core.predicate.NullPredicate;
 import io.github.auspis.fluentsql4j.ast.core.predicate.Predicate;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.clause.LogicalCombinator;
@@ -31,7 +24,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -92,8 +84,8 @@ public final class QueryDescriptorToDslMapper<T, ID> {
         SelectBuilder base = chooseSelectProjection(descriptor, table);
 
         // Apply WHERE predicates
-        if (descriptor.root() != null) {
-            Predicate where = buildPredicate(descriptor.root(), args);
+        Predicate where = descriptor.root().toPredicate(metadataProvider, args);
+        if (where != null && !(where instanceof NullPredicate)) {
             base = base.addWhereCondition(where, LogicalCombinator.AND);
         }
 
@@ -130,132 +122,15 @@ public final class QueryDescriptorToDslMapper<T, ID> {
     private MappedQuery buildDelete(QueryDescriptor descriptor, Object[] args, String table) {
         DeleteBuilder delete = dsl.deleteFrom(table);
 
-        if (descriptor.root() != null) {
-            Predicate where = buildPredicate(descriptor.root(), args);
+        Predicate where = descriptor.root().toPredicate(metadataProvider, args);
+        if (where != null && !(where instanceof NullPredicate)) {
             delete = delete.addWhereCondition(where, LogicalCombinator.AND);
         }
 
         return new MappedQuery.DeleteResult(delete);
     }
 
-    // ---- Predicate building ----
-
-    private Predicate buildPredicate(Criterion criterion, Object[] args) {
-        return switch (criterion) {
-            case PropertyCriterion pc -> buildPropertyPredicate(pc, args);
-            case CompositeCriterion cc -> buildCompositePredicate(cc, args);
-        };
-    }
-
-    private Predicate buildCompositePredicate(CompositeCriterion cc, Object[] args) {
-        List<Predicate> predicates = new ArrayList<>();
-        for (Criterion child : cc.children()) {
-            predicates.add(buildPredicate(child, args));
-        }
-        return cc.type() == CompositeCriterion.CompositeType.AND ? AndOr.and(predicates) : AndOr.or(predicates);
-    }
-
-    private Predicate buildPropertyPredicate(PropertyCriterion pc, Object[] args) {
-        String column = metadataProvider.resolveColumn(pc.propertyPath());
-        ColumnReference colRef = ColumnReference.of(null, column);
-
-        Predicate predicate =
-                switch (pc.operator()) {
-                    case EQUALS -> buildEquals(colRef, pc, args);
-                    case NOT_EQUALS -> buildNotEquals(colRef, pc, args);
-                    case LESS_THAN -> Comparison.lt(colRef, LiteralUtil.createLiteral(args[pc.paramIndex()]));
-                    case LESS_THAN_EQUAL -> Comparison.lte(colRef, LiteralUtil.createLiteral(args[pc.paramIndex()]));
-                    case GREATER_THAN -> Comparison.gt(colRef, LiteralUtil.createLiteral(args[pc.paramIndex()]));
-                    case GREATER_THAN_EQUAL -> Comparison.gte(colRef, LiteralUtil.createLiteral(args[pc.paramIndex()]));
-                    case BETWEEN -> buildBetween(colRef, pc, args);
-                    case IS_NULL -> new IsNull(colRef);
-                    case IS_NOT_NULL -> new IsNotNull(colRef);
-                    case LIKE -> buildLike(colRef, pc, args, "like");
-                    case NOT_LIKE -> new Not(buildLike(colRef, pc, args, "like"));
-                    case STARTING_WITH -> buildLike(colRef, pc, args, "starting");
-                    case ENDING_WITH -> buildLike(colRef, pc, args, "ending");
-                    case CONTAINING -> buildLike(colRef, pc, args, "containing");
-                    case NOT_CONTAINING -> new Not(buildLike(colRef, pc, args, "containing"));
-                    case IN -> buildIn(colRef, pc, args);
-                    case NOT_IN -> new Not(buildIn(colRef, pc, args));
-                    case TRUE -> Comparison.eq(colRef, LiteralUtil.createLiteral(Boolean.TRUE));
-                    case FALSE -> Comparison.eq(colRef, LiteralUtil.createLiteral(Boolean.FALSE));
-                };
-
-        return pc.negated() ? new Not(predicate) : predicate;
-    }
-
-    private Predicate buildEquals(ColumnReference colRef, PropertyCriterion pc, Object[] args) {
-        Object value = args[pc.paramIndex()];
-        if (pc.ignoreCase() && value instanceof String strValue) {
-            ScalarExpression lhsLower = UnaryString.lower(colRef);
-            ScalarExpression rhsLower = LiteralUtil.createLiteral(strValue.toLowerCase());
-            return Comparison.eq(lhsLower, rhsLower);
-        }
-        return Comparison.eq(colRef, LiteralUtil.createLiteral(value));
-    }
-
-    private Predicate buildNotEquals(ColumnReference colRef, PropertyCriterion pc, Object[] args) {
-        Object value = args[pc.paramIndex()];
-        if (pc.ignoreCase() && value instanceof String strValue) {
-            ScalarExpression lhsLower = UnaryString.lower(colRef);
-            ScalarExpression rhsLower = LiteralUtil.createLiteral(strValue.toLowerCase());
-            return Comparison.ne(lhsLower, rhsLower);
-        }
-        return Comparison.ne(colRef, LiteralUtil.createLiteral(value));
-    }
-
-    private Predicate buildBetween(ColumnReference colRef, PropertyCriterion pc, Object[] args) {
-        ScalarExpression start = LiteralUtil.createLiteral(args[pc.paramIndex()]);
-        ScalarExpression end = LiteralUtil.createLiteral(args[pc.paramIndex() + 1]);
-        return new Between(colRef, start, end);
-    }
-
-    private Like buildLike(ColumnReference colRef, PropertyCriterion pc, Object[] args, String variant) {
-        Object rawValue = args[pc.paramIndex()];
-        String value = rawValue != null ? rawValue.toString() : "";
-        String pattern = applyLikeWildcards(value, variant);
-
-        if (pc.ignoreCase()) {
-            return new Like(UnaryString.lower(colRef), pattern.toLowerCase());
-        }
-        return new Like(colRef, pattern);
-    }
-
-    private static String applyLikeWildcards(String value, String variant) {
-        return switch (variant) {
-            case "starting" -> value + "%";
-            case "ending" -> "%" + value;
-            case "containing" -> "%" + value + "%";
-            default -> value; // plain LIKE: caller provides the pattern
-        };
-    }
-
-    // Unchecked cast is safe: the Collection/Iterable/Array contains the correct element type
-    // as declared in the repository method signature; the cast happens only inside type checks.
-    @SuppressWarnings("unchecked")
-    private Predicate buildIn(ColumnReference colRef, PropertyCriterion pc, Object[] args) {
-        Object rawArg = args[pc.paramIndex()];
-        List<ValueExpression> values = new ArrayList<>();
-
-        if (rawArg instanceof Collection<?> coll) {
-            for (Object item : coll) {
-                values.add(LiteralUtil.createLiteral(item));
-            }
-        } else if (rawArg instanceof Iterable<?> iter) {
-            for (Object item : iter) {
-                values.add(LiteralUtil.createLiteral(item));
-            }
-        } else if (rawArg != null && rawArg.getClass().isArray()) {
-            for (Object item : (Object[]) rawArg) {
-                values.add(LiteralUtil.createLiteral(item));
-            }
-        } else if (rawArg != null) {
-            values.add(LiteralUtil.createLiteral(rawArg));
-        }
-
-        return new In(colRef, values);
-    }
+    // Predicate construction delegated to Criterion implementations via toPredicate().
 
     // ---- Pageable / Sort extraction ----
 
