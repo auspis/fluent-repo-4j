@@ -123,8 +123,8 @@ class PartTreeAdapterTest {
     }
 
     private static PropertyPredicateDescriptor rootProperty(QueryDescriptor d) {
-        assertThat(d.criterion()).isInstanceOf(PropertyPredicateDescriptor.class);
-        return (PropertyPredicateDescriptor) d.criterion();
+        assertThat(d.predicateDescriptor()).isInstanceOf(PropertyPredicateDescriptor.class);
+        return (PropertyPredicateDescriptor) d.predicateDescriptor();
     }
 
     // ============================================================
@@ -230,8 +230,8 @@ class PartTreeAdapterTest {
         @Test
         void and_combination() throws Exception {
             QueryDescriptor d = adapt("findByNameAndEmail", String.class, String.class);
-            assertThat(d.criterion()).isInstanceOf(CompositePredicateDescriptor.class);
-            CompositePredicateDescriptor cc = (CompositePredicateDescriptor) d.criterion();
+            assertThat(d.predicateDescriptor()).isInstanceOf(CompositePredicateDescriptor.class);
+            CompositePredicateDescriptor cc = (CompositePredicateDescriptor) d.predicateDescriptor();
             assertThat(cc.type()).isEqualTo(CompositeType.AND);
             assertThat(cc.children()).hasSize(2);
 
@@ -249,8 +249,8 @@ class PartTreeAdapterTest {
         @Test
         void or_combination() throws Exception {
             QueryDescriptor d = adapt("findByNameOrEmail", String.class, String.class);
-            assertThat(d.criterion()).isInstanceOf(CompositePredicateDescriptor.class);
-            CompositePredicateDescriptor cc = (CompositePredicateDescriptor) d.criterion();
+            assertThat(d.predicateDescriptor()).isInstanceOf(CompositePredicateDescriptor.class);
+            CompositePredicateDescriptor cc = (CompositePredicateDescriptor) d.predicateDescriptor();
             assertThat(cc.type()).isEqualTo(CompositeType.OR);
             assertThat(cc.children()).hasSize(2);
         }
@@ -259,8 +259,8 @@ class PartTreeAdapterTest {
         void and_or_mixed() throws Exception {
             QueryDescriptor d = adapt("findByNameAndEmailOrAge", String.class, String.class, Integer.class);
             // PartTree: (name AND email) OR age
-            assertThat(d.criterion()).isInstanceOf(CompositePredicateDescriptor.class);
-            CompositePredicateDescriptor or = (CompositePredicateDescriptor) d.criterion();
+            assertThat(d.predicateDescriptor()).isInstanceOf(CompositePredicateDescriptor.class);
+            CompositePredicateDescriptor or = (CompositePredicateDescriptor) d.predicateDescriptor();
             assertThat(or.type()).isEqualTo(CompositeType.OR);
             assertThat(or.children()).hasSize(2);
 

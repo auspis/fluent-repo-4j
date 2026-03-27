@@ -58,7 +58,7 @@ public interface MappedQueryStrategy<T, ID> {
             SelectBuilder selectBuilder = selectBuilderFunction.apply(dsl, metadataProvider);
 
             // Apply WHERE predicates
-            Predicate where = descriptor.criterion().toPredicate(metadataProvider, args);
+            Predicate where = descriptor.predicateDescriptor().toPredicate(metadataProvider, args);
             if (where != null && !(where instanceof NullPredicate)) {
                 selectBuilder = selectBuilder.addWhereCondition(where, LogicalCombinator.AND);
             }
@@ -116,7 +116,7 @@ public interface MappedQueryStrategy<T, ID> {
             String table = metadataProvider.getTableName();
             DeleteBuilder delete = dsl.deleteFrom(table);
 
-            Predicate where = descriptor.criterion().toPredicate(metadataProvider, args);
+            Predicate where = descriptor.predicateDescriptor().toPredicate(metadataProvider, args);
             if (where != null && !(where instanceof NullPredicate)) {
                 delete = delete.addWhereCondition(where, LogicalCombinator.AND);
             }

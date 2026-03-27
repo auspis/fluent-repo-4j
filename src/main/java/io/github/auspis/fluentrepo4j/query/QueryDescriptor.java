@@ -14,24 +14,24 @@ import java.util.List;
  * {@link io.github.auspis.fluentrepo4j.query.mapper.dsl.QueryDescriptorToDslMapper}
  * to build a fluent-sql-4j {@code SelectBuilder} or {@code DeleteBuilder}.
  *
- * @param operation         the query operation (FIND / COUNT / EXISTS / DELETE)
- * @param distinct          whether {@code SELECT DISTINCT} should be emitted
- * @param maxResults        maximum number of rows to return; {@code null} if
- *                          unrestricted (used for {@code findTop3By…})
- * @param root              root of the criterion tree; {@code null} if there is
- *                          no WHERE predicate (e.g. {@code findAll})
- * @param orderBy           static order-by clauses derived from the method name;
- *                          may be empty
- * @param pageableParamIndex zero-based index of the {@code Pageable} parameter
- *                          in the method signature, or {@code -1} if absent
- * @param sortParamIndex    zero-based index of the {@code Sort} parameter in the
- *                          method signature, or {@code -1} if absent
+ * @param operation           the query operation (FIND / COUNT / EXISTS / DELETE)
+ * @param distinct            whether {@code SELECT DISTINCT} should be emitted
+ * @param maxResults          maximum number of rows to return; {@code null} if
+ *                            unrestricted (used for {@code findTop3By…})
+ * @param predicateDescriptor predicateDescriptor of the criterion tree; {@code null} if there is
+ *                            no WHERE predicate (e.g. {@code findAll})
+ * @param orderBy             static order-by clauses derived from the method name;
+ *                            may be empty
+ * @param pageableParamIndex  zero-based index of the {@code Pageable} parameter
+ *                            in the method signature, or {@code -1} if absent
+ * @param sortParamIndex      zero-based index of the {@code Sort} parameter in the
+ *                            method signature, or {@code -1} if absent
  */
 public record QueryDescriptor(
         QueryOperation operation,
         boolean distinct,
         Integer maxResults,
-        PredicateDescriptor criterion,
+        PredicateDescriptor predicateDescriptor,
         List<OrderByClause> orderBy,
         int pageableParamIndex,
         int sortParamIndex) {

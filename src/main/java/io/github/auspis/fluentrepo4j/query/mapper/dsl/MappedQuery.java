@@ -24,12 +24,13 @@ public sealed interface MappedQuery permits MappedQuery.SelectResult, MappedQuer
     /**
      * A mapped SELECT (or COUNT / EXISTS) query.
      *
-     * @param base       the configured select builder (WHERE clause applied; no ORDER BY or FETCH yet)
-     * @param orderBy    resolved order-by clauses; may be empty
-     * @param descriptor the original descriptor (needed for maxResults / pageable indices)
-     * @param args       the method arguments (needed for Pageable-based fetch/offset)
+     * @param selectBuilder the configured select builder (WHERE clause applied; no ORDER BY or FETCH yet)
+     * @param orderBy       resolved order-by clauses; may be empty
+     * @param descriptor    the original descriptor (needed for maxResults / pageable indices)
+     * @param args          the method arguments (needed for Pageable-based fetch/offset)
      */
-    record SelectResult(SelectBuilder base, List<OrderByClause> orderBy, QueryDescriptor descriptor, Object[] args)
+    record SelectResult(
+            SelectBuilder selectBuilder, List<OrderByClause> orderBy, QueryDescriptor descriptor, Object[] args)
             implements MappedQuery {
 
         /**
@@ -41,7 +42,7 @@ public sealed interface MappedQuery permits MappedQuery.SelectResult, MappedQuer
             Integer maxResults = descriptor.maxResults();
 
             if (orderBy.isEmpty()) {
-                SelectBuilder builder = base;
+                SelectBuilder builder = selectBuilder;
                 if (pageable != null && pageable.isPaged()) {
                     builder = builder.fetch(pageable.getPageSize()).offset(pageable.getOffset());
                 } else if (maxResults != null) {
@@ -51,7 +52,7 @@ public sealed interface MappedQuery permits MappedQuery.SelectResult, MappedQuer
             }
 
             // With ORDER BY: use OrderByBuilder (which has public fetch/offset/build)
-            OrderByBuilder orderByBuilder = base.orderBy();
+            OrderByBuilder orderByBuilder = selectBuilder.orderBy();
             for (OrderByClause clause : orderBy) {
                 orderByBuilder = clause.direction() == Sort.Direction.ASC
                         ? orderByBuilder.asc(clause.columnName())

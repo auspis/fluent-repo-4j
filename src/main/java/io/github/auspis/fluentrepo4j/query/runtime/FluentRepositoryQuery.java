@@ -70,6 +70,7 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
         PropertyMetadataProvider<T, ID> metaProvider = new PropertyMetadataProvider<>(entityInformation);
         this.dslMapper = new QueryDescriptorToDslMapper<>(dsl, metaProvider);
 
+        // Build and cache the descriptor at construction time
         this.descriptor = PartTreeAdapter.adapt(method, metadata.getDomainType());
     }
 
@@ -167,7 +168,7 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
                 QueryOperation.COUNT,
                 descriptor.distinct(),
                 null,
-                descriptor.criterion(),
+                descriptor.predicateDescriptor(),
                 List.of(),
                 descriptor.pageableParamIndex(),
                 descriptor.sortParamIndex());
