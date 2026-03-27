@@ -1,4 +1,4 @@
-package io.github.auspis.fluentrepo4j.query.criterion;
+package io.github.auspis.fluentrepo4j.query.predicatedescriptor;
 
 import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
 import io.github.auspis.fluentsql4j.ast.core.predicate.Predicate;
@@ -9,12 +9,13 @@ import io.github.auspis.fluentsql4j.ast.core.predicate.Predicate;
  *
  * <p>Implementations:
  * <ul>
- *   <li>{@link PropertyCriterion} – a leaf predicate on a single property</li>
- *   <li>{@link CompositeCriterion} – an AND or OR of child criteria</li>
- *   <li>{@link NullCriterion} – null-object representing absence of predicate</li>
+ *   <li>{@link PropertyPredicateDescriptor} – a leaf predicate on a single property</li>
+ *   <li>{@link CompositePredicateDescriptor} – an AND or OR of child criteria</li>
+ *   <li>{@link NullPredicateDescriptor} – null-object representing absence of predicate</li>
  * </ul>
  */
-public sealed interface Criterion permits PropertyCriterion, CompositeCriterion, NullCriterion {
+public sealed interface PredicateDescriptor
+        permits PropertyPredicateDescriptor, CompositePredicateDescriptor, NullPredicateDescriptor {
 
     /**
      * Convert this criterion into a fluent-sql-4j {@link Predicate} using the

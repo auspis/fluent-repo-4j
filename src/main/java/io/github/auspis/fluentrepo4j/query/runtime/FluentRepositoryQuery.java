@@ -7,8 +7,8 @@ import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
 import io.github.auspis.fluentrepo4j.parse.PartTreeAdapter;
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
 import io.github.auspis.fluentrepo4j.query.QueryOperation;
+import io.github.auspis.fluentrepo4j.query.mapper.dsl.MappedQuery;
 import io.github.auspis.fluentrepo4j.query.mapper.dsl.QueryDescriptorToDslMapper;
-import io.github.auspis.fluentrepo4j.query.mapper.dsl.QueryDescriptorToDslMapper.MappedQuery;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 
 import java.lang.reflect.Method;
@@ -70,7 +70,6 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
         PropertyMetadataProvider<T, ID> metaProvider = new PropertyMetadataProvider<>(entityInformation);
         this.dslMapper = new QueryDescriptorToDslMapper<>(dsl, metaProvider);
 
-        // Build and cache the descriptor at construction time
         this.descriptor = PartTreeAdapter.adapt(method, metadata.getDomainType());
     }
 
@@ -168,7 +167,7 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
                 QueryOperation.COUNT,
                 descriptor.distinct(),
                 null,
-                descriptor.root(),
+                descriptor.criterion(),
                 List.of(),
                 descriptor.pageableParamIndex(),
                 descriptor.sortParamIndex());

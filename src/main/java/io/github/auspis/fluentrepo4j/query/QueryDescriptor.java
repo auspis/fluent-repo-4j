@@ -1,6 +1,6 @@
 package io.github.auspis.fluentrepo4j.query;
 
-import io.github.auspis.fluentrepo4j.query.criterion.Criterion;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ public record QueryDescriptor(
         QueryOperation operation,
         boolean distinct,
         Integer maxResults,
-        Criterion root,
+        PredicateDescriptor criterion,
         List<OrderByClause> orderBy,
         int pageableParamIndex,
         int sortParamIndex) {

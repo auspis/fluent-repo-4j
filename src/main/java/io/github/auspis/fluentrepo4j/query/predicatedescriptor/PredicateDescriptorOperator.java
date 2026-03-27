@@ -1,11 +1,11 @@
-package io.github.auspis.fluentrepo4j.query.criterion;
+package io.github.auspis.fluentrepo4j.query.predicatedescriptor;
 
 /**
- * Specifies the comparison operator for a {@link PropertyCriterion}.
+ * Specifies the comparison operator for a {@link PropertyPredicateDescriptor}.
  * This is a neutral representation, independent of Spring Data's
  * {@link org.springframework.data.repository.query.parser.Part.Type}.
  */
-public enum CriterionOperator {
+public enum PredicateDescriptorOperator {
 
     /** {@code property = ?} */
     EQUALS,

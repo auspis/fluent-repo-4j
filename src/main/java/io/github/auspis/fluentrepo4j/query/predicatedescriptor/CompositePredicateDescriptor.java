@@ -1,4 +1,4 @@
-package io.github.auspis.fluentrepo4j.query.criterion;
+package io.github.auspis.fluentrepo4j.query.predicatedescriptor;
 
 import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
 import io.github.auspis.fluentsql4j.ast.core.predicate.AndOr;
@@ -14,7 +14,8 @@ import java.util.List;
  * @param type     {@link CompositeType#AND} or {@link CompositeType#OR}
  * @param children the sub-criteria (at least one element)
  */
-public record CompositeCriterion(CompositeType type, List<Criterion> children) implements Criterion {
+public record CompositePredicateDescriptor(CompositeType type, List<PredicateDescriptor> children)
+        implements PredicateDescriptor {
 
     /**
      * Logical combinator type.
@@ -24,7 +25,7 @@ public record CompositeCriterion(CompositeType type, List<Criterion> children) i
         OR
     }
 
-    public CompositeCriterion {
+    public CompositePredicateDescriptor {
         children = List.copyOf(children);
     }
 
@@ -35,7 +36,7 @@ public record CompositeCriterion(CompositeType type, List<Criterion> children) i
         }
 
         List<Predicate> predicates = new ArrayList<>();
-        for (Criterion child : children) {
+        for (PredicateDescriptor child : children) {
             Predicate p = child.toPredicate(metadataProvider, args);
             if (p == null || p instanceof NullPredicate) {
                 continue;

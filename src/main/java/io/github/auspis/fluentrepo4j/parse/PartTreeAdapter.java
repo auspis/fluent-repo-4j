@@ -3,12 +3,12 @@ package io.github.auspis.fluentrepo4j.parse;
 import io.github.auspis.fluentrepo4j.query.OrderByClause;
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
 import io.github.auspis.fluentrepo4j.query.QueryOperation;
-import io.github.auspis.fluentrepo4j.query.criterion.CompositeCriterion;
-import io.github.auspis.fluentrepo4j.query.criterion.CompositeCriterion.CompositeType;
-import io.github.auspis.fluentrepo4j.query.criterion.Criterion;
-import io.github.auspis.fluentrepo4j.query.criterion.CriterionOperator;
-import io.github.auspis.fluentrepo4j.query.criterion.NullCriterion;
-import io.github.auspis.fluentrepo4j.query.criterion.PropertyCriterion;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.CompositePredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.CompositePredicateDescriptor.CompositeType;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.NullPredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptorOperator;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PropertyPredicateDescriptor;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -49,25 +49,22 @@ public final class PartTreeAdapter {
         PartTree tree = new PartTree(method.getName(), domainClass);
         DefaultParameters parameters = new DefaultParameters(ParametersSource.of(method));
 
-        QueryOperation operation = resolveOperation(tree);
-        boolean distinct = tree.isDistinct();
-        Integer maxResults = tree.getMaxResults();
-
         int pageableParamIndex = parameters.hasPageableParameter() ? parameters.getPageableIndex() : -1;
         int sortParamIndex = parameters.hasSortParameter() ? parameters.getSortIndex() : -1;
 
-        // Build criterion tree from PartTree predicates
-        Criterion root = buildCriterion(tree, pageableParamIndex, sortParamIndex);
-
-        // Build static OrderBy clauses from the method name  (PartTree.getSort())
-        List<OrderByClause> orderBy = buildOrderBy(tree.getSort());
-
-        return new QueryDescriptor(operation, distinct, maxResults, root, orderBy, pageableParamIndex, sortParamIndex);
+        return new QueryDescriptor(
+                operation(tree),
+                tree.isDistinct(),
+                tree.getMaxResults(),
+                predicateDescriptor(tree, pageableParamIndex, sortParamIndex),
+                oOrderBy(tree.getSort()),
+                pageableParamIndex,
+                sortParamIndex);
     }
 
     // ---- Private helpers ----
 
-    private static QueryOperation resolveOperation(PartTree tree) {
+    private static QueryOperation operation(PartTree tree) {
         if (tree.isDelete()) {
             return QueryOperation.DELETE;
         }
@@ -80,22 +77,16 @@ public final class PartTreeAdapter {
         return QueryOperation.FIND;
     }
 
-    /**
-     * Translates PartTree's OR-of-ANDs structure into a {@link CompositeCriterion}.
-     * Returns {@code null} when the method has no predicate (e.g. {@code findAll}).
-     */
-    private static Criterion buildCriterion(PartTree tree, int pageableParamIndex, int sortParamIndex) {
+    private static PredicateDescriptor predicateDescriptor(PartTree tree, int pageableParamIndex, int sortParamIndex) {
         if (!tree.hasPredicate()) {
-            return NullCriterion.INSTANCE;
+            return NullPredicateDescriptor.INSTANCE;
         }
 
-        // Calculate which indices are "special" (Pageable/Sort) so we can skip them
-        // when assigning parameter indices to criteria
-        List<Criterion> orParts = new ArrayList<>();
+        List<PredicateDescriptor> orParts = new ArrayList<>();
         int nextParamIndex = 0;
 
         for (PartTree.OrPart orPart : tree) {
-            List<Criterion> andParts = new ArrayList<>();
+            List<PredicateDescriptor> andParts = new ArrayList<>();
 
             for (Part part : orPart) {
                 // Advance past special parameter slots
@@ -103,62 +94,63 @@ public final class PartTreeAdapter {
                     nextParamIndex++;
                 }
 
-                CriterionOperator operator = mapOperator(part.getType());
-                boolean ignoreCase = isIgnoreCase(part);
-                boolean negated = isNegated(part);
                 int paramCount = part.getNumberOfArguments();
 
-                andParts.add(new PropertyCriterion(
-                        part.getProperty().getSegment(), operator, ignoreCase, negated, nextParamIndex, paramCount));
+                andParts.add(new PropertyPredicateDescriptor(
+                        part.getProperty().getSegment(),
+                        mapOperator(part.getType()),
+                        isIgnoreCase(part),
+                        nextParamIndex,
+                        paramCount));
 
                 nextParamIndex += paramCount;
             }
 
-            orParts.add(andParts.size() == 1 ? andParts.get(0) : new CompositeCriterion(CompositeType.AND, andParts));
+            orParts.add(
+                    andParts.size() == 1
+                            ? andParts.get(0)
+                            : new CompositePredicateDescriptor(CompositeType.AND, andParts));
         }
 
-        if (orParts.isEmpty()) {
-            return NullCriterion.INSTANCE;
-        }
-        return orParts.size() == 1 ? orParts.get(0) : new CompositeCriterion(CompositeType.OR, orParts);
+        return switch (orParts.size()) {
+            case 0 -> NullPredicateDescriptor.INSTANCE;
+            case 1 -> orParts.get(0);
+            default -> new CompositePredicateDescriptor(CompositeType.OR, orParts);
+        };
     }
 
-    private static List<OrderByClause> buildOrderBy(Sort sort) {
+    private static List<OrderByClause> oOrderBy(Sort sort) {
         if (sort == null || sort.isUnsorted()) {
             return List.of();
         }
         List<OrderByClause> clauses = new ArrayList<>();
         for (Sort.Order order : sort) {
-            // property name is used here; column resolution happens in the mapper
             clauses.add(new OrderByClause(order.getProperty(), order.getDirection()));
         }
         return clauses;
     }
 
-    /**
-     * Maps a Spring Data {@link Part.Type} to the neutral {@link CriterionOperator}.
-     */
-    private static CriterionOperator mapOperator(Part.Type type) {
+    private static PredicateDescriptorOperator mapOperator(Part.Type type) {
         return switch (type) {
-            case SIMPLE_PROPERTY -> CriterionOperator.EQUALS;
-            case NEGATING_SIMPLE_PROPERTY -> CriterionOperator.NOT_EQUALS;
-            case LESS_THAN, BEFORE -> CriterionOperator.LESS_THAN;
-            case LESS_THAN_EQUAL -> CriterionOperator.LESS_THAN_EQUAL;
-            case GREATER_THAN, AFTER -> CriterionOperator.GREATER_THAN;
-            case GREATER_THAN_EQUAL -> CriterionOperator.GREATER_THAN_EQUAL;
-            case BETWEEN -> CriterionOperator.BETWEEN;
-            case IS_NULL -> CriterionOperator.IS_NULL;
-            case IS_NOT_NULL -> CriterionOperator.IS_NOT_NULL;
-            case LIKE -> CriterionOperator.LIKE;
-            case NOT_LIKE -> CriterionOperator.NOT_LIKE;
-            case STARTING_WITH -> CriterionOperator.STARTING_WITH;
-            case ENDING_WITH -> CriterionOperator.ENDING_WITH;
-            case CONTAINING -> CriterionOperator.CONTAINING;
-            case NOT_CONTAINING -> CriterionOperator.NOT_CONTAINING;
-            case IN -> CriterionOperator.IN;
-            case NOT_IN -> CriterionOperator.NOT_IN;
-            case TRUE -> CriterionOperator.TRUE;
-            case FALSE -> CriterionOperator.FALSE;
+            case SIMPLE_PROPERTY -> PredicateDescriptorOperator.EQUALS;
+            case NEGATING_SIMPLE_PROPERTY -> PredicateDescriptorOperator.NOT_EQUALS;
+            case LESS_THAN, BEFORE -> PredicateDescriptorOperator.LESS_THAN;
+            case LESS_THAN_EQUAL -> PredicateDescriptorOperator.LESS_THAN_EQUAL;
+            case GREATER_THAN, AFTER -> PredicateDescriptorOperator.GREATER_THAN;
+            case GREATER_THAN_EQUAL -> PredicateDescriptorOperator.GREATER_THAN_EQUAL;
+            case BETWEEN -> PredicateDescriptorOperator.BETWEEN;
+            case IS_NULL -> PredicateDescriptorOperator.IS_NULL;
+            case IS_NOT_NULL -> PredicateDescriptorOperator.IS_NOT_NULL;
+            case LIKE -> PredicateDescriptorOperator.LIKE;
+            case NOT_LIKE -> PredicateDescriptorOperator.NOT_LIKE;
+            case STARTING_WITH -> PredicateDescriptorOperator.STARTING_WITH;
+            case ENDING_WITH -> PredicateDescriptorOperator.ENDING_WITH;
+            case CONTAINING -> PredicateDescriptorOperator.CONTAINING;
+            case NOT_CONTAINING -> PredicateDescriptorOperator.NOT_CONTAINING;
+            case IN -> PredicateDescriptorOperator.IN;
+            case NOT_IN -> PredicateDescriptorOperator.NOT_IN;
+            case TRUE -> PredicateDescriptorOperator.TRUE;
+            case FALSE -> PredicateDescriptorOperator.FALSE;
             case IS_EMPTY, IS_NOT_EMPTY, NEAR, WITHIN, REGEX, EXISTS ->
                 throw new UnsupportedOperationException(
                         "Operator " + type + " is not supported by fluent-repo-4j dynamic queries.");
@@ -167,18 +159,5 @@ public final class PartTreeAdapter {
 
     private static boolean isIgnoreCase(Part part) {
         return part.shouldIgnoreCase() != Part.IgnoreCaseType.NEVER;
-    }
-
-    /**
-     * A {@link Part} is negated when its type is {@link Part.Type#NEGATING_SIMPLE_PROPERTY}
-     * or one of the NOT_LIKE / NOT_CONTAINING / NOT_IN variants.  Those are
-     * already modelled via distinct {@link CriterionOperator} values, so the
-     * {@code negated} flag on {@link PropertyCriterion} is {@code false} for
-     * them.  It is {@code true} only when the operator itself carries a {@code Not}
-     * prefix that is separate from the base operator (currently none, but
-     * preserved as a hook for future extensions).
-     */
-    private static boolean isNegated(Part part) {
-        return false; // negation is fully represented by the operator (NOT_EQUALS, NOT_LIKE, etc.)
     }
 }

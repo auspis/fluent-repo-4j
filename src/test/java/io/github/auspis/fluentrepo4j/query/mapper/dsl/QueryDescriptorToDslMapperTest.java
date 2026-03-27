@@ -7,8 +7,7 @@ import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
 import io.github.auspis.fluentrepo4j.parse.PartTreeAdapter;
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
 import io.github.auspis.fluentrepo4j.query.QueryOperation;
-import io.github.auspis.fluentrepo4j.query.criterion.NullCriterion;
-import io.github.auspis.fluentrepo4j.query.mapper.dsl.QueryDescriptorToDslMapper.MappedQuery;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.NullPredicateDescriptor;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
@@ -358,8 +357,8 @@ class QueryDescriptorToDslMapperTest {
 
         @Test
         void nullCriterion_produces_no_where_clause() throws Exception {
-            QueryDescriptor descriptor =
-                    new QueryDescriptor(QueryOperation.FIND, false, null, NullCriterion.INSTANCE, List.of(), -1, -1);
+            QueryDescriptor descriptor = new QueryDescriptor(
+                    QueryOperation.FIND, false, null, NullPredicateDescriptor.INSTANCE, List.of(), -1, -1);
 
             String sql = buildSql(descriptor);
             assertThat(sql).doesNotContainIgnoringCase("WHERE");
