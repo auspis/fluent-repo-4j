@@ -7,8 +7,8 @@ package io.github.auspis.fluentrepo4j.repository.context;
  * <p>When a fragment implementation class (the {@code ...Impl} class discovered by Spring Data)
  * implements this interface, the framework calls {@link #setFluentRepositoryContext} after
  * the bean is created but before the repository proxy is returned to the application.
- * The method is called exactly once per repository group bootstrap.
- *
+ * The method is called once for each repository proxy instance during its creation and may be
+ * invoked multiple times within a single application context.
  * <p>This is an <strong>opt-in</strong> contract: fragment implementations that do not implement
  * this interface continue to work normally as plain Spring beans with no context injection.
  *
