@@ -404,7 +404,103 @@ Expected result:
 
 ---
 
-## 10. Integration Test Setup (H2)
+## 10. Custom Query Fragments
+
+Use Spring Data's fragment convention to add custom queries via the fluent-sql-4j DSL.
+
+### Fragment with Fluent DSL
+
+```java
+// Step 1: Define a fragment interface
+public interface UserCustomQueries {
+    List<User> findUsersByNameContaining(String namePart);
+}
+
+// Step 2: Implement with FluentRepositoryContextAware
+public class UserCustomQueriesImpl implements UserCustomQueries, FluentRepositoryContextAware {
+
+    private FluentRepositoryContext context;
+
+    @Override
+    public void setFluentRepositoryContext(FluentRepositoryContext context) {
+        this.context = context;
+    }
+
+    @Override
+    public List<User> findUsersByNameContaining(String namePart) {
+        DSL dsl = context.dsl();
+        Connection conn = context.connectionProvider().getConnection();
+        try {
+            PreparedStatement ps = dsl.selectAll()
+                    .from("users")
+                    .where().column("name").like("%" + namePart + "%")
+                    .build(conn);
+            try (ps; ResultSet rs = ps.executeQuery()) {
+                List<User> results = new ArrayList<>();
+                while (rs.next()) {
+                    results.add(new User(rs.getString("name"), rs.getString("email")));
+                }
+                return results;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Query failed", e);
+        } finally {
+            context.connectionProvider().releaseConnection(conn);
+        }
+    }
+}
+
+// Step 3: Extend the repository
+public interface UserRepository extends CrudRepository<User, Long>, UserCustomQueries {}
+```
+
+### Multi-DataSource Fragment Isolation
+
+In a multi-datasource setup, each fragment automatically receives the DSL and connection provider bound to its repository group:
+
+```java
+// Primary database group
+@EnableFluentRepositories(
+    basePackageClasses = PrimaryUserRepository.class,
+    dataSourceRef = "primaryDataSource")
+class PrimaryConfig {}
+
+public interface PrimaryCustomQueries { /* queries against primary DB */ }
+public class PrimaryCustomQueriesImpl implements PrimaryCustomQueries, FluentRepositoryContextAware {
+    // Receives primary DSL and connection provider
+}
+public interface PrimaryUserRepository extends CrudRepository<User, Long>, PrimaryCustomQueries {}
+
+// Secondary database group
+@EnableFluentRepositories(
+    basePackageClasses = SecondaryUserRepository.class,
+    dataSourceRef = "secondaryDataSource")
+class SecondaryConfig {}
+
+public interface SecondaryCustomQueries { /* queries against secondary DB */ }
+public class SecondaryCustomQueriesImpl implements SecondaryCustomQueries, FluentRepositoryContextAware {
+    // Receives secondary DSL and connection provider — complete isolation
+}
+public interface SecondaryUserRepository extends CrudRepository<User, Long>, SecondaryCustomQueries {}
+```
+
+### Non-Aware Fragments
+
+Fragments that don't need DSL access can skip `FluentRepositoryContextAware` entirely:
+
+```java
+public class PlainQueriesImpl implements PlainQueries {
+    // No FluentRepositoryContextAware — injection is a no-op
+    @Override
+    public String greetUser(String name) {
+        return "Hello, " + name;
+    }
+}
+```
+
+---
+
+## 11. Integration Test Setup (H2)
 
 ```java
 @Nested
