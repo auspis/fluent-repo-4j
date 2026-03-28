@@ -1,11 +1,12 @@
 package io.github.auspis.fluentrepo4j.query.predicatedescriptor;
 
-import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
-import io.github.auspis.fluentsql4j.ast.core.predicate.Predicate;
-
 /**
  * Sealed base for the intermediate criterion tree produced by
  * {@link io.github.auspis.fluentrepo4j.parse.PartTreeAdapter}.
+ *
+ * <p>Implementations are pure data carriers; translation to fluent-sql-4j
+ * predicates is handled by
+ * {@link io.github.auspis.fluentrepo4j.query.mapper.dsl.PredicateDescriptorMapper}.
  *
  * <p>Implementations:
  * <ul>
@@ -15,15 +16,4 @@ import io.github.auspis.fluentsql4j.ast.core.predicate.Predicate;
  * </ul>
  */
 public sealed interface PredicateDescriptor
-        permits PropertyPredicateDescriptor, CompositePredicateDescriptor, NullPredicateDescriptor {
-
-    /**
-     * Convert this criterion into a fluent-sql-4j {@link Predicate} using the
-     * provided metadata provider and runtime arguments.
-     *
-     * <p>Implementations may return {@link io.github.auspis.fluentsql4j.ast.core.predicate.NullPredicate}
-     * to indicate the absence of a real predicate; callers may then add the
-     * result to builders without extra null-checks.
-     */
-    Predicate toPredicate(PropertyMetadataProvider<?, ?> metadataProvider, Object[] args);
-}
+        permits PropertyPredicateDescriptor, CompositePredicateDescriptor, NullPredicateDescriptor {}

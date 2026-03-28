@@ -57,6 +57,7 @@ public interface MappedQueryStrategy<T, ID> {
         private final PropertyMetadataProvider<T, ID> metadataProvider;
         private final BiFunction<DSL, PropertyMetadataProvider<T, ID>, SelectBuilder> selectBuilderFunction;
         private final Function<SelectBuilder, ExecutableQuery<T>> queryWrapper;
+        private final PredicateDescriptorMapper predicateMapper = new PredicateDescriptorMapper();
 
         private SelectMappedQueryStrategy(
                 DSL dsl,
@@ -74,7 +75,7 @@ public interface MappedQueryStrategy<T, ID> {
             SelectBuilder selectBuilder = selectBuilderFunction.apply(dsl, metadataProvider);
 
             // Apply WHERE predicates
-            Predicate where = descriptor.predicateDescriptor().toPredicate(metadataProvider, args);
+            Predicate where = predicateMapper.map(descriptor.predicateDescriptor(), metadataProvider, args);
             selectBuilder = selectBuilder.addWhereCondition(where, LogicalCombinator.AND);
 
             // Collect order-by clauses: static (from method name) + runtime (from QueryRuntimeParams)
@@ -113,6 +114,7 @@ public interface MappedQueryStrategy<T, ID> {
 
         private final DSL dsl;
         private final PropertyMetadataProvider<T, ID> metadataProvider;
+        private final PredicateDescriptorMapper predicateMapper = new PredicateDescriptorMapper();
 
         private DeleteMappedQueryStrategy(DSL dsl, PropertyMetadataProvider<T, ID> metadataProvider) {
             this.dsl = dsl;
@@ -124,7 +126,7 @@ public interface MappedQueryStrategy<T, ID> {
             String table = metadataProvider.getTableName();
             DeleteBuilder delete = dsl.deleteFrom(table);
 
-            Predicate where = descriptor.predicateDescriptor().toPredicate(metadataProvider, args);
+            Predicate where = predicateMapper.map(descriptor.predicateDescriptor(), metadataProvider, args);
             delete = delete.addWhereCondition(where, LogicalCombinator.AND);
 
             return new ExecutableQuery.DeleteQuery<>(delete);
