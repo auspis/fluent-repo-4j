@@ -60,13 +60,41 @@ public class User {
 
 Extend `CrudRepository<Entity, ID>`. CRUD methods are inherited automatically.
 
+`fluent-repo-4j` supports Spring Data method-name query derivation (PartTree-style) out of the box.
+
 ```java
 import org.springframework.data.repository.CrudRepository;
 
 public interface UserRepository extends CrudRepository<User, Long> {
     // Inherited methods: save(), findById(), findAll(), count(), deleteById(), etc.
+    
+    List<User> findByEmailIgnoreCase(String email);
+    List<User> findByNameContainingIgnoreCase(String name);
+    List<User> findByAgeGreaterThan(Integer minAge);
 }
 ```
+
+```java
+@Service
+public class UserService {
+    private final UserRepository userRepository;
+    public UserService(UserRepository userRepository) { this.userRepository = userRepository; }
+
+    public List<User> findByEmail(String email) {
+        return userRepository.findByEmailIgnoreCase(email);
+    }
+
+    public List<User> searchByName(String fragment) {
+        return userRepository.findByNameContainingIgnoreCase(fragment);
+    }
+
+    public List<User> findOlderThan(int age) {
+        return userRepository.findByAgeGreaterThan(age);
+    }
+}
+```
+
+For full operator details (`And`, `Or`, `Between`, `Top`, `Pageable`, etc.), see [DYNAMIC_METHOD_QUERIES](data/wiki/DYNAMIC_METHOD_QUERIES.md).
 
 ### 3. Enable Repositories
 
