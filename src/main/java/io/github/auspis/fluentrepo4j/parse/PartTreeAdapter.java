@@ -9,6 +9,7 @@ import io.github.auspis.fluentrepo4j.query.predicatedescriptor.NullPredicateDesc
 import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor;
 import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptorOperator;
 import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PropertyPredicateDescriptor;
+import io.github.auspis.fluentsql4j.ast.dql.clause.Sorting;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -125,7 +126,8 @@ public final class PartTreeAdapter {
         }
         List<OrderByClause> clauses = new ArrayList<>();
         for (Sort.Order order : sort) {
-            clauses.add(new OrderByClause(order.getProperty(), order.getDirection()));
+            Sorting.SortOrder direction = order.isAscending() ? Sorting.SortOrder.ASC : Sorting.SortOrder.DESC;
+            clauses.add(new OrderByClause(order.getProperty(), direction));
         }
         return clauses;
     }

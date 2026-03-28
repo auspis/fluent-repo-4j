@@ -257,8 +257,8 @@ Parsed `QueryDescriptor` objects and `FluentRepositoryQuery` instances are cache
 This means:
 - Method-name parsing (Spring Data `PartTree`) happens **once** at first invocation.
 - Subsequent calls go directly to the cached `FluentRepositoryQuery`, which only
-invokes `QueryDescriptorToDslMapper.map(descriptor, args)` to bind the runtime
-arguments.
+invokes `QueryDescriptorToDslMapper.map(descriptor, args, runtimeParams)` to bind
+the runtime arguments and apply any `Sort`/`Pageable` parameters.
 
 ---
 

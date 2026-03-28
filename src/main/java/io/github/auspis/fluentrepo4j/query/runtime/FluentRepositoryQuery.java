@@ -5,12 +5,17 @@ import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
 import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
 import io.github.auspis.fluentrepo4j.parse.PartTreeAdapter;
+import io.github.auspis.fluentrepo4j.query.OrderByClause;
+import io.github.auspis.fluentrepo4j.query.PageWindow;
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
 import io.github.auspis.fluentrepo4j.query.QueryOperation;
+import io.github.auspis.fluentrepo4j.query.QueryRuntimeParams;
 import io.github.auspis.fluentrepo4j.query.mapper.dsl.QueryDescriptorToDslMapper;
+import io.github.auspis.fluentsql4j.ast.dql.clause.Sorting;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -19,6 +24,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.repository.core.RepositoryMetadata;
 import org.springframework.data.repository.query.QueryMethod;
@@ -45,6 +51,7 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
     private final QueryDescriptor descriptor;
     private final QueryDescriptorToDslMapper<T, ID> dslMapper;
     private final QueryExecutionResources<T> executionResources;
+    private final PropertyMetadataProvider<T, ID> metadataProvider;
 
     public FluentRepositoryQuery(
             Method method,
@@ -61,6 +68,7 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
                 new SQLExceptionSubclassTranslator());
 
         PropertyMetadataProvider<T, ID> metaProvider = new PropertyMetadataProvider<>(entityInformation);
+        this.metadataProvider = metaProvider;
         this.dslMapper = new QueryDescriptorToDslMapper<>(dsl, metaProvider);
 
         // Build and cache the descriptor at construction time
@@ -70,7 +78,8 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
     @Override
     public Object execute(Object[] parameters) {
         Object[] args = parameters != null ? parameters : new Object[0];
-        ExecutableQuery<T> executable = dslMapper.map(descriptor, args);
+        QueryRuntimeParams runtimeParams = queryRuntimeParams(args);
+        ExecutableQuery<T> executable = dslMapper.map(descriptor, args, runtimeParams);
         Object rawResult = executable.execute(executionResources);
         return adaptReturnType(rawResult, args);
     }
@@ -139,7 +148,7 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
                 descriptor.pageableParamIndex(),
                 descriptor.sortParamIndex());
 
-        ExecutableQuery<T> countQuery = dslMapper.map(countDescriptor, args);
+        ExecutableQuery<T> countQuery = dslMapper.map(countDescriptor, args, QueryRuntimeParams.empty());
         long total = (long) countQuery.execute(executionResources);
 
         return new PageImpl<>(content, effectivePageable, total);
@@ -161,5 +170,57 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
             }
         }
         return null;
+    }
+
+    private QueryRuntimeParams queryRuntimeParams(Object[] args) {
+        Sort runtimeSort = sort(args);
+        List<OrderByClause> sortClauses = orderByClauses(runtimeSort);
+        PageWindow pageWindow = pageWindow(args);
+        return new QueryRuntimeParams(sortClauses, pageWindow);
+    }
+
+    private Sort sort(Object[] args) {
+        if (descriptor.pageableParamIndex() >= 0 && args.length > descriptor.pageableParamIndex()) {
+            Object arg = args[descriptor.pageableParamIndex()];
+            if (arg instanceof Pageable p) {
+                return p.getSort();
+            }
+        }
+        if (descriptor.sortParamIndex() >= 0 && args.length > descriptor.sortParamIndex()) {
+            Object arg = args[descriptor.sortParamIndex()];
+            if (arg instanceof Sort s) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    private List<OrderByClause> orderByClauses(Sort sort) {
+        if (sort == null || sort.isUnsorted()) {
+            return List.of();
+        }
+        List<OrderByClause> clauses = new ArrayList<>();
+        for (Sort.Order order : sort) {
+            String column = columnName(order.getProperty());
+            Sorting.SortOrder direction = order.isAscending() ? Sorting.SortOrder.ASC : Sorting.SortOrder.DESC;
+            clauses.add(new OrderByClause(column, direction));
+        }
+        return clauses;
+    }
+
+    private PageWindow pageWindow(Object[] args) {
+        Pageable pageable = extractPageable(args);
+        if (pageable != null && pageable.isPaged()) {
+            return new PageWindow(pageable.getPageSize(), pageable.getOffset());
+        }
+        return null;
+    }
+
+    private String columnName(String propertyOrColumn) {
+        try {
+            return metadataProvider.resolveColumn(propertyOrColumn);
+        } catch (IllegalArgumentException e) {
+            return propertyOrColumn;
+        }
     }
 }

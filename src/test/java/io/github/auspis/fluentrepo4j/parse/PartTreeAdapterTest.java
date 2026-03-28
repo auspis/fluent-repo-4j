@@ -10,6 +10,7 @@ import io.github.auspis.fluentrepo4j.query.predicatedescriptor.CompositePredicat
 import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptorOperator;
 import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PropertyPredicateDescriptor;
 import io.github.auspis.fluentrepo4j.test.domain.User;
+import io.github.auspis.fluentsql4j.ast.dql.clause.Sorting;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
@@ -478,7 +479,7 @@ class PartTreeAdapterTest {
             QueryDescriptor d = adapt("findByNameOrderByAgeAsc", String.class);
             assertThat(d.orderBy()).hasSize(1);
             assertThat(d.orderBy().get(0).columnName()).isEqualTo("age");
-            assertThat(d.orderBy().get(0).direction()).isEqualTo(Sort.Direction.ASC);
+            assertThat(d.orderBy().get(0).direction()).isEqualTo(Sorting.SortOrder.ASC);
         }
     }
 

@@ -3,6 +3,7 @@ package io.github.auspis.fluentrepo4j.query.mapper.dsl;
 import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
 import io.github.auspis.fluentrepo4j.query.QueryOperation;
+import io.github.auspis.fluentrepo4j.query.QueryRuntimeParams;
 import io.github.auspis.fluentrepo4j.query.runtime.ExecutableQuery;
 import io.github.auspis.fluentsql4j.ast.core.expression.function.string.UnaryString;
 import io.github.auspis.fluentsql4j.ast.core.predicate.Between;
@@ -58,8 +59,8 @@ public final class QueryDescriptorToDslMapper<T, ID> {
      * @param args       the runtime method arguments (in method-signature order)
      * @return an {@link ExecutableQuery} ready to execute
      */
-    public ExecutableQuery<T> map(QueryDescriptor descriptor, Object[] args) {
-        return buildStrategies.apply(descriptor.operation()).create(descriptor, args);
+    public ExecutableQuery<T> map(QueryDescriptor descriptor, Object[] args, QueryRuntimeParams runtimeParams) {
+        return buildStrategies.apply(descriptor.operation()).create(descriptor, args, runtimeParams);
     }
 
     private Function<QueryOperation, MappedQueryStrategy<T, ID>> initBuildStrategies(
