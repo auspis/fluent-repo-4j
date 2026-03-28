@@ -401,21 +401,21 @@ How does the library work?
 
 ## Supported vs Not Supported
 
-|                                Feature                                 |     Status      |                                       Notes                                       |
-|------------------------------------------------------------------------|-----------------|-----------------------------------------------------------------------------------|
-| CRUD operations (`save`, `findById`, `findAll`, `count`, `deleteById`) | ✅ Supported     | Core functionality built-in                                                       |
-| `@Transactional` integration                                           | ✅ Supported     | Automatic connection binding via Spring                                           |
-| `@GeneratedValue(IDENTITY)`                                            | ✅ Supported     | Database auto-increment IDs                                                       |
-| Application-provided IDs                                               | ✅ Supported     | Set ID before `save()`                                                            |
-| `Persistable<ID>` for custom `isNew()` logic                           | ✅ Supported     | Fine-grained control over insert/update                                           |
-| Simple entity mapping (Jakarta Persistence annotations)                | ✅ Supported     | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient`                       |
-| Exception translation to `DataAccessException`                         | ✅ Supported     | Automatic SQL exception handling                                                  |
-| Multi-datasource repository groups                                     | ✅ Supported     | Configure one `@EnableFluentRepositories` block per repository group              |
-| Custom query methods via fragments                                     | ✅ Supported     | Implement `FluentRepositoryContextAware` fragments for DSL-powered custom queries |
-| Query method derivation (e.g., PartTree)                               | ❌ Not Supported | Planned for future release                                                        |
-| Object relationships (one-to-many, many-to-many)                       | ❌ Not Supported | Use separate repositories and explicit queries                                    |
-| `@GeneratedValue(SEQUENCE)`                                            | ❌ Not Supported | Planned for future release                                                        |
-| Persistence context / first-level cache                                | ❌ Not Supported | Not applicable to JDBC; each query returns fresh objects                          |
+|                                Feature                                 |     Status      |                                           Notes                                           |
+|------------------------------------------------------------------------|-----------------|-------------------------------------------------------------------------------------------|
+| CRUD operations (`save`, `findById`, `findAll`, `count`, `deleteById`) | ✅ Supported     | Core functionality built-in                                                               |
+| `@Transactional` integration                                           | ✅ Supported     | Automatic connection binding via Spring                                                   |
+| `@GeneratedValue(IDENTITY)`                                            | ✅ Supported     | Database auto-increment IDs                                                               |
+| Application-provided IDs                                               | ✅ Supported     | Set ID before `save()`                                                                    |
+| `Persistable<ID>` for custom `isNew()` logic                           | ✅ Supported     | Fine-grained control over insert/update                                                   |
+| Simple entity mapping (Jakarta Persistence annotations)                | ✅ Supported     | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient`                               |
+| Exception translation to `DataAccessException`                         | ✅ Supported     | Automatic SQL exception handling                                                          |
+| Multi-datasource repository groups                                     | ✅ Supported     | Configure one `@EnableFluentRepositories` block per repository group                      |
+| Custom query methods via fragments                                     | ✅ Supported     | Implement `FluentRepositoryContextAware` fragments for DSL-powered custom queries         |
+| Query method derivation (e.g., PartTree)                               | ✅ Supported     | Implement `FluentRepositoryContextAware` fragments for DSL-powered custom queries release |
+| Object relationships (one-to-many, many-to-many)                       | ❌ Not Supported | Use separate repositories and explicit queries                                            |
+| `@GeneratedValue(SEQUENCE)`                                            | ❌ Not Supported | Planned for future release                                                                |
+| Persistence context / first-level cache                                | ❌ Not Supported | Not applicable to JDBC; each query returns fresh objects                                  |
 
 ---
 
