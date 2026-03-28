@@ -4,7 +4,6 @@ import io.github.auspis.fluentrepo4j.query.runtime.ExecutableQuery.CountQuery;
 import io.github.auspis.fluentrepo4j.query.runtime.ExecutableQuery.DeleteQuery;
 import io.github.auspis.fluentrepo4j.query.runtime.ExecutableQuery.EntitySelectQuery;
 import io.github.auspis.fluentrepo4j.query.runtime.ExecutableQuery.ExistsQuery;
-import io.github.auspis.fluentsql4j.dsl.StatementBuilder;
 import io.github.auspis.fluentsql4j.dsl.delete.DeleteBuilder;
 import io.github.auspis.fluentsql4j.dsl.select.SelectBuilder;
 
@@ -27,12 +26,6 @@ import java.util.List;
 public sealed interface ExecutableQuery<T> permits CountQuery, ExistsQuery, EntitySelectQuery, DeleteQuery {
 
     /**
-     * Returns the underlying {@link StatementBuilder} for introspection
-     * (e.g.&nbsp;SQL capture in tests).
-     */
-    StatementBuilder statementBuilder();
-
-    /**
      * Executes this query against the database using the given execution context.
      *
      * @param ctx the runtime execution context (connection, row mapper, etc.)
@@ -44,17 +37,12 @@ public sealed interface ExecutableQuery<T> permits CountQuery, ExistsQuery, Enti
     /**
      * {@code SELECT COUNT(*)} query returning a {@code long}.
      */
-    record CountQuery<T>(SelectBuilder selectBuilder) implements ExecutableQuery<T> {
-
-        @Override
-        public StatementBuilder statementBuilder() {
-            return selectBuilder;
-        }
+    record CountQuery<T>(SelectBuilder statementBuilder) implements ExecutableQuery<T> {
 
         @Override
         public Object execute(QueryExecutionResources<T> ctx) {
             return ctx.executeWithConnection(
-                    selectBuilder,
+                    statementBuilder,
                     (PreparedStatement ps) -> {
                         try (ps;
                                 ResultSet rs = ps.executeQuery()) {
@@ -69,16 +57,11 @@ public sealed interface ExecutableQuery<T> permits CountQuery, ExistsQuery, Enti
     /**
      * {@code SELECT COUNT(*) > 0} query returning a {@code boolean}.
      */
-    record ExistsQuery<T>(SelectBuilder selectBuilder) implements ExecutableQuery<T> {
-
-        @Override
-        public StatementBuilder statementBuilder() {
-            return selectBuilder;
-        }
+    record ExistsQuery<T>(SelectBuilder statementBuilder) implements ExecutableQuery<T> {
 
         @Override
         public Object execute(QueryExecutionResources<T> ctx) {
-            long count = (long) new CountQuery<T>(selectBuilder).execute(ctx);
+            long count = (long) new CountQuery<T>(statementBuilder).execute(ctx);
             return count > 0;
         }
     }
@@ -86,17 +69,12 @@ public sealed interface ExecutableQuery<T> permits CountQuery, ExistsQuery, Enti
     /**
      * {@code SELECT *} (or column-list) query returning a {@code List<T>}.
      */
-    record EntitySelectQuery<T>(SelectBuilder selectBuilder) implements ExecutableQuery<T> {
-
-        @Override
-        public StatementBuilder statementBuilder() {
-            return selectBuilder;
-        }
+    record EntitySelectQuery<T>(SelectBuilder statementBuilder) implements ExecutableQuery<T> {
 
         @Override
         public Object execute(QueryExecutionResources<T> ctx) {
             return ctx.executeWithConnection(
-                    selectBuilder,
+                    statementBuilder,
                     (PreparedStatement ps) -> {
                         try (ps;
                                 ResultSet rs = ps.executeQuery()) {
@@ -115,17 +93,12 @@ public sealed interface ExecutableQuery<T> permits CountQuery, ExistsQuery, Enti
     /**
      * {@code DELETE} query returning the number of affected rows as {@code int}.
      */
-    record DeleteQuery<T>(DeleteBuilder deleteBuilder) implements ExecutableQuery<T> {
-
-        @Override
-        public StatementBuilder statementBuilder() {
-            return deleteBuilder;
-        }
+    record DeleteQuery<T>(DeleteBuilder statementBuilder) implements ExecutableQuery<T> {
 
         @Override
         public Object execute(QueryExecutionResources<T> ctx) {
             return ctx.executeWithConnection(
-                    deleteBuilder,
+                    statementBuilder,
                     (PreparedStatement ps) -> {
                         try (ps) {
                             return ps.executeUpdate();

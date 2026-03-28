@@ -56,7 +56,13 @@ class QueryDescriptorToDslMapperTest {
     private String buildSql(QueryDescriptor descriptor, Object... args) throws Exception {
         ExecutableQuery<User> mapped = mapper.map(descriptor, args);
         SqlCaptureHelper capture = new SqlCaptureHelper();
-        mapped.statementBuilder().build(capture.getConnection());
+        switch (mapped) {
+            case ExecutableQuery.CountQuery<?> q -> q.statementBuilder().build(capture.getConnection());
+            case ExecutableQuery.ExistsQuery<?> q -> q.statementBuilder().build(capture.getConnection());
+            case ExecutableQuery.EntitySelectQuery<?> q -> q.statementBuilder().build(capture.getConnection());
+            case ExecutableQuery.DeleteQuery<?> q -> q.statementBuilder().build(capture.getConnection());
+            default -> throw new IllegalStateException("Unexpected query type: " + mapped.getClass());
+        }
         return capture.getSql();
     }
 

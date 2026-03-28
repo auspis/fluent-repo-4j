@@ -57,14 +57,6 @@ class ExecutableQueryTest {
 
             assertThat(result).isEqualTo(42L);
         }
-
-        @Test
-        void statementBuilder_returns_select_builder() {
-            SelectBuilder selectBuilder = mock(SelectBuilder.class);
-            ExecutableQuery<Object> query = new ExecutableQuery.CountQuery<>(selectBuilder);
-
-            assertThat(query.statementBuilder()).isSameAs(selectBuilder);
-        }
     }
 
     @Nested
@@ -96,14 +88,6 @@ class ExecutableQueryTest {
             Object result = query.execute(ctx);
 
             assertThat(result).isEqualTo(false);
-        }
-
-        @Test
-        void statementBuilder_returns_select_builder() {
-            SelectBuilder selectBuilder = mock(SelectBuilder.class);
-            ExecutableQuery<Object> query = new ExecutableQuery.ExistsQuery<>(selectBuilder);
-
-            assertThat(query.statementBuilder()).isSameAs(selectBuilder);
         }
     }
 
@@ -146,14 +130,6 @@ class ExecutableQueryTest {
             List<Object> results = (List<Object>) result;
             assertThat(results).isEmpty();
         }
-
-        @Test
-        void statementBuilder_returns_select_builder() {
-            SelectBuilder selectBuilder = mock(SelectBuilder.class);
-            ExecutableQuery<Object> query = new ExecutableQuery.EntitySelectQuery<>(selectBuilder);
-
-            assertThat(query.statementBuilder()).isSameAs(selectBuilder);
-        }
     }
 
     @Nested
@@ -169,14 +145,6 @@ class ExecutableQueryTest {
             Object result = query.execute(ctx);
 
             assertThat(result).isEqualTo(3);
-        }
-
-        @Test
-        void statementBuilder_returns_delete_builder() {
-            DeleteBuilder deleteBuilder = mock(DeleteBuilder.class);
-            ExecutableQuery<Object> query = new ExecutableQuery.DeleteQuery<>(deleteBuilder);
-
-            assertThat(query.statementBuilder()).isSameAs(deleteBuilder);
         }
     }
 }
