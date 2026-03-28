@@ -77,10 +77,10 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
     @Override
     public Object execute(Object[] parameters) {
         Object[] args = parameters != null ? parameters : new Object[0];
-        MappedQuery mapped = dslMapper.map(descriptor, args);
-        return switch (mapped) {
-            case MappedQuery.SelectResult sr -> executeSelect(sr, args);
-            case MappedQuery.DeleteResult dr -> executeDelete(dr);
+        MappedQuery runner = dslMapper.map(descriptor, args);
+        return switch (runner) {
+            case MappedQuery.Select sr -> executeSelect(sr, args);
+            case MappedQuery.Delete dr -> executeDelete(dr);
         };
     }
 
@@ -91,7 +91,7 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
 
     // ---- SELECT ----
 
-    private Object executeSelect(MappedQuery.SelectResult sr, Object[] parameters) {
+    private Object executeSelect(MappedQuery.Select sr, Object[] parameters) {
         QueryOperation op = descriptor.operation();
 
         if (op == QueryOperation.COUNT) {
@@ -127,7 +127,7 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
         return results.isEmpty() ? null : results.get(0);
     }
 
-    private long executeCount(MappedQuery.SelectResult sr) {
+    private long executeCount(MappedQuery.Select sr) {
         Connection conn = connectionProvider.getConnection();
         try {
             PreparedStatement ps = sr.buildStatement(conn);
@@ -143,9 +143,9 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
         }
     }
 
-    private Page<T> executePageQuery(MappedQuery.SelectResult sr, Object[] parameters) {
+    private Page<T> executePageQuery(MappedQuery.Select sr, Object[] parameters) {
         // Build a count-only query using the same WHERE clause
-        long total = executeCountForPage(sr);
+        long total = executeCountForPage(parameters);
         Pageable pageable = extractPageable(parameters);
 
         if (total == 0) {
@@ -156,13 +156,13 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
         return new PageImpl<>(content, pageable != null ? pageable : Pageable.unpaged(), total);
     }
 
-    private Slice<T> executeSliceQuery(MappedQuery.SelectResult sr, Object[] parameters) {
+    private Slice<T> executeSliceQuery(MappedQuery.Select sr, Object[] parameters) {
         Pageable pageable = extractPageable(parameters);
         List<T> content = executeList(sr);
         return new SliceImpl<>(content, pageable != null ? pageable : Pageable.unpaged(), !content.isEmpty());
     }
 
-    private long executeCountForPage(MappedQuery.SelectResult sr) {
+    private long executeCountForPage(Object[] parameters) {
         // Rebuild as a COUNT query using the same WHERE clause (no ORDER BY or FETCH)
         QueryDescriptor countDescriptor = new QueryDescriptor(
                 QueryOperation.COUNT,
@@ -173,14 +173,14 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
                 descriptor.pageableParamIndex(),
                 descriptor.sortParamIndex());
 
-        MappedQuery countMapped = dslMapper.map(countDescriptor, sr.args());
-        if (countMapped instanceof MappedQuery.SelectResult csr) {
+        MappedQuery countMapped = dslMapper.map(countDescriptor, parameters);
+        if (countMapped instanceof MappedQuery.Select csr) {
             return executeCount(csr);
         }
         return 0;
     }
 
-    private List<T> executeList(MappedQuery.SelectResult sr) {
+    private List<T> executeList(MappedQuery.Select sr) {
         Connection conn = connectionProvider.getConnection();
         try {
             PreparedStatement ps = sr.buildStatement(conn);
@@ -202,10 +202,10 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
 
     // ---- DELETE ----
 
-    private Object executeDelete(MappedQuery.DeleteResult dr) {
+    private Object executeDelete(MappedQuery.Delete dr) {
         Connection conn = connectionProvider.getConnection();
         try {
-            PreparedStatement ps = dr.delete().build(conn);
+            PreparedStatement ps = dr.buildStatement(conn);
             try (ps) {
                 int affected = ps.executeUpdate();
                 Class<?> returnType = queryMethod.getReturnedObjectType();

@@ -8,6 +8,7 @@ import io.github.auspis.fluentsql4j.ast.core.predicate.Predicate;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.clause.LogicalCombinator;
 import io.github.auspis.fluentsql4j.dsl.delete.DeleteBuilder;
+import io.github.auspis.fluentsql4j.dsl.select.OrderByBuilder;
 import io.github.auspis.fluentsql4j.dsl.select.SelectBuilder;
 
 import java.util.ArrayList;
@@ -73,7 +74,32 @@ public interface MappedQueryStrategy<T, ID> {
                 }
             }
 
-            return new MappedQuery.SelectResult(selectBuilder, orderByClauses, descriptor, args);
+            // Apply ORDER BY and FETCH/OFFSET — builder is fully configured here
+            if (!orderByClauses.isEmpty()) {
+                OrderByBuilder orderByBuilder = selectBuilder.orderBy();
+                for (OrderByClause clause : orderByClauses) {
+                    orderByBuilder = clause.direction() == Sort.Direction.ASC
+                            ? orderByBuilder.asc(clause.columnName())
+                            : orderByBuilder.desc(clause.columnName());
+                }
+                Pageable pageable = extractPageable(descriptor, args);
+                if (pageable != null && pageable.isPaged()) {
+                    selectBuilder = orderByBuilder.fetch(pageable.getPageSize()).offset(pageable.getOffset());
+                } else if (descriptor.maxResults() != null) {
+                    selectBuilder = orderByBuilder.fetch(descriptor.maxResults());
+                } else {
+                    selectBuilder = orderByBuilder.done();
+                }
+            } else {
+                Pageable pageable = extractPageable(descriptor, args);
+                if (pageable != null && pageable.isPaged()) {
+                    selectBuilder = selectBuilder.fetch(pageable.getPageSize()).offset(pageable.getOffset());
+                } else if (descriptor.maxResults() != null) {
+                    selectBuilder = selectBuilder.fetch(descriptor.maxResults());
+                }
+            }
+
+            return new MappedQuery.Select(selectBuilder);
         }
 
         private Sort extractSort(QueryDescriptor descriptor, Object[] args) {
@@ -87,6 +113,16 @@ public interface MappedQueryStrategy<T, ID> {
                 Object arg = args[descriptor.sortParamIndex()];
                 if (arg instanceof Sort s) {
                     return s;
+                }
+            }
+            return null;
+        }
+
+        private Pageable extractPageable(QueryDescriptor descriptor, Object[] args) {
+            if (descriptor.pageableParamIndex() >= 0 && args != null && args.length > descriptor.pageableParamIndex()) {
+                Object arg = args[descriptor.pageableParamIndex()];
+                if (arg instanceof Pageable p) {
+                    return p;
                 }
             }
             return null;
@@ -121,7 +157,7 @@ public interface MappedQueryStrategy<T, ID> {
                 delete = delete.addWhereCondition(where, LogicalCombinator.AND);
             }
 
-            return new MappedQuery.DeleteResult(delete);
+            return new MappedQuery.Delete(delete);
         }
     }
 }

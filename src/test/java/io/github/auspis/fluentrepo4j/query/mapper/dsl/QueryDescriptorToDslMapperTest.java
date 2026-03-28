@@ -56,8 +56,8 @@ class QueryDescriptorToDslMapperTest {
         MappedQuery mapped = mapper.map(descriptor, args);
         SqlCaptureHelper capture = new SqlCaptureHelper();
         switch (mapped) {
-            case MappedQuery.SelectResult sr -> sr.buildStatement(capture.getConnection());
-            case MappedQuery.DeleteResult dr -> dr.delete().build(capture.getConnection());
+            case MappedQuery.Select sr -> sr.buildStatement(capture.getConnection());
+            case MappedQuery.Delete dr -> dr.buildStatement(capture.getConnection());
         }
         return capture.getSql();
     }
