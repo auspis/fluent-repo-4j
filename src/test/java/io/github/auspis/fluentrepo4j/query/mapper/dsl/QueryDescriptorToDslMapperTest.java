@@ -8,6 +8,7 @@ import io.github.auspis.fluentrepo4j.parse.PartTreeAdapter;
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
 import io.github.auspis.fluentrepo4j.query.QueryOperation;
 import io.github.auspis.fluentrepo4j.query.predicatedescriptor.NullPredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.runtime.ExecutableQuery;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
@@ -53,12 +54,9 @@ class QueryDescriptorToDslMapperTest {
     }
 
     private String buildSql(QueryDescriptor descriptor, Object... args) throws Exception {
-        MappedQuery mapped = mapper.map(descriptor, args);
+        ExecutableQuery<User> mapped = mapper.map(descriptor, args);
         SqlCaptureHelper capture = new SqlCaptureHelper();
-        switch (mapped) {
-            case MappedQuery.Select sr -> sr.buildStatement(capture.getConnection());
-            case MappedQuery.Delete dr -> dr.buildStatement(capture.getConnection());
-        }
+        mapped.statementBuilder().build(capture.getConnection());
         return capture.getSql();
     }
 

@@ -3,6 +3,7 @@ package io.github.auspis.fluentrepo4j.query.mapper.dsl;
 import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
 import io.github.auspis.fluentrepo4j.query.QueryOperation;
+import io.github.auspis.fluentrepo4j.query.runtime.ExecutableQuery;
 import io.github.auspis.fluentsql4j.ast.core.expression.function.string.UnaryString;
 import io.github.auspis.fluentsql4j.ast.core.predicate.Between;
 import io.github.auspis.fluentsql4j.ast.core.predicate.Comparison;
@@ -15,7 +16,6 @@ import io.github.auspis.fluentsql4j.dsl.delete.DeleteBuilder;
 import io.github.auspis.fluentsql4j.dsl.select.SelectBuilder;
 import io.github.auspis.fluentsql4j.dsl.util.LiteralUtil;
 
-import java.sql.PreparedStatement;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -51,14 +51,14 @@ public final class QueryDescriptorToDslMapper<T, ID> {
     }
 
     /**
-     * Builds and returns a {@link MappedQuery} containing all information needed to
-     * produce a {@link PreparedStatement} for the given descriptor and runtime arguments.
+     * Builds and returns an {@link ExecutableQuery} that is ready to execute
+     * against a database connection.
      *
      * @param descriptor the parsed query descriptor (cached per method)
      * @param args       the runtime method arguments (in method-signature order)
-     * @return a {@link MappedQuery} ready to be built into a PreparedStatement
+     * @return an {@link ExecutableQuery} ready to execute
      */
-    public MappedQuery map(QueryDescriptor descriptor, Object[] args) {
+    public ExecutableQuery<T> map(QueryDescriptor descriptor, Object[] args) {
         return buildStrategies.apply(descriptor.operation()).create(descriptor, args);
     }
 

@@ -3,6 +3,7 @@ package io.github.auspis.fluentrepo4j.query.mapper.dsl;
 import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
 import io.github.auspis.fluentrepo4j.query.OrderByClause;
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
+import io.github.auspis.fluentrepo4j.query.runtime.ExecutableQuery;
 import io.github.auspis.fluentsql4j.ast.core.predicate.NullPredicate;
 import io.github.auspis.fluentsql4j.ast.core.predicate.Predicate;
 import io.github.auspis.fluentsql4j.dsl.DSL;
@@ -14,6 +15,7 @@ import io.github.auspis.fluentsql4j.dsl.select.SelectBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
@@ -21,7 +23,10 @@ public interface MappedQueryStrategy<T, ID> {
 
     public static <T, ID> MappedQueryStrategy<T, ID> select(DSL dsl, PropertyMetadataProvider<T, ID> metadataProvider) {
         return new SelectMappedQueryStrategy<>(
-                dsl, metadataProvider, (d, m) -> d.selectAll().from(m.getTableName()));
+                dsl,
+                metadataProvider,
+                (d, m) -> d.selectAll().from(m.getTableName()),
+                ExecutableQuery.EntitySelectQuery::new);
     }
 
     public static <T, ID> MappedQueryStrategy<T, ID> delete(DSL dsl, PropertyMetadataProvider<T, ID> metadataProvider) {
@@ -30,32 +35,42 @@ public interface MappedQueryStrategy<T, ID> {
 
     public static <T, ID> MappedQueryStrategy<T, ID> count(DSL dsl, PropertyMetadataProvider<T, ID> metadataProvider) {
         return new SelectMappedQueryStrategy<>(
-                dsl, metadataProvider, (d, m) -> d.select().countStar().from(m.getTableName()));
+                dsl,
+                metadataProvider,
+                (d, m) -> d.select().countStar().from(m.getTableName()),
+                ExecutableQuery.CountQuery::new);
     }
 
     public static <T, ID> MappedQueryStrategy<T, ID> exists(DSL dsl, PropertyMetadataProvider<T, ID> metadataProvider) {
-        return count(dsl, metadataProvider);
+        return new SelectMappedQueryStrategy<>(
+                dsl,
+                metadataProvider,
+                (d, m) -> d.select().countStar().from(m.getTableName()),
+                ExecutableQuery.ExistsQuery::new);
     }
 
-    public MappedQuery create(QueryDescriptor descriptor, Object[] args);
+    ExecutableQuery<T> create(QueryDescriptor descriptor, Object[] args);
 
     public static class SelectMappedQueryStrategy<T, ID> implements MappedQueryStrategy<T, ID> {
 
-        private DSL dsl;
-        private PropertyMetadataProvider<T, ID> metadataProvider;
-        private BiFunction<DSL, PropertyMetadataProvider<T, ID>, SelectBuilder> selectBuilderFunction;
+        private final DSL dsl;
+        private final PropertyMetadataProvider<T, ID> metadataProvider;
+        private final BiFunction<DSL, PropertyMetadataProvider<T, ID>, SelectBuilder> selectBuilderFunction;
+        private final Function<SelectBuilder, ExecutableQuery<T>> queryWrapper;
 
         private SelectMappedQueryStrategy(
                 DSL dsl,
                 PropertyMetadataProvider<T, ID> metadataProvider,
-                BiFunction<DSL, PropertyMetadataProvider<T, ID>, SelectBuilder> selectBuilderSupplier) {
+                BiFunction<DSL, PropertyMetadataProvider<T, ID>, SelectBuilder> selectBuilderSupplier,
+                Function<SelectBuilder, ExecutableQuery<T>> queryWrapper) {
             this.dsl = dsl;
             this.metadataProvider = metadataProvider;
             this.selectBuilderFunction = selectBuilderSupplier;
+            this.queryWrapper = queryWrapper;
         }
 
         @Override
-        public MappedQuery create(QueryDescriptor descriptor, Object[] args) {
+        public ExecutableQuery<T> create(QueryDescriptor descriptor, Object[] args) {
             SelectBuilder selectBuilder = selectBuilderFunction.apply(dsl, metadataProvider);
 
             // Apply WHERE predicates
@@ -99,7 +114,7 @@ public interface MappedQueryStrategy<T, ID> {
                 }
             }
 
-            return new MappedQuery.Select(selectBuilder);
+            return queryWrapper.apply(selectBuilder);
         }
 
         private Sort extractSort(QueryDescriptor descriptor, Object[] args) {
@@ -139,8 +154,8 @@ public interface MappedQueryStrategy<T, ID> {
 
     public static class DeleteMappedQueryStrategy<T, ID> implements MappedQueryStrategy<T, ID> {
 
-        private DSL dsl;
-        private PropertyMetadataProvider<T, ID> metadataProvider;
+        private final DSL dsl;
+        private final PropertyMetadataProvider<T, ID> metadataProvider;
 
         private DeleteMappedQueryStrategy(DSL dsl, PropertyMetadataProvider<T, ID> metadataProvider) {
             this.dsl = dsl;
@@ -148,7 +163,7 @@ public interface MappedQueryStrategy<T, ID> {
         }
 
         @Override
-        public MappedQuery create(QueryDescriptor descriptor, Object[] args) {
+        public ExecutableQuery<T> create(QueryDescriptor descriptor, Object[] args) {
             String table = metadataProvider.getTableName();
             DeleteBuilder delete = dsl.deleteFrom(table);
 
@@ -157,7 +172,7 @@ public interface MappedQueryStrategy<T, ID> {
                 delete = delete.addWhereCondition(where, LogicalCombinator.AND);
             }
 
-            return new MappedQuery.Delete(delete);
+            return new ExecutableQuery.DeleteQuery<>(delete);
         }
     }
 }
