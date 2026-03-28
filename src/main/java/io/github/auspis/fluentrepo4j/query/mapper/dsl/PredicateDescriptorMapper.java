@@ -1,10 +1,10 @@
 package io.github.auspis.fluentrepo4j.query.mapper.dsl;
 
 import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.CompositePredicateDescriptor;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.NullPredicateDescriptor;
 import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PropertyPredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.CompositePredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.NullPredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.PropertyPredicateDescriptor;
 import io.github.auspis.fluentsql4j.ast.core.expression.ValueExpression;
 import io.github.auspis.fluentsql4j.ast.core.expression.function.string.UnaryString;
 import io.github.auspis.fluentsql4j.ast.core.expression.scalar.ColumnReference;

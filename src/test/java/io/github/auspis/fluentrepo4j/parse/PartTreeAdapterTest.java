@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
 import io.github.auspis.fluentrepo4j.query.QueryOperation;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.CompositePredicateDescriptor;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.CompositePredicateDescriptor.CompositeType;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.CompositePredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.CompositePredicateDescriptor.CompositeType;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.PropertyPredicateDescriptor;
 import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptorOperator;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PropertyPredicateDescriptor;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.ast.dql.clause.Sorting;
 

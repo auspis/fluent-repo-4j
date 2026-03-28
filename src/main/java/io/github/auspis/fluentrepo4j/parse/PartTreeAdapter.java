@@ -3,12 +3,12 @@ package io.github.auspis.fluentrepo4j.parse;
 import io.github.auspis.fluentrepo4j.query.OrderByClause;
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
 import io.github.auspis.fluentrepo4j.query.QueryOperation;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.CompositePredicateDescriptor;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.CompositePredicateDescriptor.CompositeType;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.NullPredicateDescriptor;
 import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.CompositePredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.CompositePredicateDescriptor.CompositeType;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.NullPredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.PropertyPredicateDescriptor;
 import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptorOperator;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PropertyPredicateDescriptor;
 import io.github.auspis.fluentsql4j.ast.dql.clause.Sorting;
 
 import java.lang.reflect.Method;
@@ -21,7 +21,21 @@ import org.springframework.data.repository.query.parser.Part;
 import org.springframework.data.repository.query.parser.PartTree;
 
 /**
- * Converts a Spring Data {@link PartTree} (derived from a repository method name)
+ * Converts a Spring Data {@link PartTre
+ *
+ * import java.lang.reflect.Method;
+ * import java.util.ArrayList;
+ * import java.util.List;
+ *
+ * import org.springframework.data.domain.Sort;
+ * import org.springframework.data.repository.quethub.auspis.fluentrepo4j.query.QueryDescriptor;
+ * import io.github.auspis.fluentrepo4j
+ * import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.CompositePredicateDescriptor;
+ * import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.CompositePredicateDescriptor.CompositeType;
+ * import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.NullPredicateDescriptor;
+ * import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.PropertyPredicateDescriptor;.query.QueryOperation;
+ * import io.github.auspis.fluentrepo4j.query.predicatedescriptor.Prediciptor.CompositePredicateDescriptor;
+ * import io.github.auspis.e} (derived from a repository method name)
  * into a neutral {@link QueryDescriptor}.
  *
  * <p>Usage:

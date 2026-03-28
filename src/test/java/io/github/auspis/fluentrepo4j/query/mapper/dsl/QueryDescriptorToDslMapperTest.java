@@ -8,7 +8,7 @@ import io.github.auspis.fluentrepo4j.parse.PartTreeAdapter;
 import io.github.auspis.fluentrepo4j.query.QueryDescriptor;
 import io.github.auspis.fluentrepo4j.query.QueryOperation;
 import io.github.auspis.fluentrepo4j.query.QueryRuntimeParams;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.NullPredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.NullPredicateDescriptor;
 import io.github.auspis.fluentrepo4j.query.runtime.ExecutableQuery;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;

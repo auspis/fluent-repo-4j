@@ -4,11 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.CompositePredicateDescriptor;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.CompositePredicateDescriptor.CompositeType;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.NullPredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.CompositePredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.CompositePredicateDescriptor.CompositeType;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.NullPredicateDescriptor;
+import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptor.PropertyPredicateDescriptor;
 import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PredicateDescriptorOperator;
-import io.github.auspis.fluentrepo4j.query.predicatedescriptor.PropertyPredicateDescriptor;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.ast.core.predicate.AndOr;
 import io.github.auspis.fluentsql4j.ast.core.predicate.Between;
