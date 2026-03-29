@@ -2,19 +2,19 @@ package io.github.auspis.fluentrepo4j.repository.context;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 class FluentRepositoryContextTest {
 
     @Test
-    void constructionWithValidArguments() {
-        DSL dsl = mock(DSL.class);
-        FluentConnectionProvider provider = mock(FluentConnectionProvider.class);
+    void constructionOk() {
+        DSL dsl = Mockito.mock(DSL.class);
+        FluentConnectionProvider provider = Mockito.mock(FluentConnectionProvider.class);
 
         FluentRepositoryContext context = new FluentRepositoryContext(dsl, provider);
 
@@ -23,8 +23,8 @@ class FluentRepositoryContextTest {
     }
 
     @Test
-    void nullDslThrowsNullPointerException() {
-        FluentConnectionProvider provider = mock(FluentConnectionProvider.class);
+    void constructionNullDsl() {
+        FluentConnectionProvider provider = Mockito.mock(FluentConnectionProvider.class);
 
         assertThatThrownBy(() -> new FluentRepositoryContext(null, provider))
                 .isInstanceOf(NullPointerException.class)
@@ -32,8 +32,8 @@ class FluentRepositoryContextTest {
     }
 
     @Test
-    void nullConnectionProviderThrowsNullPointerException() {
-        DSL dsl = mock(DSL.class);
+    void constructionNullConnectionProvider() {
+        DSL dsl = Mockito.mock(DSL.class);
 
         assertThatThrownBy(() -> new FluentRepositoryContext(dsl, null))
                 .isInstanceOf(NullPointerException.class)
@@ -41,22 +41,21 @@ class FluentRepositoryContextTest {
     }
 
     @Test
-    void equalityForSameComponents() {
-        DSL dsl = mock(DSL.class);
-        FluentConnectionProvider provider = mock(FluentConnectionProvider.class);
+    void equalityOk() {
+        DSL dsl = Mockito.mock(DSL.class);
+        FluentConnectionProvider provider = Mockito.mock(FluentConnectionProvider.class);
 
         FluentRepositoryContext context1 = new FluentRepositoryContext(dsl, provider);
         FluentRepositoryContext context2 = new FluentRepositoryContext(dsl, provider);
 
-        assertThat(context1).isEqualTo(context2);
-        assertThat(context1.hashCode()).isEqualTo(context2.hashCode());
+        assertThat(context1).isEqualTo(context2).hasSameHashCodeAs(context2);
     }
 
     @Test
-    void inequalityForDifferentComponents() {
-        DSL dsl1 = mock(DSL.class);
-        DSL dsl2 = mock(DSL.class);
-        FluentConnectionProvider provider = mock(FluentConnectionProvider.class);
+    void equalityKo() {
+        DSL dsl1 = Mockito.mock(DSL.class);
+        DSL dsl2 = Mockito.mock(DSL.class);
+        FluentConnectionProvider provider = Mockito.mock(FluentConnectionProvider.class);
 
         FluentRepositoryContext context1 = new FluentRepositoryContext(dsl1, provider);
         FluentRepositoryContext context2 = new FluentRepositoryContext(dsl2, provider);

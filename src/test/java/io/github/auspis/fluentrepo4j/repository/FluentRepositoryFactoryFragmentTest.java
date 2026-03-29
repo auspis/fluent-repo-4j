@@ -1,9 +1,7 @@
 package io.github.auspis.fluentrepo4j.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.repository.context.FluentRepositoryContext;
@@ -12,6 +10,7 @@ import io.github.auspis.fluentsql4j.dsl.DSL;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.springframework.data.repository.core.support.RepositoryComposition.RepositoryFragments;
 import org.springframework.data.repository.core.support.RepositoryFragment;
 
@@ -22,12 +21,12 @@ import org.springframework.data.repository.core.support.RepositoryFragment;
  */
 class FluentRepositoryFactoryFragmentTest {
 
-    private final DSL dsl = mock(DSL.class);
-    private final FluentConnectionProvider connectionProvider = mock(FluentConnectionProvider.class);
+    private final DSL dsl = Mockito.mock(DSL.class);
+    private final FluentConnectionProvider connectionProvider = Mockito.mock(FluentConnectionProvider.class);
     private final FluentRepositoryFactory factory = new FluentRepositoryFactory(connectionProvider, dsl);
 
     @Test
-    void awareFragmentReceivesContext() {
+    void awareFragment() {
         AwareFragment aware = new AwareFragment();
         RepositoryFragments fragments = RepositoryFragments.of(RepositoryFragment.implemented(aware));
 
@@ -39,44 +38,44 @@ class FluentRepositoryFactoryFragmentTest {
     }
 
     @Test
-    void nonAwareFragmentNotInjected() {
-        NonAwareFragment nonAware = mock(NonAwareFragment.class);
+    void nonAwareFragment() {
+        NonAwareFragment nonAware = Mockito.mock(NonAwareFragment.class);
         RepositoryFragments fragments = RepositoryFragments.of(RepositoryFragment.implemented(nonAware));
 
         factory.injectFluentContext(fragments);
 
-        verifyNoInteractions(nonAware);
+        Mockito.verifyNoInteractions(nonAware);
     }
 
     @Test
-    void mixedFragmentsOnlyAwareOnesInjected() {
+    void mixedFragments() {
         AwareFragment aware = new AwareFragment();
-        NonAwareFragment nonAware = mock(NonAwareFragment.class);
+        NonAwareFragment nonAware = Mockito.mock(NonAwareFragment.class);
         RepositoryFragments fragments =
                 RepositoryFragments.of(RepositoryFragment.implemented(aware), RepositoryFragment.implemented(nonAware));
 
         factory.injectFluentContext(fragments);
 
         assertThat(aware.context).isNotNull();
-        verifyNoInteractions(nonAware);
+        Mockito.verifyNoInteractions(nonAware);
     }
 
     @Test
-    void emptyFragmentsDoesNotFail() {
+    void emptyFragments() {
         RepositoryFragments fragments = RepositoryFragments.empty();
 
-        factory.injectFluentContext(fragments);
+        assertDoesNotThrow(() -> factory.injectFluentContext(fragments));
     }
 
     @Test
     void injectedContextCarriesCorrectInstances() {
-        SpyAwareFragment spy = mock(SpyAwareFragment.class);
+        SpyAwareFragment spy = Mockito.mock(SpyAwareFragment.class);
         RepositoryFragments fragments = RepositoryFragments.of(RepositoryFragment.implemented(spy));
 
         factory.injectFluentContext(fragments);
 
         ArgumentCaptor<FluentRepositoryContext> captor = ArgumentCaptor.forClass(FluentRepositoryContext.class);
-        verify(spy).setFluentRepositoryContext(captor.capture());
+        Mockito.verify(spy).setFluentRepositoryContext(captor.capture());
         FluentRepositoryContext injected = captor.getValue();
         assertThat(injected.dsl()).isSameAs(dsl);
         assertThat(injected.connectionProvider()).isSameAs(connectionProvider);
