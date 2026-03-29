@@ -14,14 +14,19 @@ import java.util.List;
 
 /**
  * Custom fragment implementation that uses {@link FluentRepositoryContextAware}
- * to receive the repository-specific DSL and connection provider.
+ * to receive the repository-specific DSL, connection provider, and entity row mapper.
  */
-public class UserCustomQueriesImpl implements UserCustomQueries, FluentRepositoryContextAware {
+public class UserCustomQueriesImpl implements UserCustomQueries, FluentRepositoryContextAware<User> {
 
-    private FluentRepositoryContext context;
+    private FluentRepositoryContext<User> context;
 
     @Override
-    public void setFluentRepositoryContext(FluentRepositoryContext context) {
+    public FluentRepositoryContext<User> getFluentRepositoryContext() {
+        return context;
+    }
+
+    @Override
+    public void setFluentRepositoryContext(FluentRepositoryContext<User> context) {
         this.context = context;
     }
 
@@ -40,11 +45,7 @@ public class UserCustomQueriesImpl implements UserCustomQueries, FluentRepositor
                     ResultSet rs = ps.executeQuery()) {
                 List<User> results = new ArrayList<>();
                 while (rs.next()) {
-                    User user = new User(rs.getString("name"), rs.getString("email"));
-                    user.setId(rs.getLong("id"));
-                    user.setAge(rs.getObject("age") != null ? rs.getInt("age") : null);
-                    user.setActive(rs.getObject("active") != null ? rs.getBoolean("active") : null);
-                    results.add(user);
+                    results.add(context.rowMapper().mapRow(rs, rs.getRow()));
                 }
                 return results;
             }
@@ -80,7 +81,7 @@ public class UserCustomQueriesImpl implements UserCustomQueries, FluentRepositor
     }
 
     /** Exposes the injected context for test assertions. */
-    public FluentRepositoryContext getContext() {
+    public FluentRepositoryContext<User> getContext() {
         return context;
     }
 }

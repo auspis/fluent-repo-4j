@@ -289,15 +289,20 @@ public interface UserCustomQueries {
 
 ### 2. Implement the Fragment with Fluent DSL
 
-Implement `FluentRepositoryContextAware` to receive the repository-specific DSL and connection provider:
+Implement `FluentRepositoryContextAware<User>` to receive the repository-specific DSL, connection provider, row mapper, and entity writer:
 
 ```java
-public class UserCustomQueriesImpl implements UserCustomQueries, FluentRepositoryContextAware {
+public class UserCustomQueriesImpl implements UserCustomQueries, FluentRepositoryContextAware<User> {
 
-    private FluentRepositoryContext context;
+    private FluentRepositoryContext<User> context;
 
     @Override
-    public void setFluentRepositoryContext(FluentRepositoryContext context) {
+    public FluentRepositoryContext<User> getFluentRepositoryContext() {
+        return context;
+    }
+
+    @Override
+    public void setFluentRepositoryContext(FluentRepositoryContext<User> context) {
         this.context = context;
     }
 
@@ -313,7 +318,7 @@ public class UserCustomQueriesImpl implements UserCustomQueries, FluentRepositor
             try (ps; ResultSet rs = ps.executeQuery()) {
                 List<User> results = new ArrayList<>();
                 while (rs.next()) {
-                    results.add(new User(rs.getString("name"), rs.getString("email")));
+                    results.add(context.rowMapper().mapRow(rs, rs.getRow()));
                 }
                 return results;
             }
@@ -358,7 +363,9 @@ public interface UserRepository extends CrudRepository<User, Long>, UserCustomQu
 
 - **Naming convention**: The implementation class must be named `{FragmentInterface}Impl` (e.g., `UserCustomQueriesImpl`). Customizable via `@EnableFluentRepositories(repositoryImplementationPostfix = "Custom")`.
 - **Opt-in**: `FluentRepositoryContextAware` is optional. Fragments that don't implement it work normally — the injection is a no-op.
-- **Multi-datasource safe**: Each fragment receives the `FluentRepositoryContext` (DSL + connection provider) bound to its repository group. In multi-datasource setups, fragments on `@EnableFluentRepositories(dataSourceRef = "primary")` get the primary DSL, and fragments on `dataSourceRef = "secondary"` get the secondary DSL automatically.
+- **Type-safe mapping**: The context provides `rowMapper()` and `writer()` typed to your entity, eliminating manual `ResultSet` mapping.
+- **Multi-datasource safe**: Each fragment receives the `FluentRepositoryContext` (DSL + connection provider + entity mapper/writer) bound to its repository group. In multi-datasource setups, fragments on `@EnableFluentRepositories(dataSourceRef = "primary")` get the primary DSL, and fragments on `dataSourceRef = "secondary"` get the secondary DSL automatically.
+- **Singleton overwrite protection**: If a fragment bean is shared across repository groups with different datasources, an `IllegalStateException` is thrown at bootstrap time to prevent silent datasource mismatch.
 - **Multiple fragments**: A single repository can extend multiple fragment interfaces, mixing aware and non-aware fragments.
 
 ---
@@ -401,21 +408,21 @@ How does the library work?
 
 ## Supported vs Not Supported
 
-|                                Feature                                 |     Status      |                                           Notes                                           |
-|------------------------------------------------------------------------|-----------------|-------------------------------------------------------------------------------------------|
-| CRUD operations (`save`, `findById`, `findAll`, `count`, `deleteById`) | ✅ Supported     | Core functionality built-in                                                               |
-| `@Transactional` integration                                           | ✅ Supported     | Automatic connection binding via Spring                                                   |
-| `@GeneratedValue(IDENTITY)`                                            | ✅ Supported     | Database auto-increment IDs                                                               |
-| Application-provided IDs                                               | ✅ Supported     | Set ID before `save()`                                                                    |
-| `Persistable<ID>` for custom `isNew()` logic                           | ✅ Supported     | Fine-grained control over insert/update                                                   |
-| Simple entity mapping (Jakarta Persistence annotations)                | ✅ Supported     | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient`                               |
-| Exception translation to `DataAccessException`                         | ✅ Supported     | Automatic SQL exception handling                                                          |
-| Multi-datasource repository groups                                     | ✅ Supported     | Configure one `@EnableFluentRepositories` block per repository group                      |
-| Custom query methods via fragments                                     | ✅ Supported     | Implement `FluentRepositoryContextAware` fragments for DSL-powered custom queries         |
-| Query method derivation (e.g., PartTree)                               | ✅ Supported     | Implement `FluentRepositoryContextAware` fragments for DSL-powered custom queries release |
-| Object relationships (one-to-many, many-to-many)                       | ❌ Not Supported | Use separate repositories and explicit queries                                            |
-| `@GeneratedValue(SEQUENCE)`                                            | ❌ Not Supported | Planned for future release                                                                |
-| Persistence context / first-level cache                                | ❌ Not Supported | Not applicable to JDBC; each query returns fresh objects                                  |
+|                                Feature                                 |     Status      |                                                    Notes                                                    |
+|------------------------------------------------------------------------|-----------------|-------------------------------------------------------------------------------------------------------------|
+| CRUD operations (`save`, `findById`, `findAll`, `count`, `deleteById`) | ✅ Supported     | Core functionality built-in                                                                                 |
+| `@Transactional` integration                                           | ✅ Supported     | Automatic connection binding via Spring                                                                     |
+| `@GeneratedValue(IDENTITY)`                                            | ✅ Supported     | Database auto-increment IDs                                                                                 |
+| Application-provided IDs                                               | ✅ Supported     | Set ID before `save()`                                                                                      |
+| `Persistable<ID>` for custom `isNew()` logic                           | ✅ Supported     | Fine-grained control over insert/update                                                                     |
+| Simple entity mapping (Jakarta Persistence annotations)                | ✅ Supported     | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient`                                                 |
+| Exception translation to `DataAccessException`                         | ✅ Supported     | Automatic SQL exception handling                                                                            |
+| Multi-datasource repository groups                                     | ✅ Supported     | Configure one `@EnableFluentRepositories` block per repository group                                        |
+| Custom query methods via fragments                                     | ✅ Supported     | Implement `FluentRepositoryContextAware<T>` fragments for DSL-powered custom queries with type-safe mapping |
+| Query method derivation (e.g., PartTree)                               | ✅ Supported     | Implement `FluentRepositoryContextAware` fragments for DSL-powered custom queries release                   |
+| Object relationships (one-to-many, many-to-many)                       | ❌ Not Supported | Use separate repositories and explicit queries                                                              |
+| `@GeneratedValue(SEQUENCE)`                                            | ❌ Not Supported | Planned for future release                                                                                  |
+| Persistence context / first-level cache                                | ❌ Not Supported | Not applicable to JDBC; each query returns fresh objects                                                    |
 
 ---
 
@@ -423,7 +430,7 @@ How does the library work?
 
 This library focuses on **simple CRUD operations for single entities**. Be aware of the following:
 
-1. **Custom queries via fragment convention**: Complex queries beyond CRUD and derived methods are supported by implementing Spring Data custom fragments. Fragment implementations can opt-in to receive the repository-specific `FluentRepositoryContext` (DSL + connection provider) via `FluentRepositoryContextAware`. See the [Custom Query Fragments](#custom-query-fragments) section.
+1. **Custom queries via fragment convention**: Complex queries beyond CRUD and derived methods are supported by implementing Spring Data custom fragments. Fragment implementations can opt-in to receive the repository-specific `FluentRepositoryContext<T>` (DSL + connection provider + row mapper + writer) via `FluentRepositoryContextAware<T>`. See the [Custom Query Fragments](#custom-query-fragments) section.
 
 2. **No relationships**: The library does not load related entities automatically. If you need `User` with all their `Orders`, execute two separate queries and compose the result in application code.
 

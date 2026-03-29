@@ -416,13 +416,18 @@ public interface UserCustomQueries {
     List<User> findUsersByNameContaining(String namePart);
 }
 
-// Step 2: Implement with FluentRepositoryContextAware
-public class UserCustomQueriesImpl implements UserCustomQueries, FluentRepositoryContextAware {
+// Step 2: Implement with FluentRepositoryContextAware<User>
+public class UserCustomQueriesImpl implements UserCustomQueries, FluentRepositoryContextAware<User> {
 
-    private FluentRepositoryContext context;
+    private FluentRepositoryContext<User> context;
 
     @Override
-    public void setFluentRepositoryContext(FluentRepositoryContext context) {
+    public FluentRepositoryContext<User> getFluentRepositoryContext() {
+        return context;
+    }
+
+    @Override
+    public void setFluentRepositoryContext(FluentRepositoryContext<User> context) {
         this.context = context;
     }
 
@@ -438,7 +443,8 @@ public class UserCustomQueriesImpl implements UserCustomQueries, FluentRepositor
             try (ps; ResultSet rs = ps.executeQuery()) {
                 List<User> results = new ArrayList<>();
                 while (rs.next()) {
-                    results.add(new User(rs.getString("name"), rs.getString("email")));
+                    // Type-safe mapping — no manual ResultSet extraction needed
+                    results.add(context.rowMapper().mapRow(rs, rs.getRow()));
                 }
                 return results;
             }
@@ -456,7 +462,7 @@ public interface UserRepository extends CrudRepository<User, Long>, UserCustomQu
 
 ### Multi-DataSource Fragment Isolation
 
-In a multi-datasource setup, each fragment automatically receives the DSL and connection provider bound to its repository group:
+In a multi-datasource setup, each fragment automatically receives the DSL, connection provider, and entity mapper/writer bound to its repository group:
 
 ```java
 // Primary database group
@@ -466,8 +472,8 @@ In a multi-datasource setup, each fragment automatically receives the DSL and co
 class PrimaryConfig {}
 
 public interface PrimaryCustomQueries { /* queries against primary DB */ }
-public class PrimaryCustomQueriesImpl implements PrimaryCustomQueries, FluentRepositoryContextAware {
-    // Receives primary DSL and connection provider
+public class PrimaryCustomQueriesImpl implements PrimaryCustomQueries, FluentRepositoryContextAware<User> {
+    // Receives primary DSL, connection provider, row mapper and writer
 }
 public interface PrimaryUserRepository extends CrudRepository<User, Long>, PrimaryCustomQueries {}
 
@@ -478,11 +484,13 @@ public interface PrimaryUserRepository extends CrudRepository<User, Long>, Prima
 class SecondaryConfig {}
 
 public interface SecondaryCustomQueries { /* queries against secondary DB */ }
-public class SecondaryCustomQueriesImpl implements SecondaryCustomQueries, FluentRepositoryContextAware {
-    // Receives secondary DSL and connection provider — complete isolation
+public class SecondaryCustomQueriesImpl implements SecondaryCustomQueries, FluentRepositoryContextAware<User> {
+    // Receives secondary DSL, connection provider — complete isolation
 }
 public interface SecondaryUserRepository extends CrudRepository<User, Long>, SecondaryCustomQueries {}
 ```
+
+**Note:** Sharing the same fragment bean across repository groups with different datasources is not allowed. The framework detects this at bootstrap time and throws an `IllegalStateException`.
 
 ### Non-Aware Fragments
 

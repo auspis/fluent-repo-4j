@@ -14,12 +14,17 @@ import java.util.List;
 /**
  * Custom fragment implementation for the secondary datasource.
  */
-public class SecondaryCustomQueriesImpl implements SecondaryCustomQueries, FluentRepositoryContextAware {
+public class SecondaryCustomQueriesImpl implements SecondaryCustomQueries, FluentRepositoryContextAware<User> {
 
-    private FluentRepositoryContext context;
+    private FluentRepositoryContext<User> context;
 
     @Override
-    public void setFluentRepositoryContext(FluentRepositoryContext context) {
+    public FluentRepositoryContext<User> getFluentRepositoryContext() {
+        return context;
+    }
+
+    @Override
+    public void setFluentRepositoryContext(FluentRepositoryContext<User> context) {
         this.context = context;
     }
 
@@ -38,9 +43,7 @@ public class SecondaryCustomQueriesImpl implements SecondaryCustomQueries, Fluen
                     ResultSet rs = ps.executeQuery()) {
                 List<User> results = new ArrayList<>();
                 while (rs.next()) {
-                    User user = new User(rs.getString("name"), rs.getString("email"));
-                    user.setId(rs.getLong("id"));
-                    results.add(user);
+                    results.add(context.rowMapper().mapRow(rs, rs.getRow()));
                 }
                 return results;
             }
@@ -51,7 +54,7 @@ public class SecondaryCustomQueriesImpl implements SecondaryCustomQueries, Fluen
         }
     }
 
-    public FluentRepositoryContext getContext() {
+    public FluentRepositoryContext<User> getContext() {
         return context;
     }
 }

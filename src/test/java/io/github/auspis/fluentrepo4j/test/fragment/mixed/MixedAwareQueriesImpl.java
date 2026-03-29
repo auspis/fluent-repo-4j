@@ -13,12 +13,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Aware fragment impl — receives Fluent context for DSL queries. */
-public class MixedAwareQueriesImpl implements MixedAwareQueries, FluentRepositoryContextAware {
+public class MixedAwareQueriesImpl implements MixedAwareQueries, FluentRepositoryContextAware<User> {
 
-    private FluentRepositoryContext context;
+    private FluentRepositoryContext<User> context;
 
     @Override
-    public void setFluentRepositoryContext(FluentRepositoryContext context) {
+    public FluentRepositoryContext<User> getFluentRepositoryContext() {
+        return context;
+    }
+
+    @Override
+    public void setFluentRepositoryContext(FluentRepositoryContext<User> context) {
         this.context = context;
     }
 
@@ -37,9 +42,7 @@ public class MixedAwareQueriesImpl implements MixedAwareQueries, FluentRepositor
                     ResultSet rs = ps.executeQuery()) {
                 List<User> results = new ArrayList<>();
                 while (rs.next()) {
-                    User user = new User(rs.getString("name"), rs.getString("email"));
-                    user.setId(rs.getLong("id"));
-                    results.add(user);
+                    results.add(context.rowMapper().mapRow(rs, rs.getRow()));
                 }
                 return results;
             }
@@ -51,7 +54,7 @@ public class MixedAwareQueriesImpl implements MixedAwareQueries, FluentRepositor
     }
 
     /** Exposes the injected context for test assertions. */
-    public FluentRepositoryContext getContext() {
+    public FluentRepositoryContext<User> getContext() {
         return context;
     }
 }

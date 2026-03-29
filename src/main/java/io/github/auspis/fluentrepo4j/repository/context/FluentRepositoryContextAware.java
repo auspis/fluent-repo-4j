@@ -19,6 +19,12 @@ package io.github.auspis.fluentrepo4j.repository.context;
  * This guarantees that custom queries execute against the correct datasource with the correct
  * SQL dialect, even in configurations with multiple datasources.
  *
+ * <h3>Singleton overwrite protection</h3>
+ * <p>If a fragment bean is shared across multiple repository groups that reference different
+ * datasources, the framework detects the conflict at bootstrap time and throws an
+ * {@link IllegalStateException}. This prevents silent datasource mismatch bugs.
+ * To resolve, create a separate fragment implementation per repository group.
+ *
  * <h3>Usage example</h3>
  * <pre>{@code
  * public interface UserRepositoryCustomQueries {
@@ -26,12 +32,17 @@ package io.github.auspis.fluentrepo4j.repository.context;
  * }
  *
  * public class UserRepositoryCustomQueriesImpl
- *         implements UserRepositoryCustomQueries, FluentRepositoryContextAware {
+ *         implements UserRepositoryCustomQueries, FluentRepositoryContextAware<User> {
  *
- *     private FluentRepositoryContext context;
+ *     private FluentRepositoryContext<User> context;
  *
  *     @Override
- *     public void setFluentRepositoryContext(FluentRepositoryContext context) {
+ *     public FluentRepositoryContext<User> getFluentRepositoryContext() {
+ *         return context;
+ *     }
+ *
+ *     @Override
+ *     public void setFluentRepositoryContext(FluentRepositoryContext<User> context) {
  *         this.context = context;
  *     }
  *
@@ -44,7 +55,13 @@ package io.github.auspis.fluentrepo4j.repository.context;
  *                     .where().column("active").eq(true)
  *                     .and().column("address").eq(city)
  *                     .build(conn);
- *             // execute and map results...
+ *             try (ps; ResultSet rs = ps.executeQuery()) {
+ *                 List<User> results = new ArrayList<>();
+ *                 while (rs.next()) {
+ *                     results.add(context.rowMapper().mapRow(rs, rs.getRow()));
+ *                 }
+ *                 return results;
+ *             }
  *         } finally {
  *             context.connectionProvider().releaseConnection(conn);
  *         }
@@ -54,13 +71,23 @@ package io.github.auspis.fluentrepo4j.repository.context;
  *
  * <p><strong>Important:</strong> do not use the context inside the fragment constructor.
  * The context is injected after construction, during repository proxy creation.
+ *
+ * @param <T> the entity type managed by the owning repository
  */
-public interface FluentRepositoryContextAware {
+public interface FluentRepositoryContextAware<T> {
+
+    /**
+     * Returns the previously injected repository context, or {@code null} if
+     * no context has been injected yet.
+     *
+     * @return the fluent repository context, or {@code null}
+     */
+    FluentRepositoryContext<T> getFluentRepositoryContext();
 
     /**
      * Sets the repository-specific context for this fragment implementation.
      *
      * @param context the fluent repository context; never {@code null}
      */
-    void setFluentRepositoryContext(FluentRepositoryContext context);
+    void setFluentRepositoryContext(FluentRepositoryContext<T> context);
 }

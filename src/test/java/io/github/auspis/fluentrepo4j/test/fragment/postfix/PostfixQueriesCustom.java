@@ -16,12 +16,17 @@ import java.util.List;
  * Implementation with "Custom" postfix instead of the default "Impl".
  * Registered when {@code repositoryImplementationPostfix = "Custom"} is configured.
  */
-public class PostfixQueriesCustom implements PostfixQueries, FluentRepositoryContextAware {
+public class PostfixQueriesCustom implements PostfixQueries, FluentRepositoryContextAware<User> {
 
-    private FluentRepositoryContext context;
+    private FluentRepositoryContext<User> context;
 
     @Override
-    public void setFluentRepositoryContext(FluentRepositoryContext context) {
+    public FluentRepositoryContext<User> getFluentRepositoryContext() {
+        return context;
+    }
+
+    @Override
+    public void setFluentRepositoryContext(FluentRepositoryContext<User> context) {
         this.context = context;
     }
 
@@ -40,11 +45,7 @@ public class PostfixQueriesCustom implements PostfixQueries, FluentRepositoryCon
                     ResultSet rs = ps.executeQuery()) {
                 List<User> results = new ArrayList<>();
                 while (rs.next()) {
-                    User user = new User(rs.getString("name"), rs.getString("email"));
-                    user.setId(rs.getLong("id"));
-                    user.setAge(rs.getObject("age") != null ? rs.getInt("age") : null);
-                    user.setActive(rs.getObject("active") != null ? rs.getBoolean("active") : null);
-                    results.add(user);
+                    results.add(context.rowMapper().mapRow(rs, rs.getRow()));
                 }
                 return results;
             }
@@ -56,7 +57,7 @@ public class PostfixQueriesCustom implements PostfixQueries, FluentRepositoryCon
     }
 
     /** Exposes the injected context for test assertions. */
-    public FluentRepositoryContext getContext() {
+    public FluentRepositoryContext<User> getContext() {
         return context;
     }
 }
