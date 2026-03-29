@@ -14,68 +14,46 @@ import org.mockito.Mockito;
 
 class FluentRepositoryContextTest {
 
+    private DSL dsl = Mockito.mock(DSL.class);
+    private FluentConnectionProvider provider = Mockito.mock(FluentConnectionProvider.class);
+
+    @SuppressWarnings("unchecked")
+    private FluentEntityWriter<User> writer = Mockito.mock(FluentEntityWriter.class);
+
+    @SuppressWarnings("unchecked")
+    private FluentEntityRowMapper<User> rowMapper = Mockito.mock(FluentEntityRowMapper.class);
+
     @Test
     void constructionOk() {
-        FluentRepositoryContext<User> context = buildContext();
-
+        FluentRepositoryContext<User> context = FluentRepositoryContextFactory.create(dsl, provider, User.class);
         assertThat(context.dsl()).isNotNull();
         assertThat(context.connectionProvider()).isNotNull();
         assertThat(context.rowMapper()).isNotNull().isInstanceOf(FluentEntityRowMapper.class);
         assertThat(context.writer()).isNotNull().isInstanceOf(FluentEntityWriter.class);
-    }
-
-    @Test
-    void dslDelegatesToInfrastructure() {
-        DSL dsl = Mockito.mock(DSL.class);
-        FluentConnectionProvider provider = Mockito.mock(FluentConnectionProvider.class);
-        FluentRepositoryContext<User> context = FluentRepositoryContextFactory.create(dsl, provider, User.class);
-
         assertThat(context.dsl()).isSameAs(dsl);
-    }
-
-    @Test
-    void connectionProviderDelegatesToInfrastructure() {
-        DSL dsl = Mockito.mock(DSL.class);
-        FluentConnectionProvider provider = Mockito.mock(FluentConnectionProvider.class);
-        FluentRepositoryContext<User> context = FluentRepositoryContextFactory.create(dsl, provider, User.class);
-
         assertThat(context.connectionProvider()).isSameAs(provider);
     }
 
     @Test
     void constructionNullInfrastructure() {
-        assertThatThrownBy(() -> new FluentRepositoryContext<User>(null, null, null))
+        assertThatThrownBy(() -> new FluentRepositoryContext<User>(null, rowMapper, writer))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("FluentRepositoryInfrastructure must not be null");
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     void constructionNullRowMapper() {
-        FluentRepositoryInfrastructure infra = new FluentRepositoryInfrastructure(
-                Mockito.mock(DSL.class), Mockito.mock(FluentConnectionProvider.class));
-        FluentEntityWriter<User> writer = Mockito.mock(FluentEntityWriter.class);
-
+        FluentRepositoryInfrastructure infra = new FluentRepositoryInfrastructure(dsl, provider);
         assertThatThrownBy(() -> new FluentRepositoryContext<User>(infra, null, writer))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("FluentEntityRowMapper must not be null");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void constructionNullWriter() {
-        FluentRepositoryInfrastructure infra = new FluentRepositoryInfrastructure(
-                Mockito.mock(DSL.class), Mockito.mock(FluentConnectionProvider.class));
-        FluentEntityRowMapper<User> rowMapper = Mockito.mock(FluentEntityRowMapper.class);
-
+        FluentRepositoryInfrastructure infra = new FluentRepositoryInfrastructure(dsl, provider);
         assertThatThrownBy(() -> new FluentRepositoryContext<>(infra, rowMapper, null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("FluentEntityWriter must not be null");
-    }
-
-    private FluentRepositoryContext<User> buildContext() {
-        DSL dsl = Mockito.mock(DSL.class);
-        FluentConnectionProvider provider = Mockito.mock(FluentConnectionProvider.class);
-        return FluentRepositoryContextFactory.create(dsl, provider, User.class);
     }
 }

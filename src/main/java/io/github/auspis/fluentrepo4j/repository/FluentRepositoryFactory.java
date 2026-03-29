@@ -68,7 +68,7 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
         return super.getRepository(repositoryInterface, fragments);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings("unchecked")
     void injectFluentContext(RepositoryFragments fragments, FluentRepositoryContext<?> context) {
         for (RepositoryFragment<?> fragment : fragments) {
             fragment.getImplementation()

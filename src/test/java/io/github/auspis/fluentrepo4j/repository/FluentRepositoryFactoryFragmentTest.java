@@ -81,7 +81,7 @@ class FluentRepositoryFactoryFragmentTest {
     }
 
     @Test
-    void idempotentReinjection() {
+    void idempotentInjection() {
         AwareFragment aware = new AwareFragment();
         RepositoryFragments fragments = RepositoryFragments.of(RepositoryFragment.implemented(aware));
         FluentRepositoryContext<User> context =
@@ -108,7 +108,7 @@ class FluentRepositoryFactoryFragmentTest {
 
         assertThatThrownBy(() -> factory.injectFluentContext(fragments, context2))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("shared across repository groups");
+                .hasMessageContaining("shared across repository groups with different datasources");
     }
 
     @Test
@@ -125,7 +125,7 @@ class FluentRepositoryFactoryFragmentTest {
 
         assertThatThrownBy(() -> factory.injectFluentContext(fragments, context2))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("shared across repository groups");
+                .hasMessageContaining("shared across repository groups with different datasources");
     }
 
     // -- Test helpers --
