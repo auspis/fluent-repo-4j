@@ -8,6 +8,7 @@ import io.github.auspis.fluentrepo4j.test.fragment.UserCustomQueriesImpl;
 import io.github.auspis.fluentrepo4j.test.fragment.UserWithCustomQueriesRepository;
 import io.github.auspis.fluentrepo4j.test.util.DataSourceTestUtil;
 import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
+import io.github.auspis.fluentsql4j.test.util.database.TestDatabaseUtil;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -48,9 +49,7 @@ class CustomFragmentIntegrationTest {
     @BeforeEach
     void setUp() throws SQLException {
         DataSourceTestUtil.createUsersTable(dataSource);
-        DataSourceTestUtil.insertUser(dataSource, 1L, "John Doe", "john@example.com");
-        DataSourceTestUtil.insertUser(dataSource, 2L, "Jane Doe", "jane@example.com");
-        DataSourceTestUtil.insertUser(dataSource, 3L, "Alice Smith", "alice@example.com");
+        TestDatabaseUtil.H2.insertSampleUsers(dataSource.getConnection());
     }
 
     @Nested
@@ -60,22 +59,17 @@ class CustomFragmentIntegrationTest {
         void findUsersByNameContaining() {
             List<User> result = repository.findUsersByNameContaining("Doe");
 
-            assertThat(result).hasSize(2);
-            assertThat(result).extracting(User::getName).containsExactlyInAnyOrder("John Doe", "Jane Doe");
+            assertThat(result).hasSize(1).extracting(User::getName).containsExactly("John Doe");
         }
 
         @Test
         void findUsersByNameContainingNoMatch() {
-            List<User> result = repository.findUsersByNameContaining("Nobody");
-
-            assertThat(result).isEmpty();
+            assertThat(repository.findUsersByNameContaining("Nobody")).isEmpty();
         }
 
         @Test
         void countActiveUsers() {
-            long count = repository.countActiveUsers();
-
-            assertThat(count).isEqualTo(3L);
+            assertThat(repository.countActiveUsers()).isEqualTo(7);
         }
     }
 
@@ -84,19 +78,18 @@ class CustomFragmentIntegrationTest {
 
         @Test
         void crudMethodsStillWork() {
-            assertThat(repository.count()).isEqualTo(3L);
+            assertThat(repository.count()).isEqualTo(10);
             assertThat(repository.findById(1L)).isPresent();
         }
 
         @Test
         void customAndCrudInSameTransaction() {
-            repository.save(new User("Bob Builder", "bob@example.com").withId(4L));
+            repository.save(new User("Bob Builder", "bob@example.com").withId(100));
 
-            assertThat(repository.count()).isEqualTo(4L);
+            assertThat(repository.count()).isEqualTo(11);
 
             List<User> bobs = repository.findUsersByNameContaining("Bob");
-            assertThat(bobs).hasSize(1);
-            assertThat(bobs.get(0).getName()).isEqualTo("Bob Builder");
+            assertThat(bobs).hasSize(2).extracting(User::getName).containsExactlyInAnyOrder("Bob Builder", "Bob");
         }
     }
 

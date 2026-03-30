@@ -8,6 +8,7 @@ import io.github.auspis.fluentrepo4j.test.fragment.mixed.MixedAwareQueriesImpl;
 import io.github.auspis.fluentrepo4j.test.fragment.mixed.MixedUserRepository;
 import io.github.auspis.fluentrepo4j.test.util.DataSourceTestUtil;
 import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
+import io.github.auspis.fluentsql4j.test.util.database.TestDatabaseUtil;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -48,8 +49,7 @@ class MixedFragmentIntegrationTest {
     @BeforeEach
     void setUp() throws SQLException {
         DataSourceTestUtil.createUsersTable(dataSource);
-        DataSourceTestUtil.insertUser(dataSource, 1L, "John Doe", "john@example.com");
-        DataSourceTestUtil.insertUser(dataSource, 2L, "Jane Doe", "jane@example.com");
+        TestDatabaseUtil.H2.insertSampleUsers(dataSource.getConnection());
     }
 
     @Nested
@@ -57,32 +57,26 @@ class MixedFragmentIntegrationTest {
 
         @Test
         void awareFragmentMethodWorks() {
-            List<User> result = repository.findUsersByNameContaining("Doe");
-
-            assertThat(result).hasSize(2);
+            assertThat(repository.findUsersByNameContaining("Doe")).hasSize(1);
         }
 
         @Test
         void nonAwareFragmentMethodWorks() {
-            String greeting = repository.greetUser("John");
-
-            assertThat(greeting).isEqualTo("Hello, John");
+            assertThat(repository.greetUser("John")).isEqualTo("Hello, John");
         }
 
         @Test
         void crudMethodsStillWork() {
-            assertThat(repository.count()).isEqualTo(2L);
+            assertThat(repository.count()).isEqualTo(10);
         }
 
         @Test
         void allThreeMethodTypesInSequence() {
-            repository.save(new User("Alice Smith", "alice@example.com").withId(3L));
-            assertThat(repository.count()).isEqualTo(3L);
+            repository.save(new User("Alice Smith", "alice-smith@example.com").withId(100));
+            assertThat(repository.count()).isEqualTo(11);
 
             List<User> result = repository.findUsersByNameContaining("Alice");
-            assertThat(result).hasSize(1);
-
-            assertThat(repository.greetUser("Alice")).isEqualTo("Hello, Alice");
+            assertThat(result).hasSize(2).extracting(User::getName).containsExactlyInAnyOrder("Alice Smith", "Alice");
         }
     }
 

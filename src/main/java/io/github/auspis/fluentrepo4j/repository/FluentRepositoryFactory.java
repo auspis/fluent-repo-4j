@@ -122,6 +122,7 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
      *
      * @deprecated Use {@link #getQueryLookupStrategy(Key, ValueExpressionDelegate)} instead.
      */
+    @Deprecated(since = "3.4", forRemoval = true)
     @Override
     protected Optional<QueryLookupStrategy> getQueryLookupStrategy(
             @Nullable Key key,

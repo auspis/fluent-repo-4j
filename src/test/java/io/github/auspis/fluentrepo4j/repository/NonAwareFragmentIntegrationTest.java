@@ -7,6 +7,7 @@ import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentrepo4j.test.fragment.nonaware.PlainUserRepository;
 import io.github.auspis.fluentrepo4j.test.util.DataSourceTestUtil;
 import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
+import io.github.auspis.fluentsql4j.test.util.database.TestDatabaseUtil;
 
 import java.sql.SQLException;
 import javax.sql.DataSource;
@@ -46,7 +47,7 @@ class NonAwareFragmentIntegrationTest {
     @BeforeEach
     void setUp() throws SQLException {
         DataSourceTestUtil.createUsersTable(dataSource);
-        DataSourceTestUtil.insertUser(dataSource, 1L, "Alice Smith", "alice@example.com");
+        TestDatabaseUtil.H2.insertSampleUsers(dataSource.getConnection());
     }
 
     @Nested
@@ -54,22 +55,20 @@ class NonAwareFragmentIntegrationTest {
 
         @Test
         void customMethodReturnsExpectedValue() {
-            String greeting = repository.greetUser("Alice");
-
-            assertThat(greeting).isEqualTo("Hello, Alice");
+            assertThat(repository.greetUser("Alice")).isEqualTo("Hello, Alice");
         }
 
         @Test
         void crudMethodsStillWork() {
-            assertThat(repository.count()).isEqualTo(1L);
+            assertThat(repository.count()).isEqualTo(10);
             assertThat(repository.findById(1L)).isPresent();
         }
 
         @Test
         void saveAndCustomMethodCoexist() {
-            repository.save(new User("Bob Builder", "bob@example.com").withId(2L));
+            repository.save(new User("Bob Builder", "bob-builder@example.com").withId(100));
 
-            assertThat(repository.count()).isEqualTo(2L);
+            assertThat(repository.count()).isEqualTo(11);
             assertThat(repository.greetUser("Bob")).isEqualTo("Hello, Bob");
         }
     }

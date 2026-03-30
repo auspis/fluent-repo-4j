@@ -8,9 +8,9 @@ import io.github.auspis.fluentrepo4j.test.fragment.postfix.PostfixQueriesCustom;
 import io.github.auspis.fluentrepo4j.test.fragment.postfix.PostfixUserRepository;
 import io.github.auspis.fluentrepo4j.test.util.DataSourceTestUtil;
 import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
+import io.github.auspis.fluentsql4j.test.util.database.TestDatabaseUtil;
 
 import java.sql.SQLException;
-import java.util.List;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -48,8 +48,7 @@ class CustomPostfixIntegrationTest {
     @BeforeEach
     void setUp() throws SQLException {
         DataSourceTestUtil.createUsersTable(dataSource);
-        DataSourceTestUtil.insertUser(dataSource, 1L, "John Doe", "john@example.com");
-        DataSourceTestUtil.insertUser(dataSource, 2L, "Jane Doe", "jane@example.com");
+        TestDatabaseUtil.H2.insertSampleUsers(dataSource.getConnection());
     }
 
     @Nested
@@ -57,22 +56,20 @@ class CustomPostfixIntegrationTest {
 
         @Test
         void findUsersByEmailReturnsMatch() {
-            List<User> result = repository.findUsersByEmail("john@example.com");
-
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getName()).isEqualTo("John Doe");
+            assertThat(repository.findUsersByEmail("john@example.com"))
+                    .hasSize(1)
+                    .extracting(User::getName)
+                    .containsExactly("John Doe");
         }
 
         @Test
         void findUsersByEmailNoMatch() {
-            List<User> result = repository.findUsersByEmail("nobody@example.com");
-
-            assertThat(result).isEmpty();
+            assertThat(repository.findUsersByEmail("nobody@example.com")).isEmpty();
         }
 
         @Test
         void crudMethodsStillWork() {
-            assertThat(repository.count()).isEqualTo(2L);
+            assertThat(repository.count()).isEqualTo(10);
             assertThat(repository.findById(1L)).isPresent();
         }
     }

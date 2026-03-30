@@ -87,30 +87,24 @@ class CustomFragmentMultiDataSourceIT {
         void primaryCustomQueryReturnsOnlyPrimaryData() {
             List<User> result = primaryRepository.findUsersByNamePrefix("Primary");
 
-            assertThat(result).hasSize(2);
-            assertThat(result).extracting(User::getName).allMatch(name -> name.startsWith("Primary"));
+            assertThat(result).hasSize(2).extracting(User::getName).allMatch(name -> name.startsWith("Primary"));
         }
 
         @Test
         void secondaryCustomQueryReturnsOnlySecondaryData() {
             List<User> result = secondaryRepository.findUsersByNamePrefix("Secondary");
 
-            assertThat(result).hasSize(2);
-            assertThat(result).extracting(User::getName).allMatch(name -> name.startsWith("Secondary"));
+            assertThat(result).hasSize(2).extracting(User::getName).allMatch(name -> name.startsWith("Secondary"));
         }
 
         @Test
         void primaryDoesNotSeeSecondaryData() {
-            List<User> result = primaryRepository.findUsersByNamePrefix("Secondary");
-
-            assertThat(result).isEmpty();
+            assertThat(primaryRepository.findUsersByNamePrefix("Secondary")).isEmpty();
         }
 
         @Test
         void secondaryDoesNotSeePrimaryData() {
-            List<User> result = secondaryRepository.findUsersByNamePrefix("Primary");
-
-            assertThat(result).isEmpty();
+            assertThat(secondaryRepository.findUsersByNamePrefix("Primary")).isEmpty();
         }
     }
 
@@ -144,12 +138,14 @@ class CustomFragmentMultiDataSourceIT {
         void crudOnPrimaryWorks() {
             assertThat(primaryRepository.count()).isEqualTo(2L);
             assertThat(primaryRepository.findById(1L)).isPresent();
+            assertThat(primaryRepository.findById(10L)).isNotPresent();
         }
 
         @Test
         void crudOnSecondaryWorks() {
             assertThat(secondaryRepository.count()).isEqualTo(2L);
             assertThat(secondaryRepository.findById(10L)).isPresent();
+            assertThat(primaryRepository.findById(10L)).isNotPresent();
         }
 
         @Test
