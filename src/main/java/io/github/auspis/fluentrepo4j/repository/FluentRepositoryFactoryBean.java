@@ -39,9 +39,7 @@ public class FluentRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
 
     @Override
     protected RepositoryFactorySupport doCreateRepositoryFactory() {
-        FluentConnectionProvider resolvedConnectionProvider = resolveConnectionProvider();
-        DSL resolvedDsl = resolveDsl();
-        return new FluentRepositoryFactory(resolvedConnectionProvider, resolvedDsl);
+        return new FluentRepositoryFactory(connectionProvider(), dsl());
     }
 
     @Override
@@ -66,7 +64,7 @@ public class FluentRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
         this.dsl = dsl;
     }
 
-    private FluentConnectionProvider resolveConnectionProvider() {
+    private FluentConnectionProvider connectionProvider() {
         if (connectionProvider != null) {
             return connectionProvider;
         }
@@ -75,13 +73,12 @@ public class FluentRepositoryFactoryBean<T extends Repository<S, ID>, S, ID>
         return this.connectionProvider;
     }
 
-    private DSL resolveDsl() {
+    private DSL dsl() {
         if (dsl != null) {
             return dsl;
         }
 
         this.dsl = DialectDetector.detect(resolveDataSource(), resolveDslRegistry());
-        ;
         return this.dsl;
     }
 

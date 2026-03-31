@@ -103,11 +103,15 @@ void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
 2. Extracts entity type and ID type via Spring Data metadata
 3. Instantiates `FluentEntityInformation<User, Long>` to get metadata (table name, columns, ID strategy)
 4. Returns a new `FluentRepository<User, Long>` prepared for that entity
+5. Injects `FluentRepositoryContext<T>` (DSL + connection provider + row mapper + writer) into custom fragment implementations that implement `FluentRepositoryContextAware<T>`, before the repository proxy is returned. Includes singleton overwrite protection for multi-datasource configurations.
 
-**Key method**:
+**Key methods**:
 
 ```java
 protected Object getTargetRepository(RepositoryInformation repositoryInformation)
+
+public <T> T getRepository(Class<T> repositoryInterface, RepositoryFragments fragments)
+// ↳ Iterates fragments, injects FluentRepositoryContext<T> into FluentRepositoryContextAware impls
 ```
 
 ---
