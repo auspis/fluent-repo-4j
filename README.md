@@ -1,4 +1,6 @@
-# fluent-repo-4j — Lightweight Spring Boot Repositories over pure JDBC
+# fluent-repo-4j - Lightweight Spring Boot Repositories - DSL for simple, type-safe and maintainable SQL
+
+[![CI](https://github.com/auspis/fluent-repo-4j/actions/workflows/ci.yml/badge.svg)](https://github.com/auspis/fluent-repo-4j/actions?query=workflow%3ACI) [![Maven Central](https://img.shields.io/maven-central/v/io.github.auspis/fluent-repo-4j)](https://central.sonatype.com/artifact/io.github.auspis/fluent-repo-4j) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/auspis/fluent-repo-4j/blob/main/LICENSE)
 
 [![CI](https://github.com/auspis/fluent-repo-4j/actions/workflows/ci.yml/badge.svg)](https://github.com/auspis/fluent-repo-4j/actions?query=workflow%3ACI) [![Maven Central](https://img.shields.io/maven-central/v/io.github.auspis/fluent-repo-4j)](https://central.sonatype.com/artifact/io.github.auspis/fluent-repo-4j) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/auspis/fluent-repo-4j/blob/main/LICENSE)
 
