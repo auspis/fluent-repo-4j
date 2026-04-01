@@ -1,6 +1,6 @@
 # Tests
 
-## Tests Coverage (JaCoCo)
+## Test Coverage (JaCoCo)
 
 Generate a JaCoCo HTML report
 
