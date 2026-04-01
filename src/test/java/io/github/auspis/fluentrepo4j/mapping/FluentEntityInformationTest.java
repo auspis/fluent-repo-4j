@@ -74,8 +74,7 @@ class FluentEntityInformationTest {
     void nonIdColumnMap_excludesId() {
         var info = new FluentEntityInformation<>(ConventionEntity.class);
         var nonId = info.getNonIdColumnToFieldMap();
-        assertThat(nonId).containsKeys("first_name", "last_name");
-        assertThat(nonId).doesNotContainKey("id");
+        assertThat(nonId).containsKeys("first_name", "last_name").doesNotContainKey("id");
     }
 
     @Test
