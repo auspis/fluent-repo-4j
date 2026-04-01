@@ -42,5 +42,3 @@ Troubleshooting
 - Multi-module aggregation: collect per-module exec files and use `report-aggregate` or `merge`+`report` in an aggregator POM to produce a combined report.
 
 This file is the canonical reference for running tests and generating coverage reports in this repository. The root `README.md` links to it.
-
-If you want, I can also run `./mvnw -B clean verify jacoco:report` to generate the report now.
