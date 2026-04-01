@@ -8,7 +8,37 @@
   <packaging>jar</packaging>
 
   <name>fluent-repo-4j</name>
-  <url>http://maven.apache.org</url>
+  <description>Lightweight Spring Boot Repositories - DSL for simple, type-safe and maintainable SQL</description>
+  <url>https://github.com/auspis/fluent-repo-4j</url>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>auspis</id>
+      <name>Auspis</name>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git://github.com/auspis/fluent-repo-4j.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com:auspis/fluent-repo-4j.git</developerConnection>
+    <url>https://github.com/auspis/fluent-repo-4j</url>
+  </scm>
+
+  <!-- Distribution settings for Sonatype Central Publishing Portal -->
+  <distributionManagement>
+    <repository>
+      <id>central</id>
+      <url>https://central.sonatype.com/api/v1/publisher/upload</url>
+    </repository>
+  </distributionManagement>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -19,6 +49,9 @@
     <maven.spotless.plugin.version>3.4.0</maven.spotless.plugin.version>
     <maven.resource.plugin.version>3.5.0</maven.resource.plugin.version>
     <maven.exec.plugin.version>3.6.3</maven.exec.plugin.version>
+    <jacoco.version>0.8.14</jacoco.version>
+    <!-- default argLine property to avoid unresolved ${argLine} tokens -->
+    <argLine/>
     <!-- TODO: upgrade to Spring Boot 4 -->
     <spring-boot.version>3.5.12</spring-boot.version>
     <fluent-sql-4j.version>1.3.3</fluent-sql-4j.version>
@@ -159,6 +192,15 @@
   </dependencies>
 
   <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.jacoco</groupId>
+          <artifactId>jacoco-maven-plugin</artifactId>
+          <version>${jacoco.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
     <plugins>
       <plugin>
         <groupId>com.diffplug.spotless</groupId>
@@ -255,6 +297,7 @@
         <artifactId>maven-failsafe-plugin</artifactId>
         <version>${maven.failsafe.plugin.version}</version>
         <configuration>
+          <argLine>${jacocoArgLine} ${argLine}</argLine>
           <includes>
             <include>**/*Test.java</include>
             <include>**/*IT.java</include>
@@ -278,7 +321,36 @@
         <version>${maven.surefire.plugin.version}</version>
         <configuration>
           <excludedGroups>${test.groups.slow}</excludedGroups>
+          <argLine>${jacocoArgLine} ${argLine}</argLine>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+            <configuration>
+              <propertyName>jacocoArgLine</propertyName>
+              <destFile>${project.build.directory}/jacoco.exec</destFile>
+              <append>true</append>
+            </configuration>
+          </execution>
+          <execution>
+            <id>report</id>
+            <goals>
+              <goal>report</goal>
+            </goals>
+            <phase>verify</phase>
+            <configuration>
+              <outputDirectory>${project.reporting.outputDirectory}/jacoco</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

@@ -1,4 +1,4 @@
-# fluent-repo-4j - Pure JDBC Repositories for Spring Boot
+# fluent-repo-4j - Lightweight Spring Boot Repositories - DSL for simple, type-safe and maintainable SQL
 
 A lightweight Spring Boot library for implementing the **Repository Pattern** with pure JDBC and the fluent-sql-4j DSL. Write type-safe, declarative database queries without ORM overhead.
 
@@ -477,6 +477,8 @@ Every test class that is not a plain unit test **must** carry the correct annota
 | `./mvnw verify -Dgroups=e2e`         | E2E tests only (Testcontainers)                  | Yes             |
 
 **How it works:** Surefire (invoked by `./mvnw test`) excludes the `integration` and `e2e` tags, so only unit and component tests run in the fast path. Failsafe (invoked during `./mvnw verify`) picks up those same tags and runs integration and E2E tests against real or embedded databases.
+
+For instructions on running tests and generating coverage reports, see [data/wiki/TEST.md](data/wiki/TEST.md).
 
 ### Code Formatting
 
