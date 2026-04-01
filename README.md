@@ -131,9 +131,9 @@ The library auto-detects the database dialect, scans for `CrudRepository` interf
 | Dynamic query derivation (Spring Data PartTree-style)                  | ✅ Supported     | `findBy…`, `countBy…`, `existsBy…`, `deleteBy…`, pagination/sort  |
 | Custom query fragments via `FluentRepositoryContextAware<T>`           | ✅ Supported     | DSL-powered custom queries with type-safe mapping                  |
 | Multi-datasource repository groups                                     | ✅ Supported     | One `@EnableFluentRepositories` block per group                    |
-| Object relationships (one-to-many, many-to-many)                       | ❌ Not Supported | Use separate repositories and explicit queries                     |
-| `@GeneratedValue(SEQUENCE)`                                            | ❌ Not Supported | Planned for a future release                                       |
-| Persistence context / first-level cache                                | ❌ Not Supported | Not applicable to JDBC; each query returns fresh objects           |
+| Object relationships (one-to-many, many-to-many)                       | ⚙️ By Design    | Keep it simple: use separate repositories and explicit queries     |
+| `@GeneratedValue(SEQUENCE)`                                            | 🔜 Planned      | Planned for a future release                                       |
+| Persistence context / first-level cache                                | ⚙️ By Design    | Not applicable to JDBC; each query returns fresh objects           |
 
 ---
 
