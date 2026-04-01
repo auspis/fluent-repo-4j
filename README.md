@@ -1,8 +1,11 @@
 # fluent-repo-4j — Lightweight Spring Boot Repositories over pure JDBC
 
+<<<<<<< HEAD
 [![CI](https://github.com/auspis/fluent-repo-4j/actions/workflows/ci.yml/badge.svg)](https://github.com/auspis/fluent-repo-4j/actions?query=workflow%3ACI) [![Maven Central](https://img.shields.io/maven-central/v/io.github.auspis/fluent-repo-4j)](https://central.sonatype.com/artifact/io.github.auspis/fluent-repo-4j) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/auspis/fluent-repo-4j/blob/main/LICENSE)
 
 
+=======
+>>>>>>> cb351a3 (docs: reorganize documentation - lightweight README, expanded TEST.md, TOCs in wiki files)
 A lightweight Spring Boot library for the **Repository Pattern** with pure JDBC and the fluent-sql-4j DSL.
 Write type-safe, declarative database queries without ORM overhead.
 
@@ -17,7 +20,11 @@ Write type-safe, declarative database queries without ORM overhead.
 ✅ **Exception Translation** — SQL exceptions translated to Spring's `DataAccessException` hierarchy  
 ✅ **Dynamic Query Derivation** — Spring Data–style method-name queries (`findByName`, `findByAgeGreaterThan`, …)  
 ✅ **Custom Query Fragments** — Fluent-sql-4j DSL in Spring Data fragment implementations; multi-datasource safe  
+<<<<<<< HEAD
 ✅ **Multi-DataSource Support** — Bind repository groups to different `DataSource` beans with explicit Spring-style refs
+=======
+✅ **Multi-DataSource Support** — Bind repository groups to different `DataSource` beans with explicit Spring-style refs  
+>>>>>>> cb351a3 (docs: reorganize documentation - lightweight README, expanded TEST.md, TOCs in wiki files)
 
 ---
 
@@ -42,12 +49,18 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+<<<<<<< HEAD
     private String name;                          // auto-mapped to column "name"
 
     @Column(name = "email_address")
     private String email;                         // mapped to column "email_address"
 
     private int age;                              // auto-mapped to column "age"
+=======
+    private String name;    // auto-mapped to column "name"
+    private String email;   // auto-mapped to column "email"
+    private int age;        // auto-mapped to column "age"
+>>>>>>> cb351a3 (docs: reorganize documentation - lightweight README, expanded TEST.md, TOCs in wiki files)
 
     // constructors, getters, setters...
 }
