@@ -200,7 +200,7 @@ class PartTreeAdapterTest {
             PropertyPredicateDescriptor pc = rootProperty(d);
             assertThat(pc.name()).isEqualTo("name");
             assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.EQUALS);
-            assertThat(pc.paramIndex()).isEqualTo(0);
+            assertThat(pc.paramIndex()).isZero();
             assertThat(pc.paramCount()).isEqualTo(1);
             assertThat(pc.ignoreCase()).isFalse();
         }
@@ -239,7 +239,7 @@ class PartTreeAdapterTest {
             PropertyPredicateDescriptor name =
                     (PropertyPredicateDescriptor) cc.children().get(0);
             assertThat(name.name()).isEqualTo("name");
-            assertThat(name.paramIndex()).isEqualTo(0);
+            assertThat(name.paramIndex()).isZero();
 
             PropertyPredicateDescriptor email =
                     (PropertyPredicateDescriptor) cc.children().get(1);
@@ -274,7 +274,7 @@ class PartTreeAdapterTest {
             // Parameter indices: name=0, email=1, age=2
             PropertyPredicateDescriptor namePc =
                     (PropertyPredicateDescriptor) and.children().get(0);
-            assertThat(namePc.paramIndex()).isEqualTo(0);
+            assertThat(namePc.paramIndex()).isZero();
 
             PropertyPredicateDescriptor emailPc =
                     (PropertyPredicateDescriptor) and.children().get(1);
@@ -342,7 +342,7 @@ class PartTreeAdapterTest {
             QueryDescriptor d = adapt("findByAgeBetween", Integer.class, Integer.class);
             PropertyPredicateDescriptor pc = rootProperty(d);
             assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.BETWEEN);
-            assertThat(pc.paramIndex()).isEqualTo(0);
+            assertThat(pc.paramIndex()).isZero();
             assertThat(pc.paramCount()).isEqualTo(2);
         }
     }
@@ -359,7 +359,7 @@ class PartTreeAdapterTest {
             QueryDescriptor d = adapt("findByNameIsNull");
             PropertyPredicateDescriptor pc = rootProperty(d);
             assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.IS_NULL);
-            assertThat(pc.paramCount()).isEqualTo(0);
+            assertThat(pc.paramCount()).isZero();
         }
 
         @Test
@@ -367,7 +367,7 @@ class PartTreeAdapterTest {
             QueryDescriptor d = adapt("findByNameIsNotNull");
             PropertyPredicateDescriptor pc = rootProperty(d);
             assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.IS_NOT_NULL);
-            assertThat(pc.paramCount()).isEqualTo(0);
+            assertThat(pc.paramCount()).isZero();
         }
     }
 
@@ -433,7 +433,7 @@ class PartTreeAdapterTest {
         void in_collection() throws Exception {
             PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameIn", Collection.class));
             assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.IN);
-            assertThat(pc.paramIndex()).isEqualTo(0);
+            assertThat(pc.paramIndex()).isZero();
         }
 
         @Test
@@ -455,7 +455,7 @@ class PartTreeAdapterTest {
             QueryDescriptor d = adapt("findByActiveTrue");
             PropertyPredicateDescriptor pc = rootProperty(d);
             assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.TRUE);
-            assertThat(pc.paramCount()).isEqualTo(0);
+            assertThat(pc.paramCount()).isZero();
         }
 
         @Test
@@ -463,7 +463,7 @@ class PartTreeAdapterTest {
             QueryDescriptor d = adapt("findByActiveFalse");
             PropertyPredicateDescriptor pc = rootProperty(d);
             assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.FALSE);
-            assertThat(pc.paramCount()).isEqualTo(0);
+            assertThat(pc.paramCount()).isZero();
         }
     }
 
@@ -498,7 +498,7 @@ class PartTreeAdapterTest {
 
             // age criterion should use index 0 (sort param skipped)
             PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.paramIndex()).isEqualTo(0);
+            assertThat(pc.paramIndex()).isZero();
         }
 
         @Test
@@ -509,7 +509,7 @@ class PartTreeAdapterTest {
 
             // active criterion should use index 0
             PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.paramIndex()).isEqualTo(0);
+            assertThat(pc.paramIndex()).isZero();
         }
     }
 
@@ -526,11 +526,9 @@ class PartTreeAdapterTest {
         }
 
         @Test
-        void regex_throws_unsupported() {
-            assertThatThrownBy(() -> {
-                        Method m = RegexMethods.class.getMethod("findByNameMatchesRegex", String.class);
-                        PartTreeAdapter.adapt(m, User.class);
-                    })
+        void regex_throws_unsupported() throws NoSuchMethodException, SecurityException {
+            Method m = RegexMethods.class.getMethod("findByNameMatchesRegex", String.class);
+            assertThatThrownBy(() -> PartTreeAdapter.adapt(m, User.class))
                     .isInstanceOf(UnsupportedOperationException.class)
                     .hasMessageContaining("REGEX");
         }

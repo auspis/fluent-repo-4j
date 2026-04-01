@@ -21,6 +21,7 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.data.repository.core.RepositoryMetadata;
@@ -93,6 +95,14 @@ class DynamicQueryIT {
         Page<User> findByActive(Boolean active, Pageable pageable);
 
         List<User> findTop2ByAgeGreaterThan(Integer age);
+
+        Stream<User> findByEmail(String email);
+
+        Slice<User> findByAgeGreaterThan(Integer age, Pageable pageable);
+
+        long deleteByEmail(String email);
+
+        int deleteByActive(Boolean active);
     }
 
     // ---- Test infrastructure ----
@@ -155,8 +165,7 @@ class DynamicQueryIT {
         void findByName_returns_matching_users() throws Exception {
             List<User> result =
                     (List<User>) executeQuery("findByName", new Class[] {String.class}, new Object[] {"Alice"});
-            assertThat(result).hasSize(2);
-            assertThat(result).allMatch(u -> "Alice".equals(u.getName()));
+            assertThat(result).hasSize(2).allMatch(u -> "Alice".equals(u.getName()));
         }
 
         @Test
@@ -372,7 +381,7 @@ class DynamicQueryIT {
             ps.setString(1, "Alice");
             ResultSet rs = ps.executeQuery();
             rs.next();
-            assertThat(rs.getLong(1)).isEqualTo(0);
+            assertThat(rs.getLong(1)).isZero();
         }
     }
 
@@ -420,6 +429,59 @@ class DynamicQueryIT {
             List<User> result = (List<User>)
                     executeQuery("findTop2ByAgeGreaterThan", new Class[] {Integer.class}, new Object[] {20});
             assertThat(result).hasSizeLessThanOrEqualTo(2);
+        }
+    }
+
+    // ============================================================
+    // SLICE RETURN
+    // ============================================================
+
+    @Nested
+    class SliceReturn {
+
+        @Test
+        @SuppressWarnings("unchecked")
+        void findByAgeGreaterThan_slice_with_content() throws Exception {
+            Slice<User> result = (Slice<User>)
+                    executeQuery("findByAgeGreaterThan", new Class[] {Integer.class, Pageable.class}, new Object[] {
+                        20, PageRequest.of(0, 2)
+                    });
+            assertThat(result.getContent()).hasSizeLessThanOrEqualTo(2);
+            assertThat(result.hasContent()).isTrue();
+        }
+
+        @Test
+        @SuppressWarnings("unchecked")
+        void findByAgeGreaterThan_slice_empty() throws Exception {
+            Slice<User> result = (Slice<User>)
+                    executeQuery("findByAgeGreaterThan", new Class[] {Integer.class, Pageable.class}, new Object[] {
+                        999, PageRequest.of(0, 10)
+                    });
+            assertThat(result.getContent()).isEmpty();
+            assertThat(result.hasContent()).isFalse();
+        }
+    }
+
+    // ============================================================
+    // DELETE WITH TYPED RETURN
+    // ============================================================
+
+    @Nested
+    class TypedDeleteReturn {
+
+        @Test
+        void deleteByEmail_returns_long() throws Exception {
+            Object result =
+                    executeQuery("deleteByEmail", new Class[] {String.class}, new Object[] {"alice@example.com"});
+            assertThat(result).isInstanceOf(Long.class);
+            assertThat((long) result).isEqualTo(1L);
+        }
+
+        @Test
+        void deleteByActive_returns_int() throws Exception {
+            Object result = executeQuery("deleteByActive", new Class[] {Boolean.class}, new Object[] {Boolean.FALSE});
+            assertThat(result).isInstanceOf(Integer.class);
+            assertThat((int) result).isEqualTo(2);
         }
     }
 }

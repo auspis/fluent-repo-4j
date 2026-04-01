@@ -291,6 +291,74 @@ class PredicateDescriptorMapperTest {
         }
 
         @Test
+        void ignoreCase_equals_nonString_skips_lower() {
+            PropertyPredicateDescriptor descriptor = leafIgnoreCase("age", PredicateDescriptorOperator.EQUALS, 0, 1);
+
+            Predicate result = mapper.map(descriptor, metaProvider, new Object[] {30});
+
+            assertThat(result).isInstanceOf(Comparison.class);
+            // Non-String value → no LOWER wrapping
+            Comparison comparison = (Comparison) result;
+            assertThat(comparison.lhs().getClass().getSimpleName()).isEqualTo("ColumnReference");
+        }
+
+        @Test
+        void ignoreCase_notEquals_wraps_with_lower() {
+            PropertyPredicateDescriptor descriptor =
+                    leafIgnoreCase("name", PredicateDescriptorOperator.NOT_EQUALS, 0, 1);
+
+            Predicate result = mapper.map(descriptor, metaProvider, new Object[] {"Alice"});
+
+            assertThat(result).isInstanceOf(Comparison.class);
+            Comparison comparison = (Comparison) result;
+            assertThat(comparison.lhs().getClass().getSimpleName()).isEqualTo("UnaryString");
+        }
+
+        @Test
+        void ignoreCase_notEquals_nonString_skips_lower() {
+            PropertyPredicateDescriptor descriptor =
+                    leafIgnoreCase("age", PredicateDescriptorOperator.NOT_EQUALS, 0, 1);
+
+            Predicate result = mapper.map(descriptor, metaProvider, new Object[] {30});
+
+            assertThat(result).isInstanceOf(Comparison.class);
+            Comparison comparison = (Comparison) result;
+            assertThat(comparison.lhs().getClass().getSimpleName()).isEqualTo("ColumnReference");
+        }
+
+        @Test
+        void ignoreCase_like_wraps_with_lower() {
+            PropertyPredicateDescriptor descriptor = leafIgnoreCase("name", PredicateDescriptorOperator.LIKE, 0, 1);
+
+            Predicate result = mapper.map(descriptor, metaProvider, new Object[] {"%TEST%"});
+
+            assertThat(result).isInstanceOf(Like.class);
+            assertThat(((Like) result).pattern()).isEqualTo("%test%");
+        }
+
+        @Test
+        void ignoreCase_startingWith_wraps_with_lower() {
+            PropertyPredicateDescriptor descriptor =
+                    leafIgnoreCase("name", PredicateDescriptorOperator.STARTING_WITH, 0, 1);
+
+            Predicate result = mapper.map(descriptor, metaProvider, new Object[] {"AL"});
+
+            assertThat(result).isInstanceOf(Like.class);
+            assertThat(((Like) result).pattern()).isEqualTo("al%");
+        }
+
+        @Test
+        void ignoreCase_endingWith_wraps_with_lower() {
+            PropertyPredicateDescriptor descriptor =
+                    leafIgnoreCase("name", PredicateDescriptorOperator.ENDING_WITH, 0, 1);
+
+            Predicate result = mapper.map(descriptor, metaProvider, new Object[] {"ICE"});
+
+            assertThat(result).isInstanceOf(Like.class);
+            assertThat(((Like) result).pattern()).isEqualTo("%ice");
+        }
+
+        @Test
         void ignoreCase_containing_wraps_with_lower_and_wildcards() {
             PropertyPredicateDescriptor descriptor =
                     leafIgnoreCase("name", PredicateDescriptorOperator.CONTAINING, 0, 1);
@@ -347,6 +415,28 @@ class PredicateDescriptorMapperTest {
 
             assertThat(result).isInstanceOf(NullPredicate.class);
         }
+
+        @Test
+        void emptyChildren_produces_nullPredicate() {
+            CompositePredicateDescriptor descriptor = new CompositePredicateDescriptor(CompositeType.AND, List.of());
+
+            Predicate result = mapper.map(descriptor, metaProvider, new Object[] {});
+
+            assertThat(result).isInstanceOf(NullPredicate.class);
+        }
+
+        @Test
+        void or_composite_produces_orAndOr() {
+            CompositePredicateDescriptor descriptor = new CompositePredicateDescriptor(
+                    CompositeType.OR,
+                    List.of(
+                            leaf("name", PredicateDescriptorOperator.EQUALS, 0, 1),
+                            leaf("email", PredicateDescriptorOperator.EQUALS, 1, 1)));
+
+            Predicate result = mapper.map(descriptor, metaProvider, new Object[] {"Alice", "alice@test.com"});
+
+            assertThat(result).isInstanceOf(AndOr.class);
+        }
     }
 
     // ---- E) IN edge cases ----
@@ -374,6 +464,27 @@ class PredicateDescriptorMapperTest {
 
             assertThat(result).isInstanceOf(In.class);
             assertThat(((In) result).values()).hasSize(2);
+        }
+
+        @Test
+        void in_with_iterable_nonCollection() {
+            // Use a custom Iterable that is not a Collection
+            Iterable<String> iterable = () -> List.of("Alice", "Bob").iterator();
+
+            Predicate result = mapper.map(
+                    leaf("name", PredicateDescriptorOperator.IN, 0, 1), metaProvider, new Object[] {iterable});
+
+            assertThat(result).isInstanceOf(In.class);
+            assertThat(((In) result).values()).hasSize(2);
+        }
+
+        @Test
+        void in_with_single_value() {
+            Predicate result = mapper.map(
+                    leaf("name", PredicateDescriptorOperator.IN, 0, 1), metaProvider, new Object[] {"Alice"});
+
+            assertThat(result).isInstanceOf(In.class);
+            assertThat(((In) result).values()).hasSize(1);
         }
     }
 }
