@@ -2,6 +2,35 @@
 
 This document provides a comprehensive view of fluent-repo-4j's internal architecture, component responsibilities, and data flow.
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Component Responsibilities](#component-responsibilities)
+   - [EnableFluentRepositories](#1-enablefluentrepositories-annotation)
+   - [FluentRepositoriesRegistrar](#2-fluentrepositoriesregistrar-importbeandefinitionregistrar)
+   - [FluentRepositoryFactoryBean](#3-fluentrepositoryfactorybean-factorybean)
+   - [FluentRepositoryFactory](#4-fluentrepositoryfactory-repositoryfactorysupport)
+   - [FluentRepository](#5-fluentrepositoryt-id-crudrepository-implementation)
+   - [FluentConnectionProvider](#6-fluentconnectionprovider)
+   - [FluentEntityInformation](#7-fluententityinformationt-id-entityinformation-implementation)
+   - [SaveDecisionResolver](#8-savedecisionresolvert-id)
+   - [SaveAction](#9-saveaction)
+   - [FluentEntityRowMapper](#10-fluententityrowmappert)
+   - [FluentEntityWriter](#11-fluententitywritert)
+   - [NamingUtils](#12-namingutils)
+   - [DialectDetector](#13-dialectdetector)
+   - [FluentRepositoriesAutoConfiguration](#14-fluentrepositoriesautoconfiguration)
+3. [Data Flow: Save Operation](#data-flow-save-operation)
+4. [Data Flow: FindById Operation](#data-flow-findbyid-operation)
+5. [Transaction Binding & Connection Lifecycle](#transaction-binding--connection-lifecycle)
+6. [Entity Metadata Caching](#entity-metadata-caching)
+7. [Exception Handling](#exception-handling)
+8. [Limitations & Design Decisions](#limitations--design-decisions)
+9. [Extension Points](#extension-points)
+10. [Testing & Debugging](#testing--debugging)
+
+---
+
 ## Overview
 
 fluent-repo-4j is a Spring Boot integration layer for **pure JDBC-based repositories**. It bridges the gap between Spring Data Commons (the repository abstraction) and raw JDBC, providing:
@@ -500,11 +529,7 @@ This allows application code to handle database errors using Spring's exception 
 
 3. **SQL Generation via Fluent-SQL-4J**: The library does not generate SQL directly. Instead, it delegates to the fluent-sql-4j library, which provides DSL-based SQL construction. This ensures compatibility with multiple databases.
 
-4. **No Custom Query Methods**: The library implements only CRUD methods. Custom finders (e.g., `findByEmail()`) are not supported. Users must either:
-
-   - Use `findAll()` and filter in application code
-   - Implement custom methods using fluent-sql-4j directly
-   - Wait for future versions with PartTree support
+4. **Custom Query Methods via Derivation or Fragments**: Beyond CRUD, the library supports Spring Data–style method-name derivation (`findByEmail()`, `countByActive()`, etc.) and custom fragment implementations via `FluentRepositoryContextAware<T>`. See [DYNAMIC_METHOD_QUERIES.md](DYNAMIC_METHOD_QUERIES.md) and [USAGE_EXAMPLES.md](USAGE_EXAMPLES.md) for details.
 5. **ID Generation Limited to PROVIDED and IDENTITY**: Only two strategies are currently implemented:
    - `PROVIDED`: Application sets the ID
    - `IDENTITY`: Database auto-increment
