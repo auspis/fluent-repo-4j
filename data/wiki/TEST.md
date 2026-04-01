@@ -212,11 +212,19 @@ The JaCoCo `check` goal can enforce coverage thresholds and fail the build when 
 
 ### Troubleshooting
 
+<<<<<<< HEAD
 |              Problem               |                                                 Solution                                                  |
 |------------------------------------|-----------------------------------------------------------------------------------------------------------|
 | No report generated                | Run `./mvnw jacoco:report` explicitly, or verify that `report` is bound to an appropriate lifecycle phase |
 | Integration tests not instrumented | Ensure `${jacocoArgLine}` is added to the Failsafe `argLine` configuration                                |
 | Multi-module aggregation           | Collect per-module exec files and use `report-aggregate` or `merge` + `report` in an aggregator POM       |
+=======
+| Problem | Solution |
+|---------|----------|
+| No report generated | Run `./mvnw jacoco:report` explicitly, or verify that `report` is bound to an appropriate lifecycle phase |
+| Integration tests not instrumented | Ensure `${jacocoArgLine}` is added to the Failsafe `argLine` configuration |
+| Multi-module aggregation | Collect per-module exec files and use `report-aggregate` or `merge` + `report` in an aggregator POM |
+>>>>>>> 53087b8 (docs: reorganize documentation - lightweight README, expanded TEST.md, TOCs in wiki files)
 
 ---
 
