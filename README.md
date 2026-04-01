@@ -39,9 +39,12 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;    // auto-mapped to column "name"
-    private String email;   // auto-mapped to column "email"
-    private int age;        // auto-mapped to column "age"
+    private String name;                          // auto-mapped to column "name"
+
+    @Column(name = "email_address")
+    private String email;                         // mapped to column "email_address"
+
+    private int age;                              // auto-mapped to column "age"
 
     // constructors, getters, setters...
 }
