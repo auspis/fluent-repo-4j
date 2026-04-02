@@ -2,6 +2,20 @@
 
 Concrete examples for common use cases. All examples assume H2 (test) or any standard JDBC database (production).
 
+## Table of Contents
+
+1. [Application-Provided ID](#1-application-provided-id)
+2. [Database Auto-Increment (IDENTITY)](#2-database-auto-increment-identity)
+3. [FluentPersistable for Explicit State Control](#3-fluentpersistable-for-explicit-state-control)
+4. [Persistable with UUID](#4-persistable-with-uuid)
+5. [CRUD Operations](#5-crud-operations)
+6. [Spring Transactions](#6-spring-transactions)
+7. [Convention-Based Column Mapping](#7-convention-based-column-mapping)
+8. [OptimisticLockingFailureException on Update](#8-optimisticlockingfailureexception-on-update)
+9. [Multi-DataSource Repository Groups](#9-multi-datasource-repository-groups)
+10. [Custom Query Fragments](#10-custom-query-fragments)
+11. [Integration Test Setup (H2)](#11-integration-test-setup-h2)
+
 ---
 
 ## 1. Application-Provided ID
