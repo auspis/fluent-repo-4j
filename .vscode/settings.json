@@ -3,6 +3,7 @@
         "assertj",
         "auspis",
         "codehaus",
+        "Combinators",
         "Dgroups",
         "diffplug",
         "flexmark",

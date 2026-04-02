@@ -10,92 +10,208 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.util.UUID;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Persistable;
 
 class FluentEntityInformationTest {
 
     // ---- Tests ----
+    @Nested
+    class UnsupportedOperators {
 
-    @Test
-    void annotatedEntity_tableName() {
-        var info = new FluentEntityInformation<>(AnnotatedUser.class);
-        assertThat(info.getTableName()).isEqualTo("users");
+        @Test
+        void annotatedEntity_tableName() {
+            var info = new FluentEntityInformation<>(AnnotatedUser.class);
+            assertThat(info.getTableName()).isEqualTo("users");
+        }
+
+        @Test
+        void annotatedEntity_idColumn() {
+            var info = new FluentEntityInformation<>(AnnotatedUser.class);
+            assertThat(info.getIdColumnName()).isEqualTo("user_id");
+            assertThat(info.getIdType()).isEqualTo(Long.class);
+        }
+
+        @Test
+        void annotatedEntity_columnMappings() {
+            var info = new FluentEntityInformation<>(AnnotatedUser.class);
+            assertThat(info.getColumnToFieldMap()).containsKeys("user_id", "user_name", "email");
+            assertThat(info.getColumnToFieldMap()).doesNotContainKey("session_token"); // @Transient excluded
+        }
+
+        @Test
+        void conventionEntity_tableName() {
+            var info = new FluentEntityInformation<>(ConventionEntity.class);
+            assertThat(info.getTableName()).isEqualTo("convention_entity");
+        }
+
+        @Test
+        void conventionEntity_snakeCaseColumns() {
+            var info = new FluentEntityInformation<>(ConventionEntity.class);
+            assertThat(info.getColumnToFieldMap()).containsKeys("id", "first_name", "last_name");
+        }
+
+        @Test
+        void conventionEntity_idColumn() {
+            FluentEntityInformation<ConventionEntity, Long> info =
+                    new FluentEntityInformation<>(ConventionEntity.class);
+            assertThat(info.getIdColumnName()).isEqualTo("id");
+        }
+
+        @Test
+        void emptyTableName_fallsBackToSnakeCaseClassName() {
+            FluentEntityInformation<EmptyNameTableEntity, Long> info =
+                    new FluentEntityInformation<>(EmptyNameTableEntity.class);
+            assertThat(info.getTableName()).isEqualTo("empty_name_table_entity");
+        }
+
+        @Test
+        void emptyColumnName_fallsBackToSnakeCaseFieldName() {
+            FluentEntityInformation<EmptyNameColumnsEntity, Long> info =
+                    new FluentEntityInformation<>(EmptyNameColumnsEntity.class);
+            assertThat(info.getIdColumnName()).isEqualTo("entity_id");
+            assertThat(info.getColumnToFieldMap()).containsKey("entity_name");
+        }
+
+        @Test
+        void staticAndTransientKeywordFields_areExcludedFromColumnMapping() {
+            FluentEntityInformation<StaticAndTransientFieldsEntity, Long> info =
+                    new FluentEntityInformation<>(StaticAndTransientFieldsEntity.class);
+            assertThat(info.getColumnToFieldMap())
+                    .containsKey("id")
+                    .containsKey("normal_field")
+                    .doesNotContainKey("static_field")
+                    .doesNotContainKey("transient_keyword_field")
+                    .doesNotContainKey("transient_annotated_field");
+        }
+
+        @Test
+        void noIdEntity() {
+            assertThatThrownBy(() -> new FluentEntityInformation<>(NoIdEntity.class))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("No @Id field found");
+        }
+
+        @Test
+        void springDataIdAnnotation() {
+            var info = new FluentEntityInformation<>(SpringDataIdEntity.class);
+            assertThat(info.getIdColumnName()).isEqualTo("product_code");
+            assertThat(info.getIdType()).isEqualTo(String.class);
+            assertThat(info.getTableName()).isEqualTo("products");
+        }
+
+        @Test
+        void nonIdColumnMap() {
+            var info = new FluentEntityInformation<>(ConventionEntity.class);
+            var nonId = info.getNonIdColumnToFieldMap();
+            assertThat(nonId).containsKeys("first_name", "last_name").doesNotContainKey("id");
+        }
+
+        @Test
+        void getId() {
+            var info = new FluentEntityInformation<>(ConventionEntity.class);
+            ConventionEntity entity = new ConventionEntity();
+            entity.id = 42L;
+            assertThat(info.getId(entity)).isEqualTo(42L);
+        }
+
+        @Test
+        void isNew() {
+            var info = new FluentEntityInformation<>(ConventionEntity.class);
+            ConventionEntity entity = new ConventionEntity();
+            assertThat(info.isNew(entity)).isTrue();
+
+            entity.id = 1L;
+            assertThat(info.isNew(entity)).isFalse();
+        }
     }
 
-    @Test
-    void annotatedEntity_idColumn() {
-        var info = new FluentEntityInformation<>(AnnotatedUser.class);
-        assertThat(info.getIdColumnName()).isEqualTo("user_id");
-        assertThat(info.getIdType()).isEqualTo(Long.class);
+    @Nested
+    class GeneratedValueId {
+
+        @Test
+        void noGeneratedValue_strategyIsProvided() {
+            FluentEntityInformation<ConventionEntity, Long> info =
+                    new FluentEntityInformation<>(ConventionEntity.class);
+            assertThat(info.getIdGenerationStrategy()).isEqualTo(IdGenerationStrategy.PROVIDED);
+        }
+
+        @Test
+        void generatedValueIdentity_strategyIsIdentity() {
+            FluentEntityInformation<IdentityEntity, Long> info = new FluentEntityInformation<>(IdentityEntity.class);
+            assertThat(info.getIdGenerationStrategy()).isEqualTo(IdGenerationStrategy.IDENTITY);
+        }
+
+        @Test
+        void generatedValueSequence_throwsUnsupported() {
+            assertThatThrownBy(() -> new FluentEntityInformation<>(SequenceEntity.class))
+                    .isInstanceOf(UnsupportedOperationException.class)
+                    .hasMessageContaining("SEQUENCE")
+                    .hasMessageContaining("not supported");
+        }
+
+        @Test
+        void generatedValueTable_throwsUnsupported() {
+            assertThatThrownBy(() -> new FluentEntityInformation<>(TableStrategyEntity.class))
+                    .isInstanceOf(UnsupportedOperationException.class)
+                    .hasMessageContaining("TABLE")
+                    .hasMessageContaining("not supported");
+        }
+
+        @Test
+        void generatedValueAuto_throwsUnsupported() {
+            assertThatThrownBy(() -> new FluentEntityInformation<>(AutoStrategyEntity.class))
+                    .isInstanceOf(UnsupportedOperationException.class)
+                    .hasMessageContaining("AUTO")
+                    .hasMessageContaining("not supported");
+        }
     }
 
-    @Test
-    void annotatedEntity_columnMappings() {
-        var info = new FluentEntityInformation<>(AnnotatedUser.class);
-        assertThat(info.getColumnToFieldMap()).containsKeys("user_id", "user_name", "email");
-        assertThat(info.getColumnToFieldMap()).doesNotContainKey("session_token"); // @Transient excluded
+    @Nested
+    class PersistableEntity {
+
+        @Test
+        void persistableEntity_delegatesToEntityIsNew() {
+            FluentEntityInformation<PersistableEvent, UUID> info =
+                    new FluentEntityInformation<>(PersistableEvent.class);
+            PersistableEvent event = new PersistableEvent();
+
+            assertThat(event.getId()).isNotNull();
+            assertThat(info.isNew(event)).isTrue();
+
+            event.markNotNew();
+            assertThat(info.isNew(event)).isFalse();
+        }
+
+        @Test
+        void nonPersistableEntity_usesIdNullCheck() {
+            FluentEntityInformation<ConventionEntity, Long> info =
+                    new FluentEntityInformation<>(ConventionEntity.class);
+            ConventionEntity entity = new ConventionEntity();
+
+            assertThat(info.isNew(entity)).isTrue();
+
+            entity.id = 42L;
+            assertThat(info.isNew(entity)).isFalse();
+        }
     }
 
-    @Test
-    void conventionEntity_tableName() {
-        var info = new FluentEntityInformation<>(ConventionEntity.class);
-        assertThat(info.getTableName()).isEqualTo("convention_entity");
+    @Nested
+    class CustomId {
+
+        @Test
+        void setId_updatesEntityId() {
+            FluentEntityInformation<ConventionEntity, Long> info =
+                    new FluentEntityInformation<>(ConventionEntity.class);
+            ConventionEntity entity = new ConventionEntity();
+            assertThat(info.getId(entity)).isNull();
+
+            info.setId(entity, 99L);
+
+            assertThat(info.getId(entity)).isEqualTo(99L);
+        }
     }
-
-    @Test
-    void conventionEntity_snakeCaseColumns() {
-        var info = new FluentEntityInformation<>(ConventionEntity.class);
-        assertThat(info.getColumnToFieldMap()).containsKeys("id", "first_name", "last_name");
-    }
-
-    @Test
-    void conventionEntity_idColumn() {
-        var info = new FluentEntityInformation<>(ConventionEntity.class);
-        assertThat(info.getIdColumnName()).isEqualTo("id");
-    }
-
-    @Test
-    void noIdEntity_throwsException() {
-        assertThatThrownBy(() -> new FluentEntityInformation<>(NoIdEntity.class))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("No @Id field found");
-    }
-
-    @Test
-    void springDataIdAnnotation_works() {
-        var info = new FluentEntityInformation<>(SpringDataIdEntity.class);
-        assertThat(info.getIdColumnName()).isEqualTo("product_code");
-        assertThat(info.getIdType()).isEqualTo(String.class);
-        assertThat(info.getTableName()).isEqualTo("products");
-    }
-
-    @Test
-    void nonIdColumnMap_excludesId() {
-        var info = new FluentEntityInformation<>(ConventionEntity.class);
-        var nonId = info.getNonIdColumnToFieldMap();
-        assertThat(nonId).containsKeys("first_name", "last_name").doesNotContainKey("id");
-    }
-
-    @Test
-    void getId_returnsIdValue() {
-        var info = new FluentEntityInformation<>(ConventionEntity.class);
-        ConventionEntity entity = new ConventionEntity();
-        entity.id = 42L;
-        assertThat(info.getId(entity)).isEqualTo(42L);
-    }
-
-    @Test
-    void isNew_detectedByNullId() {
-        var info = new FluentEntityInformation<>(ConventionEntity.class);
-        ConventionEntity entity = new ConventionEntity();
-        assertThat(info.isNew(entity)).isTrue();
-
-        entity.id = 1L;
-        assertThat(info.isNew(entity)).isFalse();
-    }
-
-    // ---- Test entities ----
 
     @Table(name = "users")
     static class AnnotatedUser {
@@ -138,87 +254,38 @@ class FluentEntityInformationTest {
         private String description;
     }
 
-    // ---- @GeneratedValue tests ----
-
-    @Test
-    void noGeneratedValue_strategyIsProvided() {
-        FluentEntityInformation<ConventionEntity, Long> info = new FluentEntityInformation<>(ConventionEntity.class);
-        assertThat(info.getIdGenerationStrategy()).isEqualTo(IdGenerationStrategy.PROVIDED);
+    @Table(name = "")
+    static class EmptyNameTableEntity {
+        @Id
+        private Long id;
     }
 
-    @Test
-    void generatedValueIdentity_strategyIsIdentity() {
-        FluentEntityInformation<IdentityEntity, Long> info = new FluentEntityInformation<>(IdentityEntity.class);
-        assertThat(info.getIdGenerationStrategy()).isEqualTo(IdGenerationStrategy.IDENTITY);
+    static class EmptyNameColumnsEntity {
+        @Id
+        @Column(name = "")
+        private Long entityId;
+
+        @Column(name = "")
+        private String entityName;
     }
 
-    @Test
-    void generatedValueSequence_throwsUnsupported() {
-        assertThatThrownBy(() -> new FluentEntityInformation<>(SequenceEntity.class))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessageContaining("SEQUENCE")
-                .hasMessageContaining("not supported");
+    static class StaticAndTransientFieldsEntity {
+        @Id
+        private Long id;
+
+        @SuppressWarnings("unused")
+        private String normalField;
+
+        @SuppressWarnings("unused")
+        private static String staticField;
+
+        @SuppressWarnings("unused")
+        private transient String transientKeywordField;
+
+        @Transient
+        @SuppressWarnings("unused")
+        private String transientAnnotatedField;
     }
-
-    @Test
-    void generatedValueTable_throwsUnsupported() {
-        assertThatThrownBy(() -> new FluentEntityInformation<>(TableStrategyEntity.class))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessageContaining("TABLE")
-                .hasMessageContaining("not supported");
-    }
-
-    @Test
-    void generatedValueAuto_throwsUnsupported() {
-        assertThatThrownBy(() -> new FluentEntityInformation<>(AutoStrategyEntity.class))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessageContaining("AUTO")
-                .hasMessageContaining("not supported");
-    }
-
-    // ---- Persistable isNew() tests ----
-
-    @Test
-    void persistableEntity_delegatesToEntityIsNew() {
-        FluentEntityInformation<PersistableEvent, UUID> info = new FluentEntityInformation<>(PersistableEvent.class);
-        PersistableEvent event = new PersistableEvent();
-
-        // ID is non-null (set in constructor), but isNew() returns true
-        assertThat(event.getId()).isNotNull();
-        assertThat(info.isNew(event)).isTrue();
-
-        // After marking as not new, isNew() returns false
-        event.markNotNew();
-        assertThat(info.isNew(event)).isFalse();
-    }
-
-    @Test
-    void nonPersistableEntity_usesIdNullCheck() {
-        FluentEntityInformation<ConventionEntity, Long> info = new FluentEntityInformation<>(ConventionEntity.class);
-        ConventionEntity entity = new ConventionEntity();
-
-        // ID is null → isNew returns true
-        assertThat(info.isNew(entity)).isTrue();
-
-        // ID is set → isNew returns false
-        entity.id = 42L;
-        assertThat(info.isNew(entity)).isFalse();
-    }
-
-    // ---- setId tests ----
-
-    @Test
-    void setId_updatesEntityId() {
-        FluentEntityInformation<ConventionEntity, Long> info = new FluentEntityInformation<>(ConventionEntity.class);
-        ConventionEntity entity = new ConventionEntity();
-        assertThat(info.getId(entity)).isNull();
-
-        info.setId(entity, 99L);
-
-        assertThat(info.getId(entity)).isEqualTo(99L);
-    }
-
-    // ---- Test entities for @GeneratedValue ----
 
     static class IdentityEntity {
         @Id

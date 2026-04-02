@@ -144,7 +144,10 @@ class FluentRepositoryFactoryFragmentTest {
         }
 
         @SuppressWarnings("unused")
-        public void customMethod() {}
+        public void customMethod() {
+            // Just a dummy method to verify that the fragment is properly proxied and can have its own methods besides
+            // the context accessors.
+        }
     }
 
     interface NonAwareFragment {
