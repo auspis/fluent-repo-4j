@@ -9,6 +9,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import java.lang.reflect.Field;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,39 +18,40 @@ import org.springframework.data.domain.Persistable;
 
 class FluentEntityInformationTest {
 
-    // ---- Tests ----
     @Nested
-    class UnsupportedOperators {
+    class Annotations {
 
         @Test
         void annotatedEntity_tableName() {
-            var info = new FluentEntityInformation<>(AnnotatedUser.class);
+            FluentEntityInformation<AnnotatedUser, Long> info = new FluentEntityInformation<>(AnnotatedUser.class);
             assertThat(info.getTableName()).isEqualTo("users");
         }
 
         @Test
         void annotatedEntity_idColumn() {
-            var info = new FluentEntityInformation<>(AnnotatedUser.class);
+            FluentEntityInformation<AnnotatedUser, Long> info = new FluentEntityInformation<>(AnnotatedUser.class);
             assertThat(info.getIdColumnName()).isEqualTo("user_id");
             assertThat(info.getIdType()).isEqualTo(Long.class);
         }
 
         @Test
         void annotatedEntity_columnMappings() {
-            var info = new FluentEntityInformation<>(AnnotatedUser.class);
+            FluentEntityInformation<AnnotatedUser, Long> info = new FluentEntityInformation<>(AnnotatedUser.class);
             assertThat(info.getColumnToFieldMap()).containsKeys("user_id", "user_name", "email");
             assertThat(info.getColumnToFieldMap()).doesNotContainKey("session_token"); // @Transient excluded
         }
 
         @Test
         void conventionEntity_tableName() {
-            var info = new FluentEntityInformation<>(ConventionEntity.class);
+            FluentEntityInformation<ConventionEntity, Long> info =
+                    new FluentEntityInformation<>(ConventionEntity.class);
             assertThat(info.getTableName()).isEqualTo("convention_entity");
         }
 
         @Test
         void conventionEntity_snakeCaseColumns() {
-            var info = new FluentEntityInformation<>(ConventionEntity.class);
+            FluentEntityInformation<ConventionEntity, Long> info =
+                    new FluentEntityInformation<>(ConventionEntity.class);
             assertThat(info.getColumnToFieldMap()).containsKeys("id", "first_name", "last_name");
         }
 
@@ -95,7 +98,8 @@ class FluentEntityInformationTest {
 
         @Test
         void springDataIdAnnotation() {
-            var info = new FluentEntityInformation<>(SpringDataIdEntity.class);
+            FluentEntityInformation<SpringDataIdEntity, String> info =
+                    new FluentEntityInformation<>(SpringDataIdEntity.class);
             assertThat(info.getIdColumnName()).isEqualTo("product_code");
             assertThat(info.getIdType()).isEqualTo(String.class);
             assertThat(info.getTableName()).isEqualTo("products");
@@ -103,14 +107,16 @@ class FluentEntityInformationTest {
 
         @Test
         void nonIdColumnMap() {
-            var info = new FluentEntityInformation<>(ConventionEntity.class);
-            var nonId = info.getNonIdColumnToFieldMap();
+            FluentEntityInformation<ConventionEntity, Long> info =
+                    new FluentEntityInformation<>(ConventionEntity.class);
+            Map<String, Field> nonId = info.getNonIdColumnToFieldMap();
             assertThat(nonId).containsKeys("first_name", "last_name").doesNotContainKey("id");
         }
 
         @Test
         void getId() {
-            var info = new FluentEntityInformation<>(ConventionEntity.class);
+            FluentEntityInformation<ConventionEntity, Long> info =
+                    new FluentEntityInformation<>(ConventionEntity.class);
             ConventionEntity entity = new ConventionEntity();
             entity.id = 42L;
             assertThat(info.getId(entity)).isEqualTo(42L);
@@ -118,7 +124,8 @@ class FluentEntityInformationTest {
 
         @Test
         void isNew() {
-            var info = new FluentEntityInformation<>(ConventionEntity.class);
+            FluentEntityInformation<ConventionEntity, Long> info =
+                    new FluentEntityInformation<>(ConventionEntity.class);
             ConventionEntity entity = new ConventionEntity();
             assertThat(info.isNew(entity)).isTrue();
 

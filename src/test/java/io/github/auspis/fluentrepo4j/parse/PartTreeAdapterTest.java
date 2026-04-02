@@ -385,7 +385,7 @@ class PartTreeAdapterTest {
 
         @Test
         @SuppressWarnings("unchecked")
-        void oOrderByNull() throws Exception {
+        void oOrderByWithNullValue() throws Exception {
             Method m = PartTreeAdapter.class.getDeclaredMethod("oOrderBy", Sort.class);
             m.setAccessible(true);
 

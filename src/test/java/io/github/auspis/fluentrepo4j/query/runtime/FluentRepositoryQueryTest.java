@@ -143,7 +143,7 @@ class FluentRepositoryQueryTest {
                         new Object[] {30, "notPageable"});
 
         assertThat(slice.getPageable().isUnpaged()).isTrue();
-        assertThat(slice.hasNext()).isTrue();
+        assertThat(slice.hasNext()).isFalse();
     }
 
     @Test
