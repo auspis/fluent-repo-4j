@@ -531,12 +531,12 @@ This allows application code to handle database errors using Spring's exception 
 
 4. **Custom Query Methods via Derivation or Fragments**: Beyond CRUD, the library supports Spring Data–style method-name derivation (`findByEmail()`, `countByActive()`, etc.) and custom fragment implementations via `FluentRepositoryContextAware<T>`. See [DYNAMIC_METHOD_QUERIES.md](DYNAMIC_METHOD_QUERIES.md) and [USAGE_EXAMPLES.md](USAGE_EXAMPLES.md) for details.
 
-5. **ID Generation Limited to PROVIDED and IDENTITY**: Only two strategies are currently implemented:
+5. **ID Generation Limited to PROVIDED and IDENTITY**
 
-   - `PROVIDED`: Application sets the ID
-   - `IDENTITY`: Database auto-increment
+- `PROVIDED`: Application sets the ID
+- `IDENTITY`: Database auto-increment
 
-   `SEQUENCE` support (for databases like PostgreSQL) is planned for future releases.
+`SEQUENCE` support (for databases like PostgreSQL) is planned for future releases.
 
 ---
 
