@@ -530,7 +530,15 @@ This allows application code to handle database errors using Spring's exception 
 3. **SQL Generation via Fluent-SQL-4J**: The library does not generate SQL directly. Instead, it delegates to the fluent-sql-4j library, which provides DSL-based SQL construction. This ensures compatibility with multiple databases.
 
 4. **Custom Query Methods via Derivation or Fragments**: Beyond CRUD, the library supports Spring Data–style method-name derivation (`findByEmail()`, `countByActive()`, etc.) and custom fragment implementations via `FluentRepositoryContextAware<T>`. See [DYNAMIC_METHOD_QUERIES.md](DYNAMIC_METHOD_QUERIES.md) and [USAGE_EXAMPLES.md](USAGE_EXAMPLES.md) for details.
+<<<<<<< HEAD
    <<<<<<< HEAD
+=======
+
+5. **ID Generation Limited to PROVIDED and IDENTITY**: Only two strategies are currently implemented:
+
+   - `PROVIDED`: Application sets the ID
+   - `IDENTITY`: Database auto-increment
+>>>>>>> 045fe3c (chore: spotless:apply)
 
 5. **ID Generation Limited to PROVIDED and IDENTITY**
 
