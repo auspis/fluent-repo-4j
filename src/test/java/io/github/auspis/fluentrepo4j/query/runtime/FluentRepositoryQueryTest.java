@@ -65,10 +65,11 @@ class FluentRepositoryQueryTest {
         List<User> rows = List.of(userWithId(10L, "A", "a@test", 30, true));
 
         QueryMethod streamMethod = mock(QueryMethod.class);
+
         when(streamMethod.isPageQuery()).thenReturn(false);
         when(streamMethod.isSliceQuery()).thenReturn(false);
-        when(streamMethod.isCollectionQuery()).thenReturn(true);
-        when(streamMethod.isStreamQuery()).thenReturn(false);
+        when(streamMethod.isCollectionQuery()).thenReturn(false);
+        when(streamMethod.isStreamQuery()).thenReturn(true);
         when(streamMethod.getReturnedObjectType()).thenReturn((Class) Stream.class);
         setPrivateField(streamQuery, "queryMethod", streamMethod);
 

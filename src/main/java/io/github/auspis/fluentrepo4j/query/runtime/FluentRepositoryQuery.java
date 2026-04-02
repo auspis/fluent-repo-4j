@@ -157,7 +157,7 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
     private Slice<T> adaptAsSlice(List<T> content, Object[] args) {
         Pageable pageable = extractPageable(args);
         Pageable effectivePageable = pageable != null ? pageable : Pageable.unpaged();
-        return new SliceImpl<>(content, effectivePageable, !content.isEmpty());
+        return new SliceImpl<>(content, effectivePageable, false);
     }
 
     private Pageable extractPageable(Object[] parameters) {
