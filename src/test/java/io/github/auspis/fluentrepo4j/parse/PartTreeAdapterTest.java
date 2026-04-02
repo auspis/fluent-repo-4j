@@ -27,9 +27,390 @@ import org.springframework.data.domain.Sort;
  */
 class PartTreeAdapterTest {
 
-    // ---- Helper interfaces ----
+    @Nested
+    class OperationDetection {
 
-    @SuppressWarnings("unused")
+        @Test
+        void find() throws Exception {
+            QueryDescriptor d = adapt("findByName", String.class);
+            assertThat(d.operation()).isEqualTo(QueryOperation.FIND);
+        }
+
+        @Test
+        void count() throws Exception {
+            QueryDescriptor d = adapt("countByName", String.class);
+            assertThat(d.operation()).isEqualTo(QueryOperation.COUNT);
+        }
+
+        @Test
+        void exists() throws Exception {
+            QueryDescriptor d = adapt("existsByEmail", String.class);
+            assertThat(d.operation()).isEqualTo(QueryOperation.EXISTS);
+        }
+
+        @Test
+        void delete() throws Exception {
+            QueryDescriptor d = adapt("deleteByName", String.class);
+            assertThat(d.operation()).isEqualTo(QueryOperation.DELETE);
+        }
+    }
+
+    @Nested
+    class DistinctAndLimit {
+
+        @Test
+        void distinct() throws Exception {
+            QueryDescriptor d = adapt("findDistinctByName", String.class);
+            assertThat(d.distinct()).isTrue();
+            assertThat(d.operation()).isEqualTo(QueryOperation.FIND);
+        }
+
+        @Test
+        void top3() throws Exception {
+            QueryDescriptor d = adapt("findTop3ByName", String.class);
+            assertThat(d.maxResults()).isEqualTo(3);
+        }
+
+        @Test
+        void first1() throws Exception {
+            QueryDescriptor d = adapt("findFirst1ByName", String.class);
+            assertThat(d.maxResults()).isEqualTo(1);
+        }
+    }
+
+    @Nested
+    class SimpleProperty {
+
+        @Test
+        void equals() throws Exception {
+            QueryDescriptor d = adapt("findByName", String.class);
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.name()).isEqualTo("name");
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.EQUALS);
+            assertThat(pc.paramIndex()).isZero();
+            assertThat(pc.paramCount()).isEqualTo(1);
+            assertThat(pc.ignoreCase()).isFalse();
+        }
+
+        @Test
+        void notEquals() throws Exception {
+            QueryDescriptor d = adapt("findByNameNot", String.class);
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.NOT_EQUALS);
+        }
+
+        @Test
+        void ignoreCaseEquals() throws Exception {
+            QueryDescriptor d = adapt("findByNameIgnoreCase", String.class);
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.EQUALS);
+            assertThat(pc.ignoreCase()).isTrue();
+        }
+    }
+
+    @Nested
+    class LogicalCombinators {
+
+        @Test
+        void and() throws Exception {
+            QueryDescriptor d = adapt("findByNameAndEmail", String.class, String.class);
+            assertThat(d.predicateDescriptor()).isInstanceOf(CompositePredicateDescriptor.class);
+            CompositePredicateDescriptor cc = (CompositePredicateDescriptor) d.predicateDescriptor();
+            assertThat(cc.type()).isEqualTo(CompositeType.AND);
+            assertThat(cc.children()).hasSize(2);
+
+            PropertyPredicateDescriptor name =
+                    (PropertyPredicateDescriptor) cc.children().get(0);
+            assertThat(name.name()).isEqualTo("name");
+            assertThat(name.paramIndex()).isZero();
+
+            PropertyPredicateDescriptor email =
+                    (PropertyPredicateDescriptor) cc.children().get(1);
+            assertThat(email.name()).isEqualTo("email");
+            assertThat(email.paramIndex()).isEqualTo(1);
+        }
+
+        @Test
+        void or() throws Exception {
+            QueryDescriptor d = adapt("findByNameOrEmail", String.class, String.class);
+            assertThat(d.predicateDescriptor()).isInstanceOf(CompositePredicateDescriptor.class);
+            CompositePredicateDescriptor cc = (CompositePredicateDescriptor) d.predicateDescriptor();
+            assertThat(cc.type()).isEqualTo(CompositeType.OR);
+            assertThat(cc.children()).hasSize(2);
+        }
+
+        @Test
+        void andOr() throws Exception {
+            QueryDescriptor d = adapt("findByNameAndEmailOrAge", String.class, String.class, Integer.class);
+            assertThat(d.predicateDescriptor()).isInstanceOf(CompositePredicateDescriptor.class);
+            CompositePredicateDescriptor or = (CompositePredicateDescriptor) d.predicateDescriptor();
+            assertThat(or.type()).isEqualTo(CompositeType.OR);
+            assertThat(or.children()).hasSize(2);
+
+            CompositePredicateDescriptor and =
+                    (CompositePredicateDescriptor) or.children().get(0);
+            assertThat(and.type()).isEqualTo(CompositeType.AND);
+            assertThat(and.children()).hasSize(2);
+
+            PropertyPredicateDescriptor namePc =
+                    (PropertyPredicateDescriptor) and.children().get(0);
+            assertThat(namePc.paramIndex()).isZero();
+
+            PropertyPredicateDescriptor emailPc =
+                    (PropertyPredicateDescriptor) and.children().get(1);
+            assertThat(emailPc.paramIndex()).isEqualTo(1);
+
+            PropertyPredicateDescriptor agePc =
+                    (PropertyPredicateDescriptor) or.children().get(1);
+            assertThat(agePc.paramIndex()).isEqualTo(2);
+        }
+    }
+
+    @Nested
+    class Comparisons {
+
+        @Test
+        void lessThan() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByAgeLessThan", Integer.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.LESS_THAN);
+        }
+
+        @Test
+        void lessThanEqual() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByAgeLessThanEqual", Integer.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.LESS_THAN_EQUAL);
+        }
+
+        @Test
+        void greaterThan() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByAgeGreaterThan", Integer.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.GREATER_THAN);
+        }
+
+        @Test
+        void greaterThanEqual() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByAgeGreaterThanEqual", Integer.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.GREATER_THAN_EQUAL);
+        }
+
+        @Test
+        void before() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByBirthdateBefore", java.time.LocalDate.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.LESS_THAN);
+        }
+
+        @Test
+        void after() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByBirthdateAfter", java.time.LocalDate.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.GREATER_THAN);
+        }
+    }
+
+    @Nested
+    class BetweenOperator {
+
+        @Test
+        void between() throws Exception {
+            QueryDescriptor d = adapt("findByAgeBetween", Integer.class, Integer.class);
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.BETWEEN);
+            assertThat(pc.paramIndex()).isZero();
+            assertThat(pc.paramCount()).isEqualTo(2);
+        }
+    }
+
+    @Nested
+    class NullChecks {
+
+        @Test
+        void isNull() throws Exception {
+            QueryDescriptor d = adapt("findByNameIsNull");
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.IS_NULL);
+            assertThat(pc.paramCount()).isZero();
+        }
+
+        @Test
+        void isNotNull() throws Exception {
+            QueryDescriptor d = adapt("findByNameIsNotNull");
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.IS_NOT_NULL);
+            assertThat(pc.paramCount()).isZero();
+        }
+    }
+
+    @Nested
+    class LikeVariants {
+
+        @Test
+        void like() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameLike", String.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.LIKE);
+        }
+
+        @Test
+        void notLike() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameNotLike", String.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.NOT_LIKE);
+        }
+
+        @Test
+        void startingWith() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameStartingWith", String.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.STARTING_WITH);
+        }
+
+        @Test
+        void endingWith() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameEndingWith", String.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.ENDING_WITH);
+        }
+
+        @Test
+        void containing() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameContaining", String.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.CONTAINING);
+        }
+
+        @Test
+        void notContaining() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameNotContaining", String.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.NOT_CONTAINING);
+        }
+
+        @Test
+        void containingIgnoreCase() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameContainingIgnoreCase", String.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.CONTAINING);
+            assertThat(pc.ignoreCase()).isTrue();
+        }
+    }
+
+    @Nested
+    class InOperator {
+
+        @Test
+        void in() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameIn", Collection.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.IN);
+            assertThat(pc.paramIndex()).isZero();
+        }
+
+        @Test
+        void notIn() throws Exception {
+            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameNotIn", Collection.class));
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.NOT_IN);
+        }
+    }
+
+    @Nested
+    class BooleanChecks {
+
+        @Test
+        void byTrue() throws Exception {
+            QueryDescriptor d = adapt("findByActiveTrue");
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.TRUE);
+            assertThat(pc.paramCount()).isZero();
+        }
+
+        @Test
+        void byFalse() throws Exception {
+            QueryDescriptor d = adapt("findByActiveFalse");
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.FALSE);
+            assertThat(pc.paramCount()).isZero();
+        }
+    }
+
+    @Nested
+    class OrderBy {
+
+        @Test
+        void orderBy() throws Exception {
+            QueryDescriptor d = adapt("findByNameOrderByAgeAsc", String.class);
+            assertThat(d.orderBy()).hasSize(1);
+            assertThat(d.orderBy().get(0).columnName()).isEqualTo("age");
+            assertThat(d.orderBy().get(0).direction()).isEqualTo(Sorting.SortOrder.ASC);
+        }
+    }
+
+    @Nested
+    class PageableAndSortParams {
+
+        @Test
+        void sort() throws Exception {
+            QueryDescriptor d = adapt("findByAge", Integer.class, Sort.class);
+            assertThat(d.sortParamIndex()).isEqualTo(1);
+            assertThat(d.pageableParamIndex()).isEqualTo(-1);
+
+            // age criterion should use index 0 (sort param skipped)
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.paramIndex()).isZero();
+        }
+
+        @Test
+        void pageable() throws Exception {
+            QueryDescriptor d = adapt("findByActive", Boolean.class, Pageable.class);
+            assertThat(d.pageableParamIndex()).isEqualTo(1);
+            assertThat(d.sortParamIndex()).isEqualTo(-1);
+
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.paramIndex()).isZero();
+        }
+
+        @Test
+        void pageableParamFirstIsSkippedInParamIndexing() throws Exception {
+            QueryDescriptor d = adapt("findByName", Pageable.class, String.class);
+            assertThat(d.pageableParamIndex()).isZero();
+            assertThat(d.sortParamIndex()).isEqualTo(-1);
+
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.paramIndex()).isEqualTo(1);
+        }
+
+        @Test
+        void sortParamFirstIsSkippedInParamIndexing() throws Exception {
+            QueryDescriptor d = adapt("findByName", Sort.class, String.class);
+            assertThat(d.sortParamIndex()).isZero();
+            assertThat(d.pageableParamIndex()).isEqualTo(-1);
+
+            PropertyPredicateDescriptor pc = rootProperty(d);
+            assertThat(pc.paramIndex()).isEqualTo(1);
+        }
+    }
+
+    @Nested
+    class NoPredicateAndHelpers {
+
+        @Test
+        @SuppressWarnings("unchecked")
+        void oOrderByWithNullValue() throws Exception {
+            Method m = PartTreeAdapter.class.getDeclaredMethod("oOrderBy", Sort.class);
+            m.setAccessible(true);
+
+            List<Object> result = (List<Object>) m.invoke(null, new Object[] {null});
+
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    class UnsupportedOperators {
+
+        interface RegexMethods {
+            List<User> findByNameMatchesRegex(String pattern);
+        }
+
+        @Test
+        void regexThrowsUnsupported() throws NoSuchMethodException, SecurityException {
+            Method m = RegexMethods.class.getMethod("findByNameMatchesRegex", String.class);
+            assertThatThrownBy(() -> PartTreeAdapter.adapt(m, User.class))
+                    .isInstanceOf(UnsupportedOperationException.class)
+                    .hasMessageContaining("REGEX");
+        }
+    }
+
     interface UserQueryMethods {
         // Equals / NotEquals
         List<User> findByName(String name);
@@ -113,10 +494,12 @@ class PartTreeAdapterTest {
 
         List<User> findByAge(Integer age, Sort sort);
 
+        List<User> findByName(Pageable pageable, String name);
+
+        List<User> findByName(Sort sort, String name);
+
         Page<User> findByActive(Boolean active, Pageable pageable);
     }
-
-    // ---- Utility ----
 
     private static QueryDescriptor adapt(String methodName, Class<?>... paramTypes) throws Exception {
         Method m = UserQueryMethods.class.getMethod(methodName, paramTypes);
@@ -126,411 +509,5 @@ class PartTreeAdapterTest {
     private static PropertyPredicateDescriptor rootProperty(QueryDescriptor d) {
         assertThat(d.predicateDescriptor()).isInstanceOf(PropertyPredicateDescriptor.class);
         return (PropertyPredicateDescriptor) d.predicateDescriptor();
-    }
-
-    // ============================================================
-    // OPERATION detection
-    // ============================================================
-
-    @Nested
-    class OperationDetection {
-
-        @Test
-        void find_operation() throws Exception {
-            QueryDescriptor d = adapt("findByName", String.class);
-            assertThat(d.operation()).isEqualTo(QueryOperation.FIND);
-        }
-
-        @Test
-        void count_operation() throws Exception {
-            QueryDescriptor d = adapt("countByName", String.class);
-            assertThat(d.operation()).isEqualTo(QueryOperation.COUNT);
-        }
-
-        @Test
-        void exists_operation() throws Exception {
-            QueryDescriptor d = adapt("existsByEmail", String.class);
-            assertThat(d.operation()).isEqualTo(QueryOperation.EXISTS);
-        }
-
-        @Test
-        void delete_operation() throws Exception {
-            QueryDescriptor d = adapt("deleteByName", String.class);
-            assertThat(d.operation()).isEqualTo(QueryOperation.DELETE);
-        }
-    }
-
-    // ============================================================
-    // DISTINCT / LIMIT
-    // ============================================================
-
-    @Nested
-    class DistinctAndLimit {
-
-        @Test
-        void distinct_flag() throws Exception {
-            QueryDescriptor d = adapt("findDistinctByName", String.class);
-            assertThat(d.distinct()).isTrue();
-            assertThat(d.operation()).isEqualTo(QueryOperation.FIND);
-        }
-
-        @Test
-        void top3_limit() throws Exception {
-            QueryDescriptor d = adapt("findTop3ByName", String.class);
-            assertThat(d.maxResults()).isEqualTo(3);
-        }
-
-        @Test
-        void first1_limit() throws Exception {
-            QueryDescriptor d = adapt("findFirst1ByName", String.class);
-            assertThat(d.maxResults()).isEqualTo(1);
-        }
-    }
-
-    // ============================================================
-    // SIMPLE PROPERTY (equals / not equals)
-    // ============================================================
-
-    @Nested
-    class SimpleProperty {
-
-        @Test
-        void equals_single() throws Exception {
-            QueryDescriptor d = adapt("findByName", String.class);
-            PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.name()).isEqualTo("name");
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.EQUALS);
-            assertThat(pc.paramIndex()).isZero();
-            assertThat(pc.paramCount()).isEqualTo(1);
-            assertThat(pc.ignoreCase()).isFalse();
-        }
-
-        @Test
-        void not_equals() throws Exception {
-            QueryDescriptor d = adapt("findByNameNot", String.class);
-            PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.NOT_EQUALS);
-        }
-
-        @Test
-        void ignore_case_equals() throws Exception {
-            QueryDescriptor d = adapt("findByNameIgnoreCase", String.class);
-            PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.EQUALS);
-            assertThat(pc.ignoreCase()).isTrue();
-        }
-    }
-
-    // ============================================================
-    // LOGICAL COMBINATORS
-    // ============================================================
-
-    @Nested
-    class LogicalCombinators {
-
-        @Test
-        void and_combination() throws Exception {
-            QueryDescriptor d = adapt("findByNameAndEmail", String.class, String.class);
-            assertThat(d.predicateDescriptor()).isInstanceOf(CompositePredicateDescriptor.class);
-            CompositePredicateDescriptor cc = (CompositePredicateDescriptor) d.predicateDescriptor();
-            assertThat(cc.type()).isEqualTo(CompositeType.AND);
-            assertThat(cc.children()).hasSize(2);
-
-            PropertyPredicateDescriptor name =
-                    (PropertyPredicateDescriptor) cc.children().get(0);
-            assertThat(name.name()).isEqualTo("name");
-            assertThat(name.paramIndex()).isZero();
-
-            PropertyPredicateDescriptor email =
-                    (PropertyPredicateDescriptor) cc.children().get(1);
-            assertThat(email.name()).isEqualTo("email");
-            assertThat(email.paramIndex()).isEqualTo(1);
-        }
-
-        @Test
-        void or_combination() throws Exception {
-            QueryDescriptor d = adapt("findByNameOrEmail", String.class, String.class);
-            assertThat(d.predicateDescriptor()).isInstanceOf(CompositePredicateDescriptor.class);
-            CompositePredicateDescriptor cc = (CompositePredicateDescriptor) d.predicateDescriptor();
-            assertThat(cc.type()).isEqualTo(CompositeType.OR);
-            assertThat(cc.children()).hasSize(2);
-        }
-
-        @Test
-        void and_or_mixed() throws Exception {
-            QueryDescriptor d = adapt("findByNameAndEmailOrAge", String.class, String.class, Integer.class);
-            // PartTree: (name AND email) OR age
-            assertThat(d.predicateDescriptor()).isInstanceOf(CompositePredicateDescriptor.class);
-            CompositePredicateDescriptor or = (CompositePredicateDescriptor) d.predicateDescriptor();
-            assertThat(or.type()).isEqualTo(CompositeType.OR);
-            assertThat(or.children()).hasSize(2);
-
-            // First child: AND(name, email)
-            CompositePredicateDescriptor and =
-                    (CompositePredicateDescriptor) or.children().get(0);
-            assertThat(and.type()).isEqualTo(CompositeType.AND);
-            assertThat(and.children()).hasSize(2);
-
-            // Parameter indices: name=0, email=1, age=2
-            PropertyPredicateDescriptor namePc =
-                    (PropertyPredicateDescriptor) and.children().get(0);
-            assertThat(namePc.paramIndex()).isZero();
-
-            PropertyPredicateDescriptor emailPc =
-                    (PropertyPredicateDescriptor) and.children().get(1);
-            assertThat(emailPc.paramIndex()).isEqualTo(1);
-
-            PropertyPredicateDescriptor agePc =
-                    (PropertyPredicateDescriptor) or.children().get(1);
-            assertThat(agePc.paramIndex()).isEqualTo(2);
-        }
-    }
-
-    // ============================================================
-    // COMPARISONS
-    // ============================================================
-
-    @Nested
-    class Comparisons {
-
-        @Test
-        void less_than() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByAgeLessThan", Integer.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.LESS_THAN);
-        }
-
-        @Test
-        void less_than_equal() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByAgeLessThanEqual", Integer.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.LESS_THAN_EQUAL);
-        }
-
-        @Test
-        void greater_than() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByAgeGreaterThan", Integer.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.GREATER_THAN);
-        }
-
-        @Test
-        void greater_than_equal() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByAgeGreaterThanEqual", Integer.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.GREATER_THAN_EQUAL);
-        }
-
-        @Test
-        void before_maps_to_less_than() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByBirthdateBefore", java.time.LocalDate.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.LESS_THAN);
-        }
-
-        @Test
-        void after_maps_to_greater_than() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByBirthdateAfter", java.time.LocalDate.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.GREATER_THAN);
-        }
-    }
-
-    // ============================================================
-    // BETWEEN
-    // ============================================================
-
-    @Nested
-    class BetweenOperator {
-
-        @Test
-        void between_two_params() throws Exception {
-            QueryDescriptor d = adapt("findByAgeBetween", Integer.class, Integer.class);
-            PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.BETWEEN);
-            assertThat(pc.paramIndex()).isZero();
-            assertThat(pc.paramCount()).isEqualTo(2);
-        }
-    }
-
-    // ============================================================
-    // NULL / NOT NULL
-    // ============================================================
-
-    @Nested
-    class NullChecks {
-
-        @Test
-        void is_null_zero_params() throws Exception {
-            QueryDescriptor d = adapt("findByNameIsNull");
-            PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.IS_NULL);
-            assertThat(pc.paramCount()).isZero();
-        }
-
-        @Test
-        void is_not_null_zero_params() throws Exception {
-            QueryDescriptor d = adapt("findByNameIsNotNull");
-            PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.IS_NOT_NULL);
-            assertThat(pc.paramCount()).isZero();
-        }
-    }
-
-    // ============================================================
-    // LIKE VARIANTS
-    // ============================================================
-
-    @Nested
-    class LikeVariants {
-
-        @Test
-        void like() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameLike", String.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.LIKE);
-        }
-
-        @Test
-        void not_like() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameNotLike", String.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.NOT_LIKE);
-        }
-
-        @Test
-        void starting_with() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameStartingWith", String.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.STARTING_WITH);
-        }
-
-        @Test
-        void ending_with() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameEndingWith", String.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.ENDING_WITH);
-        }
-
-        @Test
-        void containing() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameContaining", String.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.CONTAINING);
-        }
-
-        @Test
-        void not_containing() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameNotContaining", String.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.NOT_CONTAINING);
-        }
-
-        @Test
-        void containing_ignore_case() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameContainingIgnoreCase", String.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.CONTAINING);
-            assertThat(pc.ignoreCase()).isTrue();
-        }
-    }
-
-    // ============================================================
-    // IN / NOT IN
-    // ============================================================
-
-    @Nested
-    class InOperator {
-
-        @Test
-        void in_collection() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameIn", Collection.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.IN);
-            assertThat(pc.paramIndex()).isZero();
-        }
-
-        @Test
-        void not_in_collection() throws Exception {
-            PropertyPredicateDescriptor pc = rootProperty(adapt("findByNameNotIn", Collection.class));
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.NOT_IN);
-        }
-    }
-
-    // ============================================================
-    // TRUE / FALSE
-    // ============================================================
-
-    @Nested
-    class BooleanChecks {
-
-        @Test
-        void true_check_zero_params() throws Exception {
-            QueryDescriptor d = adapt("findByActiveTrue");
-            PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.TRUE);
-            assertThat(pc.paramCount()).isZero();
-        }
-
-        @Test
-        void false_check_zero_params() throws Exception {
-            QueryDescriptor d = adapt("findByActiveFalse");
-            PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.operator()).isEqualTo(PredicateDescriptorOperator.FALSE);
-            assertThat(pc.paramCount()).isZero();
-        }
-    }
-
-    // ============================================================
-    // ORDER BY (static, from method name)
-    // ============================================================
-
-    @Nested
-    class OrderBy {
-
-        @Test
-        void order_by_in_method_name() throws Exception {
-            QueryDescriptor d = adapt("findByNameOrderByAgeAsc", String.class);
-            assertThat(d.orderBy()).hasSize(1);
-            assertThat(d.orderBy().get(0).columnName()).isEqualTo("age");
-            assertThat(d.orderBy().get(0).direction()).isEqualTo(Sorting.SortOrder.ASC);
-        }
-    }
-
-    // ============================================================
-    // PAGEABLE / SORT parameter indices
-    // ============================================================
-
-    @Nested
-    class SpecialParams {
-
-        @Test
-        void sort_param_index() throws Exception {
-            QueryDescriptor d = adapt("findByAge", Integer.class, Sort.class);
-            assertThat(d.sortParamIndex()).isEqualTo(1);
-            assertThat(d.pageableParamIndex()).isEqualTo(-1);
-
-            // age criterion should use index 0 (sort param skipped)
-            PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.paramIndex()).isZero();
-        }
-
-        @Test
-        void pageable_param_index() throws Exception {
-            QueryDescriptor d = adapt("findByActive", Boolean.class, Pageable.class);
-            assertThat(d.pageableParamIndex()).isEqualTo(1);
-            assertThat(d.sortParamIndex()).isEqualTo(-1);
-
-            // active criterion should use index 0
-            PropertyPredicateDescriptor pc = rootProperty(d);
-            assertThat(pc.paramIndex()).isZero();
-        }
-    }
-
-    // ============================================================
-    // UNSUPPORTED OPERATOR
-    // ============================================================
-
-    @Nested
-    class UnsupportedOperators {
-
-        @SuppressWarnings("unused")
-        interface RegexMethods {
-            List<User> findByNameMatchesRegex(String pattern);
-        }
-
-        @Test
-        void regex_throws_unsupported() throws NoSuchMethodException, SecurityException {
-            Method m = RegexMethods.class.getMethod("findByNameMatchesRegex", String.class);
-            assertThatThrownBy(() -> PartTreeAdapter.adapt(m, User.class))
-                    .isInstanceOf(UnsupportedOperationException.class)
-                    .hasMessageContaining("REGEX");
-        }
     }
 }
