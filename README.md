@@ -17,7 +17,7 @@ Write type-safe, declarative database queries without ORM overhead.
 ✅ **Exception Translation** — SQL exceptions translated to Spring's `DataAccessException` hierarchy  
 ✅ **Dynamic Query Derivation** — Spring Data–style method-name queries (`findByName`, `findByAgeGreaterThan`, …)  
 ✅ **Custom Query Fragments** — Fluent-sql-4j DSL in Spring Data fragment implementations; multi-datasource safe  
-✅ **Multi-DataSource Support** — Bind repository groups to different `DataSource` beans with explicit Spring-style refs  
+✅ **Multi-DataSource Support** — Bind repository groups to different `DataSource` beans with explicit Spring-style refs
 
 ---
 
@@ -122,32 +122,32 @@ The library auto-detects the database dialect, scans for `CrudRepository` interf
 
 ## Supported Features
 
-|                                Feature                                 |     Status      |                               Notes                                |
-|------------------------------------------------------------------------|-----------------|---------------------------------------------------------------------|
-| CRUD (`save`, `findById`, `findAll`, `count`, `deleteById`)            | ✅ Supported     | Core built-in operations                                           |
-| `@Transactional` integration                                           | ✅ Supported     | Automatic connection binding via Spring                            |
-| `@GeneratedValue(IDENTITY)`                                            | ✅ Supported     | Database auto-increment IDs                                        |
-| Application-provided IDs                                               | ✅ Supported     | Set ID before `save()`                                             |
-| `FluentPersistable<ID>` for custom `isNew()` logic                     | ✅ Supported     | Fine-grained control over insert/update                            |
-| Simple entity mapping (Jakarta Persistence annotations)                | ✅ Supported     | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient`        |
-| Exception translation to `DataAccessException`                         | ✅ Supported     | Automatic SQL exception handling                                   |
-| Dynamic query derivation (Spring Data PartTree-style)                  | ✅ Supported     | `findBy…`, `countBy…`, `existsBy…`, `deleteBy…`, pagination/sort  |
-| Custom query fragments via `FluentRepositoryContextAware<T>`           | ✅ Supported     | DSL-powered custom queries with type-safe mapping                  |
-| Multi-datasource repository groups                                     | ✅ Supported     | One `@EnableFluentRepositories` block per group                    |
-| Object relationships (one-to-many, many-to-many)                       | ⚙️ By Design    | Keep it simple: use separate repositories and explicit queries     |
-| `@GeneratedValue(SEQUENCE)`                                            | 🔜 Planned      | Planned for a future release                                       |
-| Persistence context / first-level cache                                | ⚙️ By Design    | Not applicable to JDBC; each query returns fresh objects           |
+|                           Feature                            |    Status    |                              Notes                               |
+|--------------------------------------------------------------|--------------|------------------------------------------------------------------|
+| CRUD (`save`, `findById`, `findAll`, `count`, `deleteById`)  | ✅ Supported  | Core built-in operations                                         |
+| `@Transactional` integration                                 | ✅ Supported  | Automatic connection binding via Spring                          |
+| `@GeneratedValue(IDENTITY)`                                  | ✅ Supported  | Database auto-increment IDs                                      |
+| Application-provided IDs                                     | ✅ Supported  | Set ID before `save()`                                           |
+| `FluentPersistable<ID>` for custom `isNew()` logic           | ✅ Supported  | Fine-grained control over insert/update                          |
+| Simple entity mapping (Jakarta Persistence annotations)      | ✅ Supported  | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient`      |
+| Exception translation to `DataAccessException`               | ✅ Supported  | Automatic SQL exception handling                                 |
+| Dynamic query derivation (Spring Data PartTree-style)        | ✅ Supported  | `findBy…`, `countBy…`, `existsBy…`, `deleteBy…`, pagination/sort |
+| Custom query fragments via `FluentRepositoryContextAware<T>` | ✅ Supported  | DSL-powered custom queries with type-safe mapping                |
+| Multi-datasource repository groups                           | ✅ Supported  | One `@EnableFluentRepositories` block per group                  |
+| Object relationships (one-to-many, many-to-many)             | ⚙️ By Design | Keep it simple: use separate repositories and explicit queries   |
+| `@GeneratedValue(SEQUENCE)`                                  | 🔜 Planned   | Planned for a future release                                     |
+| Persistence context / first-level cache                      | ⚙️ By Design | Not applicable to JDBC; each query returns fresh objects         |
 
 ---
 
 ## Further Reading
 
-| Document | Description |
-|----------|-------------|
-| [USAGE_EXAMPLES.md](data/wiki/USAGE_EXAMPLES.md) | Complete examples: ID strategies, UUID keys, transactions, multi-datasource, custom fragments |
-| [DYNAMIC_METHOD_QUERIES.md](data/wiki/DYNAMIC_METHOD_QUERIES.md) | Full reference for query derivation: operators, pagination, sorting, return types, limitations |
-| [ARCHITECTURE.md](data/wiki/ARCHITECTURE.md) | Deep dive into internal components, data flow diagrams, connection management, and extension points |
-| [TEST.md](data/wiki/TEST.md) | Building the project, running tests, test pyramid, code coverage, and formatting |
+|                             Document                             |                                             Description                                             |
+|------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| [USAGE_EXAMPLES.md](data/wiki/USAGE_EXAMPLES.md)                 | Complete examples: ID strategies, UUID keys, transactions, multi-datasource, custom fragments       |
+| [DYNAMIC_METHOD_QUERIES.md](data/wiki/DYNAMIC_METHOD_QUERIES.md) | Full reference for query derivation: operators, pagination, sorting, return types, limitations      |
+| [ARCHITECTURE.md](data/wiki/ARCHITECTURE.md)                     | Deep dive into internal components, data flow diagrams, connection management, and extension points |
+| [TEST.md](data/wiki/TEST.md)                                     | Building the project, running tests, test pyramid, code coverage, and formatting                    |
 
 ---
 
