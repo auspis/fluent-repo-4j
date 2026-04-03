@@ -1,5 +1,3 @@
-# fluent-repo-4j — Lightweight Spring Boot Repositories over pure JDBC
-
 <p align="center">
   <img src="data/wiki/assets/fluent-repo-4j-logo-no-bg.png" alt="Fluent Repo 4J" width="350">
 </p>
