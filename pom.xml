@@ -59,6 +59,7 @@
     <sonar.projectKey>auspis_fluent-repo-4j</sonar.projectKey>
     <jacoco.version>0.8.14</jacoco.version>
     <argLine/>
+    <central.autoPublish>false</central.autoPublish>
     <!-- TODO: upgrade to Spring Boot 4 -->
     <spring-boot.version>3.5.12</spring-boot.version>
     <fluent-sql-4j.version>1.3.3</fluent-sql-4j.version>
@@ -480,7 +481,7 @@
             <extensions>true</extensions>
             <configuration>
               <publishingServerId>central</publishingServerId>
-              <autoPublish>false</autoPublish>
+              <autoPublish>${central.autoPublish}</autoPublish>
               <waitUntil>validated</waitUntil>
             </configuration>
           </plugin>

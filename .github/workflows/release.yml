@@ -108,4 +108,4 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
         run: |
           export GPG_TTY=/dev/console
-          ./mvnw -B -DskipTests -DautoPublish=${{ github.event.inputs.autoPublish || 'false' }} deploy -P release
+          ./mvnw -B -e -DskipTests -Dcentral.autoPublish=${{ github.event.inputs.autoPublish || 'false' }} deploy -P release
