@@ -7,7 +7,7 @@
 [![Release](https://github.com/auspis/fluent-repo-4j/actions/workflows/release.yml/badge.svg)](https://github.com/auspis/fluent-repo-4j/actions?query=workflow%3A"Release+to+Maven+Central")
 [![Reliability](https://sonarcloud.io/api/project_badges/measure?project=auspis_fluent-repo-4j&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=auspis_fluent-repo-4j)
 [![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=auspis_fluent-repo-4j&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=auspis_fluent-repo-4j)
-[![Maven Central](img.shields.io/maven-central/v/io.github.auspis/fluent-repo-4j)](https://central.sonatype.com/artifact/io.github.auspis.fluentrepo4j/fluent-repo-4j)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.auspis/fluent-repo-4j)](https://central.sonatype.com/artifact/io.github.auspis/fluent-repo-4j)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/auspis/fluent-repo-4j/blob/main/LICENSE)
 
 A lightweight Spring Boot library for the **Repository Pattern** with pure JDBC and the fluent-sql-4j DSL.
