@@ -49,13 +49,15 @@
     <maven.spotless.plugin.version>3.4.0</maven.spotless.plugin.version>
     <maven.resource.plugin.version>3.5.0</maven.resource.plugin.version>
     <maven.exec.plugin.version>3.6.3</maven.exec.plugin.version>
+    <maven.sonar-scanner.plugin.version>5.5.0.6356</maven.sonar-scanner.plugin.version>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+    <sonar.organization>auspis</sonar.organization>
+    <sonar.projectKey>auspis_fluent-repo-4j</sonar.projectKey>
     <jacoco.version>0.8.14</jacoco.version>
-    <!-- default argLine property to avoid unresolved ${argLine} tokens -->
     <argLine/>
     <!-- TODO: upgrade to Spring Boot 4 -->
     <spring-boot.version>3.5.12</spring-boot.version>
     <fluent-sql-4j.version>1.3.3</fluent-sql-4j.version>
-    <!-- Run both integration and e2e by default during verify phase -->
     <test.groups.slow>integration,e2e</test.groups.slow>
   </properties>
 
@@ -194,6 +196,11 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>org.sonarsource.scanner.maven</groupId>
+          <artifactId>sonar-maven-plugin</artifactId>
+          <version>${maven.sonar-scanner.plugin.version}</version>
+        </plugin>
         <plugin>
           <groupId>org.jacoco</groupId>
           <artifactId>jacoco-maven-plugin</artifactId>

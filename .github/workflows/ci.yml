@@ -17,6 +17,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
 
     - name: Set up Java 21
       uses: actions/setup-java@v5
@@ -34,3 +36,9 @@ jobs:
     # Check code formatting and run all tests: unit + H2 integration + E2E (as per README)
     - name: Check code formatting and run all tests
       run: ./mvnw spotless:check verify
+
+    # SonarCloud analysis
+    - name: SonarCloud Scan
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_QUBE }}
+      run: ./mvnw org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=300
