@@ -1,0 +1,111 @@
+name: Release to Maven Central
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      releaseTag:
+        description: 'Release tag in format v*.*.* (e.g., v1.2.3). Required for manual dispatch.'
+        required: true
+        type: string
+      autoPublish:
+        description: 'Auto-publish to Maven Central (true = immediate, false = manual review required)'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  validate-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+          cache: maven
+
+      - name: Determine tag reference
+        id: tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="${{ github.event.inputs.releaseTag }}"
+            if [[ -z "$TAG" ]]; then
+              echo "workflow_dispatch requires 'releaseTag' input"
+              exit 1
+            fi
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Using tag: $TAG"
+
+      - name: Validate tag format
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+
+          if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag format: '$TAG'"
+            echo "Expected: v*.*.* (e.g., v1.2.3)"
+            exit 1
+          fi
+
+          echo "Tag format valid: $TAG"
+
+      - name: Verify POM version matches tag
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          TAG_VERSION="${TAG#v}"
+
+          POM_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+
+          if [[ "$POM_VERSION" != "$TAG_VERSION" ]]; then
+            echo "Version mismatch!"
+            echo "Tag version: $TAG_VERSION"
+            echo "POM version: $POM_VERSION"
+            echo "Fix: update pom.xml to match tag or create a matching tag"
+            exit 1
+          fi
+
+          echo "Versions match: $TAG_VERSION"
+
+  build-and-publish:
+    needs: validate-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up JDK and configure Maven + GPG
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'corretto'
+          java-version: '21'
+          cache: maven
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Run full test suite (unit + integration + E2E)
+        run: ./mvnw clean verify
+
+      - name: Build and deploy to Maven Central Portal
+        env:
+          GPG_TTY: /dev/console
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
+        run: |
+          export GPG_TTY=/dev/console
+          ./mvnw -B -e -DskipTests -Dcentral.autoPublish=${{ github.event.inputs.autoPublish || 'false' }} deploy -P release
