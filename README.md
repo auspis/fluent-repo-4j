@@ -1,10 +1,15 @@
 # fluent-repo-4j — Lightweight Spring Boot Repositories over pure JDBC
 
+<p align="center">
+  <img src="data/wiki/assets/fluent-repo-4j-logo-no-bg.png" alt="Fluent Repo 4J" width="350">
+</p>
+
 [![CI](https://github.com/auspis/fluent-repo-4j/actions/workflows/ci.yml/badge.svg)](https://github.com/auspis/fluent-repo-4j/actions?query=workflow%3ACI)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=auspis_fluent-repo-4j&metric=alert_status&token=ea0f4fd35e38159d168f6ad1f6e4f7a128748650)](https://sonarcloud.io/summary/new_code?id=auspis_fluent-repo-4j)
 [![Release](https://github.com/auspis/fluent-repo-4j/actions/workflows/release.yml/badge.svg)](https://github.com/auspis/fluent-repo-4j/actions?query=workflow%3A"Release+to+Maven+Central")
 [![Reliability](https://sonarcloud.io/api/project_badges/measure?project=auspis_fluent-repo-4j&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=auspis_fluent-repo-4j)
 [![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=auspis_fluent-repo-4j&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=auspis_fluent-repo-4j)
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.auspis.fluentrepo4j/api)](https://central.sonatype.com/artifact/io.github.auspis.fluentrepo4j/api)
+[![Maven Central](img.shields.io/maven-central/v/io.github.auspis/fluent-repo-4j)](https://central.sonatype.com/artifact/io.github.auspis.fluentrepo4j/fluent-repo-4j)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/auspis/fluent-repo-4j/blob/main/LICENSE)
 
 A lightweight Spring Boot library for the **Repository Pattern** with pure JDBC and the fluent-sql-4j DSL.
