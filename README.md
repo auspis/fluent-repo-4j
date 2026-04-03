@@ -11,7 +11,7 @@
 [![CI](https://github.com/auspis/fluent-repo-4j/actions/workflows/ci.yml/badge.svg)](https://github.com/auspis/fluent-repo-4j/actions?query=workflow%3ACI)
 [![Release](https://github.com/auspis/fluent-repo-4j/actions/workflows/release.yml/badge.svg)](https://github.com/auspis/fluent-repo-4j/actions?query=workflow%3A"Release+to+Maven+Central")
 
-A lightweight Spring Boot library for the **Repository Pattern** with pure JDBC and the fluent-sql-4j DSL.
+A lightweight Spring Boot library for the **Repository Pattern** with pure JDBC and the [fluent-sql-4j](https://github.com/auspis/fluent-sql-4j) DSL.
 Write type-safe, declarative database queries without ORM overhead.
 
 ## Features
