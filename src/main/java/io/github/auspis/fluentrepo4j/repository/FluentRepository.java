@@ -244,7 +244,7 @@ public class FluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAnd
     public void deleteAll() {
         String table = entityInformation.getTableName();
         Connection conn = connectionProvider.getConnection();
-        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM " + table)) {
+        try (PreparedStatement ps = dsl.deleteFrom(table).build(conn)) {
             ps.executeUpdate();
         } catch (SQLException e) {
             throw translateException("deleteAll", e);
