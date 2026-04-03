@@ -34,3 +34,9 @@ jobs:
     # Check code formatting and run all tests: unit + H2 integration + E2E (as per README)
     - name: Check code formatting and run all tests
       run: ./mvnw spotless:check verify
+
+    # SonarCloud analysis
+    - name: SonarCloud Scan
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_QUBE }}
+      run: ./mvnw org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
