@@ -28,6 +28,26 @@ grep -qxF "allow-loopback-pinentry" ~/.gnupg/gpg-agent.conf || echo "allow-loopb
 ./data/scripts/generate-gpg-secrets.sh --email ci@t-lab.lan --name "fluent-repo-4j CI" --comment "fluent-repo-4j-ci" --repo auspis/fluent-repo-4j --set-secrets --length 4096
 ```
 
+### 4. Publish the GPG Public Key to Public Keyservers
+
+Sonatype validates signatures by resolving the public key fingerprint from supported keyservers. If the key is not published, deployment fails with "Invalid signature... Could not find a public key by the key fingerprint".
+
+Publish the key once after generation:
+
+```bash
+FP=$(gpg --with-colons --list-secret-keys ci@t-lab.lan | awk -F: '/^fpr:/ {print $10; exit}')
+gpg --keyserver hkps://keyserver.ubuntu.com --send-keys "$FP"
+gpg --keyserver hkps://keys.openpgp.org --send-keys "$FP"
+```
+
+Verify the key is publicly retrievable by fingerprint before re-running release:
+
+```bash
+curl -fsSL "https://keys.openpgp.org/vks/v1/by-fingerprint/$FP" | head
+```
+
+If your key UID email requires confirmation on keys.openpgp.org, complete that confirmation email flow as well.
+
 ## Release Workflow
 
 ### Default Behavior: Manual Publishing (Conservative)
@@ -70,9 +90,10 @@ Result: upload + validation + automatic publish to Maven Central.
 
 1. Confirm `pom.xml` version matches release tag (e.g., `1.0.0` <-> `v1.0.0`)
 2. Ensure all four required secrets are present
-3. Trigger release via tag or manual dispatch
-4. If `autoPublish=false`, publish from https://central.sonatype.com/publishing/deployments
-5. Verify artifact is resolvable:
+3. Ensure the GPG public key is published and retrievable by fingerprint
+4. Trigger release via tag or manual dispatch
+5. If `autoPublish=false`, publish from https://central.sonatype.com/publishing/deployments
+6. Verify artifact is resolvable:
 
 ```bash
 mvn dependency:get -Dartifact=io.github.auspis:fluent-repo-4j:1.0.0
