@@ -159,6 +159,28 @@ The library auto-detects the database dialect, scans for `CrudRepository` interf
 
 ---
 
+## Compatibility
+
+This library uses **`provided`** scope for Spring dependencies — your application controls the Spring Boot version.
+
+### Tested Versions
+
+| Spring Boot  | Spring Data | Java |     Status     |
+|--------------|-------------|------|----------------|
+| 3.5.x        | 3.5.x       | 21+  | ✅ Supported    |
+| 4.x (≥4.0.5) | 4.x         | 21+  | 🔜 In progress |
+
+### How It Works
+
+`fluent-repo-4j` declares Spring dependencies as **`provided`** — they compile against a baseline version
+but are **not bundled** in the published JAR. Your application's Spring Boot BOM determines the actual
+versions at runtime.
+
+**Minimum requirement:** any Spring Boot **3.5.x** release. Spring Boot **4.x** support (from 4.0.5) is
+planned and will be validated via CI matrix testing.
+
+---
+
 ## License
 
 Apache License 2.0. See the [LICENSE](LICENSE) file for details.
