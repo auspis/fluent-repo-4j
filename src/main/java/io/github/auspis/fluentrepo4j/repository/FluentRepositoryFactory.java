@@ -115,21 +115,6 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
         return Optional.of(new FluentQueryLookupStrategy(connectionProvider, dsl));
     }
 
-    /**
-     * Backward-compatibility override for Spring Data versions that still call the
-     * deprecated two-argument form of {@code getQueryLookupStrategy}. Can be removed
-     * once Spring Data 4.x (which dropped this overload) is the minimum required version.
-     *
-     * @deprecated Use {@link #getQueryLookupStrategy(Key, ValueExpressionDelegate)} instead.
-     */
-    @Deprecated(since = "3.4", forRemoval = true)
-    @Override
-    protected Optional<QueryLookupStrategy> getQueryLookupStrategy(
-            @Nullable Key key,
-            org.springframework.data.repository.query.QueryMethodEvaluationContextProvider evaluationContextProvider) {
-        return Optional.of(new FluentQueryLookupStrategy(connectionProvider, dsl));
-    }
-
     /** Exposes the underlying {@link ProjectionFactory} for testing. */
     @Override
     public ProjectionFactory getProjectionFactory() {

@@ -165,10 +165,10 @@ This library uses **`provided`** scope for Spring dependencies — your applicat
 
 ### Tested Versions
 
-| Spring Boot  | Spring Data | Java |     Status     |
-|--------------|-------------|------|----------------|
-| 3.5.x        | 3.5.x       | 21+  | ✅ Supported    |
-| 4.x (≥4.0.5) | 4.x         | 21+  | 🔜 In progress |
+| Spring Boot  | Spring Data | Java |   Status    |
+|--------------|-------------|------|-------------|
+| 3.5.x        | 3.5.x       | 21+  | ✅ Supported |
+| 4.x (≥4.0.5) | 4.x         | 21+  | ✅ Supported |
 
 ### How It Works
 
@@ -176,8 +176,9 @@ This library uses **`provided`** scope for Spring dependencies — your applicat
 but are **not bundled** in the published JAR. Your application's Spring Boot BOM determines the actual
 versions at runtime.
 
-**Minimum requirement:** any Spring Boot **3.5.x** release. Spring Boot **4.x** support (from 4.0.5) is
-planned and will be validated via CI matrix testing.
+**Minimum requirement:** any Spring Boot **3.5.x** release.
+
+Spring Boot **4.x** support (from **4.0.5**) is validated in CI matrix testing.
 
 ---
 

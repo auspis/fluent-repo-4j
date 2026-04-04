@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        spring-boot-version: ['3.5.13']
+        spring-boot-version: ['3.5.13', '4.0.5']
 
     name: "Boot ${{ matrix.spring-boot-version }}"
 
