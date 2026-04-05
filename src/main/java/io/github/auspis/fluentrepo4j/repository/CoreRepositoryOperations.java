@@ -8,8 +8,11 @@ import io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter;
 import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper;
 import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper.ColumnOrder;
 import io.github.auspis.fluentsql4j.dsl.DSL;
+import io.github.auspis.fluentsql4j.dsl.clause.WhereConditionBuilder;
+import io.github.auspis.fluentsql4j.dsl.insert.InsertBuilder;
 import io.github.auspis.fluentsql4j.dsl.select.OrderByBuilder;
 import io.github.auspis.fluentsql4j.dsl.select.SelectBuilder;
+import io.github.auspis.fluentsql4j.dsl.update.UpdateBuilder;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -214,7 +217,7 @@ public class CoreRepositoryOperations<T, ID> {
         Map<String, Object> values = entityWriter.getAllColumnValues(entity);
         Connection conn = connectionProvider.getConnection();
         try {
-            var builder = dsl.insertInto(table);
+            InsertBuilder builder = dsl.insertInto(table);
             for (Map.Entry<String, Object> entry : values.entrySet()) {
                 builder = DslTypeDispatcher.set(builder, entry.getKey(), entry.getValue());
             }
@@ -235,7 +238,7 @@ public class CoreRepositoryOperations<T, ID> {
         Map<String, Object> values = entityWriter.getNonIdColumnValues(entity);
         Connection conn = connectionProvider.getConnection();
         try {
-            var builder = dsl.insertInto(table);
+            InsertBuilder builder = dsl.insertInto(table);
             for (Map.Entry<String, Object> entry : values.entrySet()) {
                 builder = DslTypeDispatcher.set(builder, entry.getKey(), entry.getValue());
             }
@@ -263,11 +266,11 @@ public class CoreRepositoryOperations<T, ID> {
         Map<String, Object> nonIdValues = entityWriter.getNonIdColumnValues(entity);
         Connection conn = connectionProvider.getConnection();
         try {
-            var builder = dsl.update(table);
+            UpdateBuilder builder = dsl.update(table);
             for (Map.Entry<String, Object> entry : nonIdValues.entrySet()) {
                 builder = DslTypeDispatcher.set(builder, entry.getKey(), entry.getValue());
             }
-            var updateWhere = builder.where().column(idColumn);
+            WhereConditionBuilder<UpdateBuilder> updateWhere = builder.where().column(idColumn);
             try (PreparedStatement ps =
                     DslTypeDispatcher.eq(updateWhere, idValue).build(conn)) {
                 int rowCount = ps.executeUpdate();

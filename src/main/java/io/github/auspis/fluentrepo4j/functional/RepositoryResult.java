@@ -94,7 +94,7 @@ public sealed interface RepositoryResult<T> {
     default <U> U fold(Function<T, U> onSuccess, Function<Failure<T>, U> onFailure) {
         return switch (this) {
             case Success<T>(T value) -> onSuccess.apply(value);
-            case Failure<T>(String message, Throwable cause) -> onFailure.apply(new Failure<>(message, cause));
+            case Failure<T> f -> onFailure.apply(f);
         };
     }
 

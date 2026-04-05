@@ -84,6 +84,72 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
         // Detect functional mode from return type
         this.functionalMode = RepositoryResult.class.isAssignableFrom(method.getReturnType());
         this.functionalInnerType = functionalMode ? resolveFunctionalInnerType(method) : null;
+
+        if (functionalMode) {
+            validateFunctionalReturnType(method);
+        }
+    }
+
+    private void validateFunctionalReturnType(Method method) {
+        QueryOperation operation = descriptor.operation();
+        switch (operation) {
+            case FIND -> validateFindInnerType(method);
+            case DELETE -> validateDeleteInnerType(method);
+            case COUNT -> validateCountInnerType(method);
+            case EXISTS -> validateExistsInnerType(method);
+        }
+    }
+
+    private void validateFindInnerType(Method method) {
+        if (Optional.class.isAssignableFrom(functionalInnerType)
+                || List.class.isAssignableFrom(functionalInnerType)
+                || Collection.class.isAssignableFrom(functionalInnerType)
+                || Iterable.class.isAssignableFrom(functionalInnerType)
+                || Stream.class.isAssignableFrom(functionalInnerType)
+                || Page.class.isAssignableFrom(functionalInnerType)
+                || Slice.class.isAssignableFrom(functionalInnerType)) {
+            return;
+        }
+        throw new IllegalStateException("Functional single-result derived query method '"
+                + method.getName()
+                + "' must declare RepositoryResult<Optional<T>> to express the possibility of no result. "
+                + "Found inner type: "
+                + functionalInnerType.getName()
+                + " in method "
+                + method.toGenericString());
+    }
+
+    private void validateDeleteInnerType(Method method) {
+        if (Long.class.isAssignableFrom(functionalInnerType) || Integer.class.isAssignableFrom(functionalInnerType)) {
+            return;
+        }
+        throw new IllegalStateException("Unsupported RepositoryResult inner type for delete-derived query: "
+                + functionalInnerType.getName()
+                + " in method "
+                + method.toGenericString()
+                + ". Supported inner types are java.lang.Long and java.lang.Integer.");
+    }
+
+    private void validateCountInnerType(Method method) {
+        if (Long.class.isAssignableFrom(functionalInnerType)) {
+            return;
+        }
+        throw new IllegalStateException("Unsupported RepositoryResult inner type for count-derived query: "
+                + functionalInnerType.getName()
+                + " in method "
+                + method.toGenericString()
+                + ". Supported inner type is java.lang.Long.");
+    }
+
+    private void validateExistsInnerType(Method method) {
+        if (Boolean.class.isAssignableFrom(functionalInnerType)) {
+            return;
+        }
+        throw new IllegalStateException("Unsupported RepositoryResult inner type for exists-derived query: "
+                + functionalInnerType.getName()
+                + " in method "
+                + method.toGenericString()
+                + ". Supported inner type is java.lang.Boolean.");
     }
 
     private static Class<?> resolveFunctionalInnerType(Method method) {
@@ -187,7 +253,11 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
         if (Integer.class.isAssignableFrom(functionalInnerType)) {
             return affected;
         }
-        return (long) affected;
+        throw new IllegalStateException("Unsupported RepositoryResult inner type for delete-derived query: "
+                + functionalInnerType.getName()
+                + " in method "
+                + queryMethod.getName()
+                + ". Supported inner types are java.lang.Long and java.lang.Integer.");
     }
 
     private Object adaptSelectResultFunctional(List<T> results, Object[] args) {
@@ -208,7 +278,11 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
         if (Optional.class.isAssignableFrom(functionalInnerType)) {
             return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
         }
-        return results.isEmpty() ? null : results.get(0);
+        throw new IllegalStateException("Unsupported RepositoryResult inner type for find-derived query: "
+                + functionalInnerType.getName()
+                + " in method "
+                + queryMethod.getName()
+                + ". Use RepositoryResult<Optional<T>> for single-result queries.");
     }
 
     private Page<T> adaptAsPage(List<T> content, Object[] args) {
