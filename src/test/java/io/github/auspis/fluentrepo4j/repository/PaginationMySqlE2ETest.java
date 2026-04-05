@@ -21,16 +21,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
-import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.mysql.MySQLContainer;
 
 @E2ETest
 @Testcontainers
 class PaginationMySqlE2ETest {
 
     @Container
-    private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0");
+    private static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.0");
 
     private SingleConnectionDataSource dataSource;
     private FluentRepository<User, Long> repository;
@@ -50,7 +50,7 @@ class PaginationMySqlE2ETest {
         FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
         FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
 
-        repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
+        repository = new FluentRepository<>(new CoreRepositoryOperations<>(entityInfo, connectionProvider, dsl));
     }
 
     @AfterEach

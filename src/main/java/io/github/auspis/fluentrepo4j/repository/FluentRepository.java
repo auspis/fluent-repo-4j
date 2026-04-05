@@ -1,9 +1,6 @@
 package io.github.auspis.fluentrepo4j.repository;
 
 import io.github.auspis.fluentrepo4j.FluentPersistable;
-import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
-import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
-import io.github.auspis.fluentsql4j.dsl.DSL;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,9 +26,8 @@ public class FluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAnd
 
     private final CoreRepositoryOperations<T, ID> core;
 
-    public FluentRepository(
-            FluentEntityInformation<T, ID> entityInformation, FluentConnectionProvider connectionProvider, DSL dsl) {
-        this.core = new CoreRepositoryOperations<>(entityInformation, connectionProvider, dsl);
+    public FluentRepository(CoreRepositoryOperations<T, ID> core) {
+        this.core = core;
     }
 
     // ---- Save ----

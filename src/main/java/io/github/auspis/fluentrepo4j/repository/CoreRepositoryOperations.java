@@ -34,12 +34,16 @@ import org.springframework.jdbc.support.SQLExceptionTranslator;
  * entity mapping, connection management, and SQL exception translation. This class is
  * agnostic to the result-wrapping strategy used by the calling repository facade.
  *
- * <p>Package-private by design — not part of the public API.
+ * <p>This class follows the <em>opaque handle</em> pattern: it is publicly constructable
+ * so that callers can create instances and pass them to repository facades, but all
+ * operational methods remain package-private. External consumers should never invoke
+ * operations directly — use {@link FluentRepository} or {@link FunctionalFluentRepository}
+ * instead.
  *
  * @param <T>  the entity type
  * @param <ID> the entity identifier type
  */
-class CoreRepositoryOperations<T, ID> {
+public class CoreRepositoryOperations<T, ID> {
 
     private final FluentEntityInformation<T, ID> entityInformation;
     private final FluentConnectionProvider connectionProvider;
@@ -50,7 +54,7 @@ class CoreRepositoryOperations<T, ID> {
     private final SaveDecisionResolver<T, ID> saveDecisionResolver;
     private final SortClauseHelper sortClauseHelper;
 
-    CoreRepositoryOperations(
+    public CoreRepositoryOperations(
             FluentEntityInformation<T, ID> entityInformation, FluentConnectionProvider connectionProvider, DSL dsl) {
         this.entityInformation = entityInformation;
         this.connectionProvider = connectionProvider;

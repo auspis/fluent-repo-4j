@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
+import io.github.auspis.fluentrepo4j.repository.CoreRepositoryOperations;
 import io.github.auspis.fluentrepo4j.repository.FluentRepository;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
@@ -19,9 +20,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
-import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.mysql.MySQLContainer;
 
 /**
  * E2E smoke test verifying {@link DialectDetector} and basic CRUD
@@ -32,7 +33,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class DialectDetectorMySqlE2ETest {
 
     @Container
-    private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0");
+    private static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.0");
 
     private SingleConnectionDataSource dataSource;
     private FluentRepository<User, Long> repository;
@@ -51,7 +52,7 @@ class DialectDetectorMySqlE2ETest {
         FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
         FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
 
-        repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
+        repository = new FluentRepository<>(new CoreRepositoryOperations<>(entityInfo, connectionProvider, dsl));
     }
 
     @AfterEach

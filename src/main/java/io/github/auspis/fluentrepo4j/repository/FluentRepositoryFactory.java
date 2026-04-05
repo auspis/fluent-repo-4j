@@ -93,10 +93,11 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Object getTargetRepository(RepositoryInformation information) {
         FluentEntityInformation entityInformation = new FluentEntityInformation<>(information.getDomainType());
+        CoreRepositoryOperations core = new CoreRepositoryOperations<>(entityInformation, connectionProvider, dsl);
         if (isFunctionalRepository(information.getRepositoryInterface())) {
-            return new FunctionalFluentRepository<>(entityInformation, connectionProvider, dsl);
+            return new FunctionalFluentRepository<>(core);
         }
-        return new FluentRepository<>(entityInformation, connectionProvider, dsl);
+        return new FluentRepository<>(core);
     }
 
     @Override

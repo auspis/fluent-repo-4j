@@ -1,14 +1,11 @@
 package io.github.auspis.fluentrepo4j.repository;
 
 import io.github.auspis.fluentrepo4j.FluentPersistable;
-import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
 import io.github.auspis.fluentrepo4j.functional.FunctionalCrudRepository;
 import io.github.auspis.fluentrepo4j.functional.FunctionalPagingAndSortingRepository;
 import io.github.auspis.fluentrepo4j.functional.RepositoryResult;
 import io.github.auspis.fluentrepo4j.functional.RepositoryResult.Failure;
 import io.github.auspis.fluentrepo4j.functional.RepositoryResult.Success;
-import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
-import io.github.auspis.fluentsql4j.dsl.DSL;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,9 +33,8 @@ public class FunctionalFluentRepository<T, ID>
 
     private final CoreRepositoryOperations<T, ID> core;
 
-    public FunctionalFluentRepository(
-            FluentEntityInformation<T, ID> entityInformation, FluentConnectionProvider connectionProvider, DSL dsl) {
-        this.core = new CoreRepositoryOperations<>(entityInformation, connectionProvider, dsl);
+    public FunctionalFluentRepository(CoreRepositoryOperations<T, ID> core) {
+        this.core = core;
     }
 
     // ---- Save ----
@@ -74,8 +70,8 @@ public class FunctionalFluentRepository<T, ID>
         List<S> results = new ArrayList<>();
         for (S entity : entities) {
             RepositoryResult<S> result = save(entity);
-            if (result instanceof Failure<S> f) {
-                return new Failure<>(f.message(), f.cause());
+            if (result instanceof Failure<S>(String message, Throwable cause)) {
+                return new Failure<>(message, cause);
             }
             results.add(result.orElseThrow());
         }
@@ -161,7 +157,7 @@ public class FunctionalFluentRepository<T, ID>
         long count = 0;
         for (T entity : entities) {
             RepositoryResult<Boolean> result = delete(entity);
-            if (result.orElseThrow()) {
+            if (Boolean.TRUE.equals(result.orElseThrow())) {
                 count++;
             }
         }
