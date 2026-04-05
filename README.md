@@ -14,7 +14,7 @@
 A lightweight Spring Boot library for the **Repository Pattern** with pure JDBC and the [fluent-sql-4j](https://github.com/auspis/fluent-sql-4j) DSL.
 Write type-safe, declarative database queries without ORM overhead.
 
-> ✨ **New from version 1.2.0:** Functional Repositories — `RepositoryResult<T>` return types make success and failure explicit at the call site, replacing unchecked exceptions with composable values.
+> ✨ **New from version 1.2.0:** Functional Repositories — `RepositoryResult<T>` return types make success and failure explicit at the call site, replacing unchecked exceptions with composable values, see [FUNCTIONAL_REPOSITORY documentation](data/wiki/FUNCTIONAL_REPOSITORY.md).
 
 ## Features
 
