@@ -56,7 +56,7 @@ class FluentRepositoryIT {
             FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
             FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
 
-            repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
+            repository = new FluentRepository<>(new CoreRepositoryOperations<>(entityInfo, connectionProvider, dsl));
         }
 
         @AfterEach
@@ -266,7 +266,7 @@ class FluentRepositoryIT {
             FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
             FluentEntityInformation<CartItem, Long> entityInfo = new FluentEntityInformation<>(CartItem.class);
 
-            repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
+            repository = new FluentRepository<>(new CoreRepositoryOperations<>(entityInfo, connectionProvider, dsl));
         }
 
         @AfterEach
@@ -357,7 +357,7 @@ class FluentRepositoryIT {
             FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
             FluentEntityInformation<Product, Integer> entityInfo = new FluentEntityInformation<>(Product.class);
 
-            repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
+            repository = new FluentRepository<>(new CoreRepositoryOperations<>(entityInfo, connectionProvider, dsl));
         }
 
         @AfterEach

@@ -1,10 +1,14 @@
 package io.github.auspis.fluentrepo4j.query.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
+import io.github.auspis.fluentrepo4j.functional.FunctionalCrudRepository;
+import io.github.auspis.fluentrepo4j.functional.RepositoryResult;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.query.OrderByClause;
 import io.github.auspis.fluentrepo4j.test.domain.User;
@@ -19,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -224,9 +229,176 @@ class FluentRepositoryQueryTest {
         Integer deleteByAge(Integer age);
     }
 
+    // ---- Functional probe repositories ----
+
+    interface FunctionalProbeRepository extends FunctionalCrudRepository<User, Long> {
+
+        RepositoryResult<Optional<User>> findByEmail(String email);
+
+        RepositoryResult<List<User>> findByName(String name);
+
+        RepositoryResult<Long> deleteByName(String name);
+
+        RepositoryResult<Long> countByActive(Boolean active);
+
+        RepositoryResult<Boolean> existsByEmail(String email);
+    }
+
+    interface InvalidSingleResultRepo extends FunctionalCrudRepository<User, Long> {
+        RepositoryResult<User> findByEmail(String email);
+    }
+
+    interface InvalidDeleteRepo extends FunctionalCrudRepository<User, Long> {
+        RepositoryResult<Void> deleteByName(String name);
+    }
+
+    interface InvalidCountRepo extends FunctionalCrudRepository<User, Long> {
+        RepositoryResult<Integer> countByActive(Boolean active);
+    }
+
+    interface InvalidExistsRepo extends FunctionalCrudRepository<User, Long> {
+        RepositoryResult<String> existsByEmail(String email);
+    }
+
+    // ---- Functional validation tests ----
+
+    @Nested
+    class FunctionalReturnTypeValidation {
+
+        @Test
+        void validFunctionalFindOptionalConstructsSuccessfully() {
+            assertDoesNotThrow(() -> queryForFunctional(FunctionalProbeRepository.class, "findByEmail", String.class));
+        }
+
+        @Test
+        void validFunctionalFindListConstructsSuccessfully() {
+            assertDoesNotThrow(() -> queryForFunctional(FunctionalProbeRepository.class, "findByName", String.class));
+        }
+
+        @Test
+        void validFunctionalDeleteLongConstructsSuccessfully() {
+            assertDoesNotThrow(() -> queryForFunctional(FunctionalProbeRepository.class, "deleteByName", String.class));
+        }
+
+        @Test
+        void validFunctionalCountConstructsSuccessfully() {
+            assertDoesNotThrow(
+                    () -> queryForFunctional(FunctionalProbeRepository.class, "countByActive", Boolean.class));
+        }
+
+        @Test
+        void validFunctionalExistsConstructsSuccessfully() {
+            assertDoesNotThrow(
+                    () -> queryForFunctional(FunctionalProbeRepository.class, "existsByEmail", String.class));
+        }
+
+        @Test
+        void rejectsSingleResultFindWithoutOptional() {
+            assertThatThrownBy(() -> queryForFunctional(InvalidSingleResultRepo.class, "findByEmail", String.class))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("RepositoryResult<Optional<T>>")
+                    .hasMessageContaining("findByEmail");
+        }
+
+        @Test
+        void rejectsDeleteWithUnsupportedInnerType() {
+            assertThatThrownBy(() -> queryForFunctional(InvalidDeleteRepo.class, "deleteByName", String.class))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("delete-derived query")
+                    .hasMessageContaining("java.lang.Void")
+                    .hasMessageContaining("deleteByName");
+        }
+
+        @Test
+        void rejectsCountWithUnsupportedInnerType() {
+            assertThatThrownBy(() -> queryForFunctional(InvalidCountRepo.class, "countByActive", Boolean.class))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("count-derived query")
+                    .hasMessageContaining("java.lang.Integer")
+                    .hasMessageContaining("countByActive");
+        }
+
+        @Test
+        void rejectsExistsWithUnsupportedInnerType() {
+            assertThatThrownBy(() -> queryForFunctional(InvalidExistsRepo.class, "existsByEmail", String.class))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("exists-derived query")
+                    .hasMessageContaining("java.lang.String")
+                    .hasMessageContaining("existsByEmail");
+        }
+    }
+
+    // ---- Functional runtime adaptation tests ----
+
+    @Nested
+    class FunctionalRuntimeAdaptation {
+
+        @Test
+        void adaptDeleteResultFunctionalReturnsLong() throws Exception {
+            FluentRepositoryQuery<User, Long> query =
+                    queryForFunctional(FunctionalProbeRepository.class, "deleteByName", String.class);
+
+            Object result = invokePrivate(query, "adaptDeleteResultFunctional", new Class[] {int.class}, 5);
+
+            assertThat(result).isEqualTo(5L);
+        }
+
+        @Test
+        void adaptSelectResultFunctionalOptionalEmpty() throws Exception {
+            FluentRepositoryQuery<User, Long> query =
+                    queryForFunctional(FunctionalProbeRepository.class, "findByEmail", String.class);
+
+            Object result = invokePrivate(
+                    query,
+                    "adaptSelectResultFunctional",
+                    new Class[] {List.class, Object[].class},
+                    List.of(),
+                    new Object[0]);
+
+            assertThat(result).isEqualTo(Optional.empty());
+        }
+
+        @Test
+        void adaptSelectResultFunctionalOptionalPresent() throws Exception {
+            FluentRepositoryQuery<User, Long> query =
+                    queryForFunctional(FunctionalProbeRepository.class, "findByEmail", String.class);
+            User user = userWithId(20L, "X", "x@test", 25, true);
+
+            Object result = invokePrivate(
+                    query,
+                    "adaptSelectResultFunctional",
+                    new Class[] {List.class, Object[].class},
+                    List.of(user),
+                    new Object[0]);
+
+            assertThat(result).isEqualTo(Optional.of(user));
+        }
+
+        @Test
+        void adaptSelectResultFunctionalReturnsList() throws Exception {
+            FluentRepositoryQuery<User, Long> query =
+                    queryForFunctional(FunctionalProbeRepository.class, "findByName", String.class);
+            List<User> users = List.of(userWithId(21L, "Y", "y@test", 26, false));
+
+            Object result = invokePrivate(
+                    query,
+                    "adaptSelectResultFunctional",
+                    new Class[] {List.class, Object[].class},
+                    users,
+                    new Object[0]);
+
+            assertThat(result).isEqualTo(users);
+        }
+    }
+
     private FluentRepositoryQuery<User, Long> queryFor(String methodName, Class<?>... parameterTypes) throws Exception {
-        Method method = ProbeRepository.class.getMethod(methodName, parameterTypes);
-        RepositoryMetadata metadata = new DefaultRepositoryMetadata(ProbeRepository.class);
+        return queryForFunctional(ProbeRepository.class, methodName, parameterTypes);
+    }
+
+    private FluentRepositoryQuery<User, Long> queryForFunctional(
+            Class<?> repositoryInterface, String methodName, Class<?>... parameterTypes) throws Exception {
+        Method method = repositoryInterface.getMethod(methodName, parameterTypes);
+        RepositoryMetadata metadata = new DefaultRepositoryMetadata(repositoryInterface);
         SpelAwareProxyProjectionFactory projectionFactory = new SpelAwareProxyProjectionFactory();
         FluentEntityInformation<User, Long> entityInformation = new FluentEntityInformation<>(User.class);
         FluentConnectionProvider connectionProvider = mock(FluentConnectionProvider.class);

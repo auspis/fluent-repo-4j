@@ -541,7 +541,7 @@ class UserRepositoryIT {
         FluentConnectionProvider connectionProvider = new FluentConnectionProvider(dataSource);
         FluentEntityInformation<User, Long> entityInfo = new FluentEntityInformation<>(User.class);
 
-        repository = new FluentRepository<>(entityInfo, connectionProvider, dsl);
+        repository = new FluentRepository<>(new CoreRepositoryOperations<>(entityInfo, connectionProvider, dsl));
     }
 
     @AfterEach

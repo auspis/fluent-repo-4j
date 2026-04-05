@@ -1,6 +1,8 @@
 package io.github.auspis.fluentrepo4j.repository;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
+import io.github.auspis.fluentrepo4j.functional.FunctionalCrudRepository;
+import io.github.auspis.fluentrepo4j.functional.FunctionalPagingAndSortingRepository;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter;
@@ -91,11 +93,18 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Object getTargetRepository(RepositoryInformation information) {
         FluentEntityInformation entityInformation = new FluentEntityInformation<>(information.getDomainType());
-        return new FluentRepository<>(entityInformation, connectionProvider, dsl);
+        CoreRepositoryOperations core = new CoreRepositoryOperations<>(entityInformation, connectionProvider, dsl);
+        if (isFunctionalRepository(information.getRepositoryInterface())) {
+            return new FunctionalFluentRepository<>(core);
+        }
+        return new FluentRepository<>(core);
     }
 
     @Override
     protected Class<?> getRepositoryBaseClass(RepositoryMetadata metadata) {
+        if (isFunctionalRepository(metadata.getRepositoryInterface())) {
+            return FunctionalFluentRepository.class;
+        }
         return FluentRepository.class;
     }
 
@@ -119,5 +128,10 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
     @Override
     public ProjectionFactory getProjectionFactory() {
         return super.getProjectionFactory();
+    }
+
+    static boolean isFunctionalRepository(Class<?> repositoryInterface) {
+        return FunctionalCrudRepository.class.isAssignableFrom(repositoryInterface)
+                || FunctionalPagingAndSortingRepository.class.isAssignableFrom(repositoryInterface);
     }
 }

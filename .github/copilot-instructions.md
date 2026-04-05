@@ -74,6 +74,11 @@ The goal is to provide Spring Data-style repositories backed by pure JDBC and fl
 - Use `@E2ETest` when testing with testcontainers or other real databases.
 - Use helpers from `test-support` (for example SQL capture/assert helpers) to reduce repetitive mocked JDBC setup.
 
+### Test Coverage
+
+- All production classes must maintain a minimum of 85% instruction (line) coverage.
+- When modifying or creating a production class, verify coverage meets this threshold before finalizing.
+
 ### Test Fixtures and Test Entities
 
 - Prefer using `io.github.auspis.fluentsql4j.test.util.TestDatabaseUtil` for reusable test database setup/cleanup and baseline fixtures instead of ad-hoc SQL in tests.

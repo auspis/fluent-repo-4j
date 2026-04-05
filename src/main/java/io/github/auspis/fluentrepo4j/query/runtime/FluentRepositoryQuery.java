@@ -1,6 +1,8 @@
 package io.github.auspis.fluentrepo4j.query.runtime;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
+import io.github.auspis.fluentrepo4j.functional.RepositoryResult;
+import io.github.auspis.fluentrepo4j.functional.RepositoryResult.Success;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
 import io.github.auspis.fluentrepo4j.meta.PropertyMetadataProvider;
@@ -15,7 +17,10 @@ import io.github.auspis.fluentsql4j.ast.dql.clause.Sorting;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -52,6 +57,8 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
     private final QueryDescriptorToDslMapper<T, ID> dslMapper;
     private final QueryExecutionResources<T> executionResources;
     private final PropertyMetadataProvider<T, ID> metadataProvider;
+    private final boolean functionalMode;
+    private final Class<?> functionalInnerType;
 
     public FluentRepositoryQuery(
             Method method,
@@ -73,6 +80,93 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
 
         // Build and cache the descriptor at construction time
         this.descriptor = PartTreeAdapter.adapt(method, metadata.getDomainType());
+
+        // Detect functional mode from return type
+        this.functionalMode = RepositoryResult.class.isAssignableFrom(method.getReturnType());
+        this.functionalInnerType = functionalMode ? resolveFunctionalInnerType(method) : null;
+
+        if (functionalMode) {
+            validateFunctionalReturnType(method);
+        }
+    }
+
+    private void validateFunctionalReturnType(Method method) {
+        QueryOperation operation = descriptor.operation();
+        switch (operation) {
+            case FIND -> validateFindInnerType(method);
+            case DELETE -> validateDeleteInnerType(method);
+            case COUNT -> validateCountInnerType(method);
+            case EXISTS -> validateExistsInnerType(method);
+        }
+    }
+
+    private void validateFindInnerType(Method method) {
+        if (Optional.class.isAssignableFrom(functionalInnerType)
+                || List.class.isAssignableFrom(functionalInnerType)
+                || Collection.class.isAssignableFrom(functionalInnerType)
+                || Iterable.class.isAssignableFrom(functionalInnerType)
+                || Stream.class.isAssignableFrom(functionalInnerType)
+                || Page.class.isAssignableFrom(functionalInnerType)
+                || Slice.class.isAssignableFrom(functionalInnerType)) {
+            return;
+        }
+        throw new IllegalStateException("Functional single-result derived query method '"
+                + method.getName()
+                + "' must declare RepositoryResult<Optional<T>> to express the possibility of no result. "
+                + "Found inner type: "
+                + functionalInnerType.getName()
+                + " in method "
+                + method.toGenericString());
+    }
+
+    private void validateDeleteInnerType(Method method) {
+        if (Long.class.isAssignableFrom(functionalInnerType) || Integer.class.isAssignableFrom(functionalInnerType)) {
+            return;
+        }
+        throw new IllegalStateException("Unsupported RepositoryResult inner type for delete-derived query: "
+                + functionalInnerType.getName()
+                + " in method "
+                + method.toGenericString()
+                + ". Supported inner types are java.lang.Long and java.lang.Integer.");
+    }
+
+    private void validateCountInnerType(Method method) {
+        if (Long.class.isAssignableFrom(functionalInnerType)) {
+            return;
+        }
+        throw new IllegalStateException("Unsupported RepositoryResult inner type for count-derived query: "
+                + functionalInnerType.getName()
+                + " in method "
+                + method.toGenericString()
+                + ". Supported inner type is java.lang.Long.");
+    }
+
+    private void validateExistsInnerType(Method method) {
+        if (Boolean.class.isAssignableFrom(functionalInnerType)) {
+            return;
+        }
+        throw new IllegalStateException("Unsupported RepositoryResult inner type for exists-derived query: "
+                + functionalInnerType.getName()
+                + " in method "
+                + method.toGenericString()
+                + ". Supported inner type is java.lang.Boolean.");
+    }
+
+    private static Class<?> resolveFunctionalInnerType(Method method) {
+        Type genericReturnType = method.getGenericReturnType();
+        if (genericReturnType instanceof ParameterizedType pt) {
+            Type[] typeArgs = pt.getActualTypeArguments();
+            if (typeArgs.length > 0) {
+                Type innerType = typeArgs[0];
+                if (innerType instanceof ParameterizedType innerPt) {
+                    return (Class<?>) innerPt.getRawType();
+                }
+                if (innerType instanceof Class<?> clazz) {
+                    return clazz;
+                }
+            }
+        }
+        return Object.class;
     }
 
     @Override
@@ -81,6 +175,9 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
         QueryRuntimeParams runtimeParams = queryRuntimeParams(args);
         ExecutableQuery<T> executable = dslMapper.map(descriptor, args, runtimeParams);
         Object rawResult = executable.execute(executionResources);
+        if (functionalMode) {
+            return adaptReturnTypeFunctional(rawResult, args);
+        }
         return adaptReturnType(rawResult, args);
     }
 
@@ -133,6 +230,59 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
             return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
         }
         return results.isEmpty() ? null : results.get(0);
+    }
+
+    // ---- Functional return-type adaptation ----
+
+    @SuppressWarnings("unchecked")
+    private Object adaptReturnTypeFunctional(Object rawResult, Object[] args) {
+        if (rawResult instanceof Long || rawResult instanceof Boolean) {
+            return new Success<>(rawResult);
+        }
+        if (rawResult instanceof Integer affected) {
+            return new Success<>(adaptDeleteResultFunctional(affected));
+        }
+        List<T> results = (List<T>) rawResult;
+        return new Success<>(adaptSelectResultFunctional(results, args));
+    }
+
+    private Object adaptDeleteResultFunctional(int affected) {
+        if (Long.class.isAssignableFrom(functionalInnerType)) {
+            return (long) affected;
+        }
+        if (Integer.class.isAssignableFrom(functionalInnerType)) {
+            return affected;
+        }
+        throw new IllegalStateException("Unsupported RepositoryResult inner type for delete-derived query: "
+                + functionalInnerType.getName()
+                + " in method "
+                + queryMethod.getName()
+                + ". Supported inner types are java.lang.Long and java.lang.Integer.");
+    }
+
+    private Object adaptSelectResultFunctional(List<T> results, Object[] args) {
+        if (Page.class.isAssignableFrom(functionalInnerType)) {
+            return adaptAsPage(results, args);
+        }
+        if (Slice.class.isAssignableFrom(functionalInnerType)) {
+            return adaptAsSlice(results, args);
+        }
+        if (List.class.isAssignableFrom(functionalInnerType)
+                || Collection.class.isAssignableFrom(functionalInnerType)
+                || Iterable.class.isAssignableFrom(functionalInnerType)) {
+            return results;
+        }
+        if (Stream.class.isAssignableFrom(functionalInnerType)) {
+            return results.stream();
+        }
+        if (Optional.class.isAssignableFrom(functionalInnerType)) {
+            return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        }
+        throw new IllegalStateException("Unsupported RepositoryResult inner type for find-derived query: "
+                + functionalInnerType.getName()
+                + " in method "
+                + queryMethod.getName()
+                + ". Use RepositoryResult<Optional<T>> for single-result queries.");
     }
 
     private Page<T> adaptAsPage(List<T> content, Object[] args) {
