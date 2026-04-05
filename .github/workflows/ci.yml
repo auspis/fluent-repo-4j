@@ -14,6 +14,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        spring-boot-version: ['3.5.13', '4.0.5']
+
+    name: "Boot ${{ matrix.spring-boot-version }}"
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
@@ -30,15 +37,16 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        key: ${{ runner.os }}-m2-${{ matrix.spring-boot-version }}-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
 
-    # Check code formatting and run all tests: unit + H2 integration + E2E (as per README)
+    # Check code formatting and run all tests with the matrix Spring Boot version
     - name: Check code formatting and run all tests
-      run: ./mvnw spotless:check verify
+      run: ./mvnw spotless:check verify -Dspring-boot.version=${{ matrix.spring-boot-version }}
 
-    # SonarCloud analysis
+    # SonarCloud analysis (runs only on baseline version to avoid duplicate scans)
     - name: SonarCloud Scan
+      if: matrix.spring-boot-version == '3.5.13'
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_QUBE }}
       run: ./mvnw org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=300

@@ -29,17 +29,56 @@ Write type-safe, declarative database queries without ORM overhead.
 
 ---
 
+## Compatibility
+
+`fluent-repo-4j` is compatible with **Spring Boot 3.x** and **Spring Boot 4.x**.
+
+### CI-Validated Versions
+
+|  Spring Boot  | Spring Data | Java |     Status     |
+|---------------|-------------|------|----------------|
+| 3.5.x         | 3.5.x       | 21+  | ✅ CI-validated |
+| 4.x (≥ 4.0.5) | 4.x         | 21+  | ✅ CI-validated |
+
+Other patch and minor releases within the same major lines are expected to be compatible.
+
+### How It Works
+
+`fluent-repo-4j` declares Spring dependencies as **`provided`** — they compile against a baseline version
+but are **not bundled** in the published JAR. Your application's Spring Boot BOM determines the actual
+runtime versions.
+
+---
+
 ## Quick Start
 
-Add the dependency:
+Add these dependencies to your application:
 
 ```xml
-<dependency>
-    <groupId>io.github.auspis</groupId>
-    <artifactId>fluent-repo-4j</artifactId>
-    <version>1.0.0</version>
-</dependency>
+<dependencies>
+    <dependency>
+        <groupId>io.github.auspis</groupId>
+        <artifactId>fluent-repo-4j</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+
+    <!-- Required at application level because fluent-repo-4j uses provided Spring dependencies -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.data</groupId>
+        <artifactId>spring-data-commons</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>jakarta.persistence</groupId>
+        <artifactId>jakarta.persistence-api</artifactId>
+    </dependency>
+</dependencies>
 ```
+
+If you already use a starter that brings these dependencies transitively, avoid duplicate declarations and add just `fluent-repo-4j`.
 
 ### 1. Define Your Entity
 
