@@ -7,41 +7,26 @@ import io.github.auspis.fluentrepo4j.functional.FunctionalPagingAndSortingReposi
 import io.github.auspis.fluentrepo4j.functional.RepositoryResult;
 import io.github.auspis.fluentrepo4j.functional.RepositoryResult.Failure;
 import io.github.auspis.fluentrepo4j.functional.RepositoryResult.Success;
-import io.github.auspis.fluentrepo4j.mapping.DslTypeDispatcher;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
-import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
-import io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter;
-import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper;
-import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper.ColumnOrder;
 import io.github.auspis.fluentsql4j.dsl.DSL;
-import io.github.auspis.fluentsql4j.dsl.select.OrderByBuilder;
-import io.github.auspis.fluentsql4j.dsl.select.SelectBuilder;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import org.springframework.dao.DataAccessException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.jdbc.support.SQLExceptionSubclassTranslator;
-import org.springframework.jdbc.support.SQLExceptionTranslator;
 
 /**
  * Functional counterpart of {@link FluentRepository}.
  *
  * <p>Implements {@link FunctionalCrudRepository} and {@link FunctionalPagingAndSortingRepository}
- * by wrapping every operation result in {@link RepositoryResult}. Domain-level errors such as
- * optimistic locking failures and validation problems are captured as {@link Failure};
- * infrastructure errors (connection loss, SQL syntax) propagate as Spring's
- * {@link DataAccessException}.
+ * by delegating low-level JDBC operations to {@link CoreRepositoryOperations} and wrapping
+ * every result in {@link RepositoryResult}. Domain-level errors such as optimistic locking
+ * failures are captured as {@link Failure}; infrastructure errors propagate as Spring's
+ * {@link org.springframework.dao.DataAccessException}.
  *
  * @param <T>  the entity type
  * @param <ID> the entity identifier type
@@ -49,25 +34,11 @@ import org.springframework.jdbc.support.SQLExceptionTranslator;
 public class FunctionalFluentRepository<T, ID>
         implements FunctionalCrudRepository<T, ID>, FunctionalPagingAndSortingRepository<T, ID> {
 
-    private final FluentEntityInformation<T, ID> entityInformation;
-    private final FluentConnectionProvider connectionProvider;
-    private final DSL dsl;
-    private final FluentEntityRowMapper<T> rowMapper;
-    private final FluentEntityWriter<T> entityWriter;
-    private final SQLExceptionTranslator exceptionTranslator;
-    private final SaveDecisionResolver<T, ID> saveDecisionResolver;
-    private final SortClauseHelper sortClauseHelper;
+    private final CoreRepositoryOperations<T, ID> core;
 
     public FunctionalFluentRepository(
             FluentEntityInformation<T, ID> entityInformation, FluentConnectionProvider connectionProvider, DSL dsl) {
-        this.entityInformation = entityInformation;
-        this.connectionProvider = connectionProvider;
-        this.dsl = dsl;
-        this.rowMapper = new FluentEntityRowMapper<>(entityInformation);
-        this.entityWriter = new FluentEntityWriter<>(entityInformation);
-        this.exceptionTranslator = new SQLExceptionSubclassTranslator();
-        this.saveDecisionResolver = new SaveDecisionResolver<>(entityInformation, this::existsByIdRaw);
-        this.sortClauseHelper = new SortClauseHelper(entityInformation);
+        this.core = new CoreRepositoryOperations<>(entityInformation, connectionProvider, dsl);
     }
 
     // ---- Save ----
@@ -75,15 +46,13 @@ public class FunctionalFluentRepository<T, ID>
     @Override
     public <S extends T> RepositoryResult<S> save(S entity) {
         try {
-            SaveAction action = saveDecisionResolver.apply(entity);
+            SaveAction action = core.getSaveDecisionResolver().apply(entity);
             S saved =
                     switch (action) {
-                        case INSERT_PROVIDED_ID -> insertWithProvidedId(entity);
-                        case INSERT_AUTO_ID -> insertWithIdentity(entity);
-                        case UPDATE -> update(entity);
-                        case ERROR -> {
-                            yield null;
-                        }
+                        case INSERT_PROVIDED_ID -> core.insertWithProvidedId(entity);
+                        case INSERT_AUTO_ID -> core.insertWithIdentity(entity);
+                        case UPDATE -> core.update(entity);
+                        case ERROR -> null;
                     };
             if (saved == null) {
                 return new Failure<>(
@@ -117,51 +86,31 @@ public class FunctionalFluentRepository<T, ID>
 
     @Override
     public RepositoryResult<Optional<T>> findById(ID id) {
-        String table = entityInformation.getTableName();
-        String idColumn = entityInformation.getIdColumnName();
-        Connection conn = connectionProvider.getConnection();
-        try {
-            PreparedStatement ps = DslTypeDispatcher.eq(
-                            dsl.selectAll().from(table).where().column(idColumn), id)
-                    .build(conn);
-            try (ps;
-                    ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return new Success<>(Optional.of(rowMapper.mapRow(rs, 0)));
-                }
-                return new Success<>(Optional.empty());
-            }
-        } catch (SQLException e) {
-            throw translateException("findById", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
+        return new Success<>(core.findByIdRaw(id));
     }
 
     @Override
     public RepositoryResult<Boolean> existsById(ID id) {
-        return new Success<>(existsByIdRaw(id));
+        return new Success<>(core.existsByIdRaw(id));
     }
 
     @Override
     public RepositoryResult<List<T>> findAll() {
-        return new Success<>(findAllInternal("findAll", List.of(), null));
+        return new Success<>(core.findAllRaw(Sort.unsorted(), null));
     }
 
     @Override
     public RepositoryResult<List<T>> findAll(Sort sort) {
-        List<ColumnOrder> orders = sortClauseHelper.resolve(sort);
-        return new Success<>(findAllInternal("findAll(Sort)", orders, null));
+        return new Success<>(core.findAllRaw(sort, null));
     }
 
     @Override
     public RepositoryResult<Page<T>> findAll(Pageable pageable) {
-        long totalElements = countRaw();
+        long totalElements = core.countRaw();
         if (totalElements == 0 || pageable.getOffset() >= totalElements) {
             return new Success<>(new PageImpl<>(List.of(), pageable, totalElements));
         }
-        List<ColumnOrder> orders = sortClauseHelper.resolve(pageable.getSort());
-        List<T> content = findAllInternal("findAll(Pageable)", orders, pageable);
+        List<T> content = core.findAllRaw(pageable.getSort(), pageable);
         return new Success<>(new PageImpl<>(content, pageable, totalElements));
     }
 
@@ -169,42 +118,27 @@ public class FunctionalFluentRepository<T, ID>
     public RepositoryResult<List<T>> findAllById(Iterable<ID> ids) {
         List<T> results = new ArrayList<>();
         for (ID id : ids) {
-            RepositoryResult<Optional<T>> result = findById(id);
-            result.orElseThrow().ifPresent(results::add);
+            core.findByIdRaw(id).ifPresent(results::add);
         }
         return new Success<>(results);
     }
 
     @Override
     public RepositoryResult<Long> count() {
-        return new Success<>(countRaw());
+        return new Success<>(core.countRaw());
     }
 
     // ---- Delete ----
 
     @Override
     public RepositoryResult<Boolean> deleteById(ID id) {
-        String table = entityInformation.getTableName();
-        String idColumn = entityInformation.getIdColumnName();
-        Connection conn = connectionProvider.getConnection();
-        try {
-            PreparedStatement ps = DslTypeDispatcher.eq(
-                            dsl.deleteFrom(table).where().column(idColumn), id)
-                    .build(conn);
-            try (ps) {
-                int affected = ps.executeUpdate();
-                return new Success<>(affected > 0);
-            }
-        } catch (SQLException e) {
-            throw translateException("deleteById", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
+        int affected = core.deleteByIdRaw(id);
+        return new Success<>(affected > 0);
     }
 
     @Override
     public RepositoryResult<Boolean> delete(T entity) {
-        ID id = entityInformation.getId(entity);
+        ID id = core.getEntityId(entity);
         if (id == null) {
             return new Failure<>("Cannot delete entity with null ID");
         }
@@ -215,8 +149,7 @@ public class FunctionalFluentRepository<T, ID>
     public RepositoryResult<Long> deleteAllById(Iterable<? extends ID> ids) {
         long count = 0;
         for (ID id : ids) {
-            RepositoryResult<Boolean> result = deleteById(id);
-            if (result.orElseThrow()) {
+            if (core.deleteByIdRaw(id) > 0) {
                 count++;
             }
         }
@@ -237,189 +170,7 @@ public class FunctionalFluentRepository<T, ID>
 
     @Override
     public RepositoryResult<Long> deleteAll() {
-        String table = entityInformation.getTableName();
-        Connection conn = connectionProvider.getConnection();
-        try (PreparedStatement ps = dsl.deleteFrom(table).build(conn)) {
-            long affected = ps.executeUpdate();
-            return new Success<>(affected);
-        } catch (SQLException e) {
-            throw translateException("deleteAll", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    // ---- Internal helpers ----
-
-    private boolean existsByIdRaw(ID id) {
-        String table = entityInformation.getTableName();
-        String idColumn = entityInformation.getIdColumnName();
-        Connection conn = connectionProvider.getConnection();
-        try {
-            PreparedStatement ps = DslTypeDispatcher.eq(
-                            dsl.select().countStar().from(table).where().column(idColumn), id)
-                    .build(conn);
-            try (ps;
-                    ResultSet rs = ps.executeQuery()) {
-                rs.next();
-                return rs.getLong(1) > 0;
-            }
-        } catch (SQLException e) {
-            throw translateException("existsById", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    private long countRaw() {
-        String table = entityInformation.getTableName();
-        Connection conn = connectionProvider.getConnection();
-        try {
-            PreparedStatement ps = dsl.select().countStar().from(table).build(conn);
-            try (ps;
-                    ResultSet rs = ps.executeQuery()) {
-                rs.next();
-                return rs.getLong(1);
-            }
-        } catch (SQLException e) {
-            throw translateException("count", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    private List<T> findAllInternal(String task, List<ColumnOrder> orders, Pageable pageable) {
-        String table = entityInformation.getTableName();
-        Connection conn = connectionProvider.getConnection();
-        try {
-            SelectBuilder selectBuilder = dsl.selectAll().from(table);
-
-            if (pageable != null) {
-                selectBuilder.fetch(pageable.getPageSize()).offset(pageable.getOffset());
-            }
-
-            PreparedStatement ps;
-            if (orders.isEmpty()) {
-                ps = selectBuilder.build(conn);
-            } else {
-                OrderByBuilder orderByBuilder = selectBuilder.orderBy();
-                for (ColumnOrder order : orders) {
-                    orderByBuilder = order.direction() == Sort.Direction.ASC
-                            ? orderByBuilder.asc(order.columnName())
-                            : orderByBuilder.desc(order.columnName());
-                }
-                ps = orderByBuilder.build(conn);
-            }
-            return executeAndMapRows(ps);
-        } catch (SQLException e) {
-            throw translateException(task, e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    private <S extends T> S insertWithProvidedId(S entity) {
-        ID idValue = entityInformation.getId(entity);
-        if (idValue == null) {
-            throw new IllegalArgumentException(
-                    "Entity " + entity.getClass().getSimpleName() + " requires ID to be set before save(). "
-                            + "No @GeneratedValue found; use application-provided ID strategy, "
-                            + "or annotate the @Id field with @GeneratedValue(strategy = GenerationType.IDENTITY).");
-        }
-        String table = entityInformation.getTableName();
-        Map<String, Object> values = entityWriter.getAllColumnValues(entity);
-        Connection conn = connectionProvider.getConnection();
-        try {
-            var builder = dsl.insertInto(table);
-            for (Map.Entry<String, Object> entry : values.entrySet()) {
-                builder = DslTypeDispatcher.set(builder, entry.getKey(), entry.getValue());
-            }
-            try (PreparedStatement ps = builder.build(conn)) {
-                ps.executeUpdate();
-            }
-            return entity;
-        } catch (SQLException e) {
-            throw translateException("insert", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private <S extends T> S insertWithIdentity(S entity) {
-        String table = entityInformation.getTableName();
-        Map<String, Object> values = entityWriter.getNonIdColumnValues(entity);
-        Connection conn = connectionProvider.getConnection();
-        try {
-            var builder = dsl.insertInto(table);
-            for (Map.Entry<String, Object> entry : values.entrySet()) {
-                builder = DslTypeDispatcher.set(builder, entry.getKey(), entry.getValue());
-            }
-            try (PreparedStatement ps = builder.build(conn)) {
-                ps.executeUpdate();
-                try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        ID generatedId = (ID) generatedKeys.getObject(1);
-                        entityInformation.setId(entity, generatedId);
-                    }
-                }
-            }
-            return entity;
-        } catch (SQLException e) {
-            throw translateException("insert", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    private <S extends T> S update(S entity) {
-        String table = entityInformation.getTableName();
-        String idColumn = entityInformation.getIdColumnName();
-        ID idValue = entityInformation.getId(entity);
-        Map<String, Object> nonIdValues = entityWriter.getNonIdColumnValues(entity);
-        Connection conn = connectionProvider.getConnection();
-        try {
-            var builder = dsl.update(table);
-            for (Map.Entry<String, Object> entry : nonIdValues.entrySet()) {
-                builder = DslTypeDispatcher.set(builder, entry.getKey(), entry.getValue());
-            }
-            var updateWhere = builder.where().column(idColumn);
-            try (PreparedStatement ps =
-                    DslTypeDispatcher.eq(updateWhere, idValue).build(conn)) {
-                int rowCount = ps.executeUpdate();
-                if (rowCount == 0) {
-                    throw new OptimisticLockingFailureException(
-                            "Entity " + entity.getClass().getSimpleName()
-                                    + " with ID " + idValue + " was not found for update."
-                                    + " It may have been deleted by another transaction.");
-                }
-            }
-            return entity;
-        } catch (SQLException e) {
-            throw translateException("update", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    private List<T> executeAndMapRows(PreparedStatement ps) throws SQLException {
-        try (ps;
-                ResultSet rs = ps.executeQuery()) {
-            List<T> results = new ArrayList<>();
-            int rowNum = 0;
-            while (rs.next()) {
-                results.add(rowMapper.mapRow(rs, rowNum++));
-            }
-            return results;
-        }
-    }
-
-    private DataAccessException translateException(String task, SQLException ex) {
-        DataAccessException translated =
-                exceptionTranslator.translate("FunctionalFluentRepository." + task, ex.getMessage(), ex);
-        return translated != null
-                ? translated
-                : new org.springframework.jdbc.UncategorizedSQLException(
-                        "FunctionalFluentRepository." + task, null, ex);
+        long affected = core.deleteAllRaw();
+        return new Success<>(affected);
     }
 }

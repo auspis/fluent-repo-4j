@@ -2,64 +2,36 @@ package io.github.auspis.fluentrepo4j.repository;
 
 import io.github.auspis.fluentrepo4j.FluentPersistable;
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
-import io.github.auspis.fluentrepo4j.mapping.DslTypeDispatcher;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
-import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
-import io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter;
-import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper;
-import io.github.auspis.fluentrepo4j.mapping.helper.SortClauseHelper.ColumnOrder;
 import io.github.auspis.fluentsql4j.dsl.DSL;
-import io.github.auspis.fluentsql4j.dsl.select.OrderByBuilder;
-import io.github.auspis.fluentsql4j.dsl.select.SelectBuilder;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
-import org.springframework.jdbc.support.SQLExceptionSubclassTranslator;
-import org.springframework.jdbc.support.SQLExceptionTranslator;
 
 /**
  * Default implementation of {@link CrudRepository} and {@link PagingAndSortingRepository}
  * using fluent-sql-4j for SQL generation and Spring's
  * {@link org.springframework.jdbc.datasource.DataSourceUtils} for connection management.
  *
+ * <p>Delegates low-level JDBC operations to {@link CoreRepositoryOperations}.
+ *
  * @param <T>  the entity type
  * @param <ID> the entity identifier type
  */
 public class FluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAndSortingRepository<T, ID> {
 
-    private final FluentEntityInformation<T, ID> entityInformation;
-    private final FluentConnectionProvider connectionProvider;
-    private final DSL dsl;
-    private final FluentEntityRowMapper<T> rowMapper;
-    private final FluentEntityWriter<T> entityWriter;
-    private final SQLExceptionTranslator exceptionTranslator;
-    private final SaveDecisionResolver<T, ID> saveDecisionResolver;
-    private final SortClauseHelper sortClauseHelper;
+    private final CoreRepositoryOperations<T, ID> core;
 
     public FluentRepository(
             FluentEntityInformation<T, ID> entityInformation, FluentConnectionProvider connectionProvider, DSL dsl) {
-        this.entityInformation = entityInformation;
-        this.connectionProvider = connectionProvider;
-        this.dsl = dsl;
-        rowMapper = new FluentEntityRowMapper<>(entityInformation);
-        entityWriter = new FluentEntityWriter<>(entityInformation);
-        exceptionTranslator = new SQLExceptionSubclassTranslator();
-        saveDecisionResolver = new SaveDecisionResolver<>(entityInformation, this::existsById);
-        sortClauseHelper = new SortClauseHelper(entityInformation);
+        this.core = new CoreRepositoryOperations<>(entityInformation, connectionProvider, dsl);
     }
 
     // ---- Save ----
@@ -73,10 +45,10 @@ public class FluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAnd
     @Override
     public <S extends T> S save(S entity) {
         S saved =
-                switch (saveDecisionResolver.apply(entity)) {
-                    case INSERT_PROVIDED_ID -> insertWithProvidedId(entity);
-                    case INSERT_AUTO_ID -> insertWithIdentity(entity);
-                    case UPDATE -> update(entity);
+                switch (core.getSaveDecisionResolver().apply(entity)) {
+                    case INSERT_PROVIDED_ID -> core.insertWithProvidedId(entity);
+                    case INSERT_AUTO_ID -> core.insertWithIdentity(entity);
+                    case UPDATE -> core.update(entity);
                     case ERROR ->
                         throw new IllegalStateException(
                                 "Entity " + entity.getClass().getSimpleName()
@@ -103,57 +75,22 @@ public class FluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAnd
 
     @Override
     public Optional<T> findById(ID id) {
-        String table = entityInformation.getTableName();
-        String idColumn = entityInformation.getIdColumnName();
-        Connection conn = connectionProvider.getConnection();
-        try {
-            PreparedStatement ps = DslTypeDispatcher.eq(
-                            dsl.selectAll().from(table).where().column(idColumn), id)
-                    .build(conn);
-            try (ps;
-                    ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(rowMapper.mapRow(rs, 0));
-                }
-                return Optional.empty();
-            }
-        } catch (SQLException e) {
-            throw translateException("findById", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
+        return core.findByIdRaw(id);
     }
 
     @Override
     public boolean existsById(ID id) {
-        String table = entityInformation.getTableName();
-        String idColumn = entityInformation.getIdColumnName();
-        Connection conn = connectionProvider.getConnection();
-        try {
-            PreparedStatement ps = DslTypeDispatcher.eq(
-                            dsl.select().countStar().from(table).where().column(idColumn), id)
-                    .build(conn);
-            try (ps;
-                    ResultSet rs = ps.executeQuery()) {
-                rs.next();
-                return rs.getLong(1) > 0;
-            }
-        } catch (SQLException e) {
-            throw translateException("existsById", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
+        return core.existsByIdRaw(id);
     }
 
     @Override
     public Iterable<T> findAll() {
-        return findAll("findAll", new NoOrderingStrategy(), new NoPagingStrategy());
+        return core.findAllRaw(Sort.unsorted(), null);
     }
 
     @Override
     public Iterable<T> findAll(Sort sort) {
-        List<ColumnOrder> orders = sortClauseHelper.resolve(sort);
-        return findAll("findAll(Sort)", new SortOrderingStrategy(orders), new NoPagingStrategy());
+        return core.findAllRaw(sort, null);
     }
 
     @Override
@@ -162,11 +99,8 @@ public class FluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAnd
         if (totalElements == 0 || pageable.getOffset() >= totalElements) {
             return new PageImpl<>(List.of(), pageable, totalElements);
         }
-
-        List<ColumnOrder> orders = sortClauseHelper.resolve(pageable.getSort());
-        List<T> results =
-                findAll("findAll(Pageable)", new SortOrderingStrategy(orders), new PageablePagingStrategy(pageable));
-        return new PageImpl<>(results, pageable, totalElements);
+        List<T> content = core.findAllRaw(pageable.getSort(), pageable);
+        return new PageImpl<>(content, pageable, totalElements);
     }
 
     @Override
@@ -180,46 +114,19 @@ public class FluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAnd
 
     @Override
     public long count() {
-        String table = entityInformation.getTableName();
-        Connection conn = connectionProvider.getConnection();
-        try {
-            PreparedStatement ps = dsl.select().countStar().from(table).build(conn);
-            try (ps;
-                    ResultSet rs = ps.executeQuery()) {
-                rs.next();
-                return rs.getLong(1);
-            }
-        } catch (SQLException e) {
-            throw translateException("count", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
+        return core.countRaw();
     }
 
     // ---- Delete ----
 
     @Override
     public void deleteById(ID id) {
-        String table = entityInformation.getTableName();
-        String idColumn = entityInformation.getIdColumnName();
-        Connection conn = connectionProvider.getConnection();
-        try {
-            PreparedStatement ps = DslTypeDispatcher.eq(
-                            dsl.deleteFrom(table).where().column(idColumn), id)
-                    .build(conn);
-            try (ps) {
-                ps.executeUpdate();
-            }
-        } catch (SQLException e) {
-            throw translateException("deleteById", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
+        core.deleteByIdRaw(id);
     }
 
     @Override
     public void delete(T entity) {
-        ID id = entityInformation.getId(entity);
+        ID id = core.getEntityId(entity);
         if (id == null) {
             throw new IllegalArgumentException("Cannot delete entity with null ID");
         }
@@ -242,247 +149,6 @@ public class FluentRepository<T, ID> implements CrudRepository<T, ID>, PagingAnd
 
     @Override
     public void deleteAll() {
-        String table = entityInformation.getTableName();
-        Connection conn = connectionProvider.getConnection();
-        try (PreparedStatement ps = dsl.deleteFrom(table).build(conn)) {
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            throw translateException("deleteAll", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    // ---- Internal ----
-
-    /**
-     * Inserts an entity whose ID was set by the application (PROVIDED strategy).
-     * Validates that the ID is non-null before proceeding.
-     */
-    private <S extends T> S insertWithProvidedId(S entity) {
-        ID idValue = entityInformation.getId(entity);
-        if (idValue == null) {
-            throw new IllegalArgumentException(
-                    "Entity " + entity.getClass().getSimpleName() + " requires ID to be set before save(). "
-                            + "No @GeneratedValue found; use application-provided ID strategy, "
-                            + "or annotate the @Id field with @GeneratedValue(strategy = GenerationType.IDENTITY).");
-        }
-        String table = entityInformation.getTableName();
-        Map<String, Object> values = entityWriter.getAllColumnValues(entity);
-        Connection conn = connectionProvider.getConnection();
-        try {
-            var builder = dsl.insertInto(table);
-            for (Map.Entry<String, Object> entry : values.entrySet()) {
-                builder = DslTypeDispatcher.set(builder, entry.getKey(), entry.getValue());
-            }
-            try (PreparedStatement ps = builder.build(conn)) {
-                ps.executeUpdate();
-            }
-            return entity;
-        } catch (SQLException e) {
-            throw translateException("insert", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    /**
-     * Inserts an entity whose ID is auto-generated by the database (IDENTITY strategy).
-     * Excludes the ID column from the INSERT and reads the generated key after execution.
-     */
-    @SuppressWarnings("unchecked")
-    private <S extends T> S insertWithIdentity(S entity) {
-        String table = entityInformation.getTableName();
-        Map<String, Object> values = entityWriter.getNonIdColumnValues(entity);
-        Connection conn = connectionProvider.getConnection();
-        try {
-            var builder = dsl.insertInto(table);
-            for (Map.Entry<String, Object> entry : values.entrySet()) {
-                builder = DslTypeDispatcher.set(builder, entry.getKey(), entry.getValue());
-            }
-            try (PreparedStatement ps = builder.build(conn)) {
-                ps.executeUpdate();
-                try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        ID generatedId = (ID) generatedKeys.getObject(1);
-                        entityInformation.setId(entity, generatedId);
-                    }
-                }
-            }
-            return entity;
-        } catch (SQLException e) {
-            throw translateException("insert", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    private <S extends T> S update(S entity) {
-        String table = entityInformation.getTableName();
-        String idColumn = entityInformation.getIdColumnName();
-        ID idValue = entityInformation.getId(entity);
-        Map<String, Object> nonIdValues = entityWriter.getNonIdColumnValues(entity);
-        Connection conn = connectionProvider.getConnection();
-        try {
-            var builder = dsl.update(table);
-            for (Map.Entry<String, Object> entry : nonIdValues.entrySet()) {
-                builder = DslTypeDispatcher.set(builder, entry.getKey(), entry.getValue());
-            }
-            var updateWhere = builder.where().column(idColumn);
-            try (PreparedStatement ps =
-                    DslTypeDispatcher.eq(updateWhere, idValue).build(conn)) {
-                int rowCount = ps.executeUpdate();
-                if (rowCount == 0) {
-                    throw new org.springframework.dao.OptimisticLockingFailureException(
-                            "Entity " + entity.getClass().getSimpleName()
-                                    + " with ID " + idValue + " was not found for update."
-                                    + " It may have been deleted by another transaction.");
-                }
-            }
-            return entity;
-        } catch (SQLException e) {
-            throw translateException("update", e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    private List<T> findAll(String task, QueryPlanStrategy... strategies) {
-        String table = entityInformation.getTableName();
-        QueryPlan plan = QueryPlan.base(table);
-        for (QueryPlanStrategy strategy : strategies) {
-            plan = strategy.apply(plan);
-        }
-
-        Connection conn = connectionProvider.getConnection();
-        try {
-            PreparedStatement ps = buildFindAllStatement(conn, plan);
-            return executeAndMapRows(ps);
-        } catch (SQLException e) {
-            throw translateException(task, e);
-        } finally {
-            connectionProvider.releaseConnection(conn);
-        }
-    }
-
-    private PreparedStatement buildFindAllStatement(Connection conn, QueryPlan plan) throws SQLException {
-        SelectBuilder selectBuilder = dsl.selectAll().from(plan.table());
-        Optional<PageWindow> optionalOfPageWindow = plan.pageWindow();
-        List<ColumnOrder> orders = plan.orders();
-
-        if (optionalOfPageWindow.isPresent()) {
-            PageWindow pageWindow = optionalOfPageWindow.get();
-            selectBuilder.fetch(pageWindow.limit()).offset(pageWindow.offset());
-        }
-
-        if (orders.isEmpty()) {
-            return selectBuilder.build(conn);
-        }
-
-        OrderByBuilder orderByBuilder = selectBuilder.orderBy();
-        for (ColumnOrder order : orders) {
-            orderByBuilder = order.direction() == Sort.Direction.ASC
-                    ? orderByBuilder.asc(order.columnName())
-                    : orderByBuilder.desc(order.columnName());
-        }
-        return orderByBuilder.build(conn);
-    }
-
-    private List<T> executeAndMapRows(PreparedStatement ps) throws SQLException {
-        try (ps;
-                ResultSet rs = ps.executeQuery()) {
-            List<T> results = new ArrayList<>();
-            int rowNum = 0;
-            while (rs.next()) {
-                results.add(rowMapper.mapRow(rs, rowNum++));
-            }
-            return results;
-        }
-    }
-
-    private interface QueryPlanStrategy {
-        QueryPlan apply(QueryPlan plan);
-    }
-
-    private static final class NoOrderingStrategy implements QueryPlanStrategy {
-        @Override
-        public QueryPlan apply(QueryPlan plan) {
-            return plan;
-        }
-    }
-
-    private static final class SortOrderingStrategy implements QueryPlanStrategy {
-
-        private final List<ColumnOrder> orders;
-
-        private SortOrderingStrategy(List<ColumnOrder> orders) {
-            this.orders = List.copyOf(orders);
-        }
-
-        @Override
-        public QueryPlan apply(QueryPlan plan) {
-            return plan.withOrders(orders);
-        }
-    }
-
-    private static final class NoPagingStrategy implements QueryPlanStrategy {
-
-        @Override
-        public QueryPlan apply(QueryPlan plan) {
-            return plan;
-        }
-    }
-
-    private static final class PageablePagingStrategy implements QueryPlanStrategy {
-
-        private final Pageable pageable;
-
-        private PageablePagingStrategy(Pageable pageable) {
-            this.pageable = pageable;
-        }
-
-        @Override
-        public QueryPlan apply(QueryPlan plan) {
-            return plan.withPage(pageable.getPageSize(), pageable.getOffset());
-        }
-    }
-
-    private record QueryPlan(String table, List<ColumnOrder> orders, Optional<PageWindow> pageWindow) {
-
-        private QueryPlan {
-            orders = List.copyOf(Objects.requireNonNull(orders, "orders must not be null"));
-            Objects.requireNonNull(pageWindow, "pageWindow must not be null");
-        }
-
-        private static QueryPlan base(String table) {
-            return new QueryPlan(table, List.of(), Optional.empty());
-        }
-
-        private QueryPlan withOrders(List<ColumnOrder> newOrders) {
-            return new QueryPlan(table, newOrders, pageWindow);
-        }
-
-        private QueryPlan withPage(int newLimit, long newOffset) {
-            return new QueryPlan(table, orders, Optional.of(new PageWindow(newLimit, newOffset)));
-        }
-    }
-
-    private record PageWindow(int limit, long offset) {
-
-        private PageWindow {
-            if (limit <= 0) {
-                throw new IllegalArgumentException("Page limit must be greater than 0");
-            }
-            if (offset < 0) {
-                throw new IllegalArgumentException("Page offset must be >= 0");
-            }
-        }
-    }
-
-    private DataAccessException translateException(String task, SQLException ex) {
-        DataAccessException translated = exceptionTranslator.translate("FluentRepository." + task, ex.getMessage(), ex);
-        return translated != null
-                ? translated
-                : new org.springframework.jdbc.UncategorizedSQLException("FluentRepository." + task, null, ex);
+        core.deleteAllRaw();
     }
 }
