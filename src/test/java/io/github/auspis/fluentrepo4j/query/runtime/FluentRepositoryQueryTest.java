@@ -2,6 +2,7 @@ package io.github.auspis.fluentrepo4j.query.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -265,28 +266,30 @@ class FluentRepositoryQueryTest {
     class FunctionalReturnTypeValidation {
 
         @Test
-        void validFunctionalFindOptionalConstructsSuccessfully() throws Exception {
-            queryForFunctional(FunctionalProbeRepository.class, "findByEmail", String.class);
+        void validFunctionalFindOptionalConstructsSuccessfully() {
+            assertDoesNotThrow(() -> queryForFunctional(FunctionalProbeRepository.class, "findByEmail", String.class));
         }
 
         @Test
-        void validFunctionalFindListConstructsSuccessfully() throws Exception {
-            queryForFunctional(FunctionalProbeRepository.class, "findByName", String.class);
+        void validFunctionalFindListConstructsSuccessfully() {
+            assertDoesNotThrow(() -> queryForFunctional(FunctionalProbeRepository.class, "findByName", String.class));
         }
 
         @Test
-        void validFunctionalDeleteLongConstructsSuccessfully() throws Exception {
-            queryForFunctional(FunctionalProbeRepository.class, "deleteByName", String.class);
+        void validFunctionalDeleteLongConstructsSuccessfully() {
+            assertDoesNotThrow(() -> queryForFunctional(FunctionalProbeRepository.class, "deleteByName", String.class));
         }
 
         @Test
-        void validFunctionalCountConstructsSuccessfully() throws Exception {
-            queryForFunctional(FunctionalProbeRepository.class, "countByActive", Boolean.class);
+        void validFunctionalCountConstructsSuccessfully() {
+            assertDoesNotThrow(
+                    () -> queryForFunctional(FunctionalProbeRepository.class, "countByActive", Boolean.class));
         }
 
         @Test
-        void validFunctionalExistsConstructsSuccessfully() throws Exception {
-            queryForFunctional(FunctionalProbeRepository.class, "existsByEmail", String.class);
+        void validFunctionalExistsConstructsSuccessfully() {
+            assertDoesNotThrow(
+                    () -> queryForFunctional(FunctionalProbeRepository.class, "existsByEmail", String.class));
         }
 
         @Test
