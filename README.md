@@ -29,17 +29,56 @@ Write type-safe, declarative database queries without ORM overhead.
 
 ---
 
+## Compatibility
+
+`fluent-repo-4j` is compatible with **Spring Boot 3.x** and **Spring Boot 4.x**.
+
+### CI-Validated Versions
+
+|  Spring Boot  | Spring Data | Java |     Status     |
+|---------------|-------------|------|----------------|
+| 3.5.x         | 3.5.x       | 21+  | ✅ CI-validated |
+| 4.x (≥ 4.0.5) | 4.x         | 21+  | ✅ CI-validated |
+
+Other patch and minor releases within the same major lines are expected to be compatible.
+
+### How It Works
+
+`fluent-repo-4j` declares Spring dependencies as **`provided`** — they compile against a baseline version
+but are **not bundled** in the published JAR. Your application's Spring Boot BOM determines the actual
+runtime versions.
+
+---
+
 ## Quick Start
 
-Add the dependency:
+Add these dependencies to your application:
 
 ```xml
-<dependency>
-    <groupId>io.github.auspis</groupId>
-    <artifactId>fluent-repo-4j</artifactId>
-    <version>1.0.0</version>
-</dependency>
+<dependencies>
+    <dependency>
+        <groupId>io.github.auspis</groupId>
+        <artifactId>fluent-repo-4j</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+
+    <!-- Required at application level because fluent-repo-4j uses provided Spring dependencies -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.data</groupId>
+        <artifactId>spring-data-commons</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>jakarta.persistence</groupId>
+        <artifactId>jakarta.persistence-api</artifactId>
+    </dependency>
+</dependencies>
 ```
+
+If you already use a starter that brings these dependencies transitively, avoid duplicate declarations and add just `fluent-repo-4j`.
 
 ### 1. Define Your Entity
 
@@ -156,29 +195,6 @@ The library auto-detects the database dialect, scans for `CrudRepository` interf
 | [DYNAMIC_METHOD_QUERIES.md](data/wiki/DYNAMIC_METHOD_QUERIES.md) | Full reference for query derivation: operators, pagination, sorting, return types, limitations      |
 | [ARCHITECTURE.md](data/wiki/ARCHITECTURE.md)                     | Deep dive into internal components, data flow diagrams, connection management, and extension points |
 | [TEST.md](data/wiki/TEST.md)                                     | Building the project, running tests, test pyramid, code coverage, and formatting                    |
-
----
-
-## Compatibility
-
-This library uses **`provided`** scope for Spring dependencies — your application controls the Spring Boot version.
-
-### Tested Versions
-
-| Spring Boot  | Spring Data | Java |   Status    |
-|--------------|-------------|------|-------------|
-| 3.5.x        | 3.5.x       | 21+  | ✅ Supported |
-| 4.x (≥4.0.5) | 4.x         | 21+  | ✅ Supported |
-
-### How It Works
-
-`fluent-repo-4j` declares Spring dependencies as **`provided`** — they compile against a baseline version
-but are **not bundled** in the published JAR. Your application's Spring Boot BOM determines the actual
-versions at runtime.
-
-**Minimum requirement:** any Spring Boot **3.5.x** release.
-
-Spring Boot **4.x** support (from **4.0.5**) is validated in CI matrix testing.
 
 ---
 

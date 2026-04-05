@@ -94,11 +94,11 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- JPA annotations (@Table, @Column, @Id) - API only, provided by consumer -->
+    <!-- JPA annotations (@Table, @Column, @Id) - API only, exposed transitively for downstream consumers -->
     <dependency>
       <groupId>jakarta.persistence</groupId>
       <artifactId>jakarta.persistence-api</artifactId>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
 
     <!-- fluent-sql-4j DSL -->
