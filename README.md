@@ -2,9 +2,12 @@
   <img src="data/wiki/assets/fluent-repo-4j-logo-no-bg.png" alt="Fluent Repo 4J" width="350">
 </p>
 
+[![Try the demo](https://img.shields.io/badge/Try%20the%20Demo-Run%20Locally-brightgreen?style=flat-square&logo=github)](https://github.com/auspis/fluent-repo-4j-demo)
+
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=auspis_fluent-repo-4j&metric=alert_status&token=ea0f4fd35e38159d168f6ad1f6e4f7a128748650)](https://sonarcloud.io/summary/new_code?id=auspis_fluent-repo-4j)
 [![Reliability](https://sonarcloud.io/api/project_badges/measure?project=auspis_fluent-repo-4j&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=auspis_fluent-repo-4j)
 [![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=auspis_fluent-repo-4j&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=auspis_fluent-repo-4j)
+
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.auspis/fluent-repo-4j)](https://central.sonatype.com/artifact/io.github.auspis/fluent-repo-4j)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/auspis/fluent-repo-4j/blob/main/LICENSE)
 
@@ -60,7 +63,7 @@ Add these dependencies to your application:
 ```xml
 <dependencies>
     <dependency>
-        <groupId>io.github.auspis</groupId>
+        <groupId>io.github.auspishttps://github.com/auspis/fluent-repo-4j-demo</groupId>
         <artifactId>fluent-repo-4j</artifactId>
         <version>1.2.2</version>
     </dependency>
