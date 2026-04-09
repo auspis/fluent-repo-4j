@@ -11,6 +11,7 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 
 /**
@@ -25,8 +26,8 @@ import org.springframework.context.annotation.Bean;
  * Activates when both a {@link DataSource} bean and the fluent-sql-4j {@link DSL} class
  * are available on the classpath.
  */
-@AutoConfiguration
-@ConditionalOnClass({DataSource.class, DSL.class})
+@AutoConfiguration(after = DataSourceAutoConfiguration.class)
+@ConditionalOnClass(DataSource.class)
 @EnableFluentRepositories
 public class FluentRepositoriesAutoConfiguration {
 
