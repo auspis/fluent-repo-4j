@@ -22,11 +22,14 @@ import org.springframework.context.annotation.Bean;
  *   <li>{@link DSL} via dialect auto-detection from the {@link DataSource}</li>
  * </ul>
  * <p>
- * Activates when both a {@link DataSource} bean and the fluent-sql-4j {@link DSL} class
- * are available on the classpath.
+ * Activates when the {@link DataSource} class is available on the classpath.
  */
-@AutoConfiguration
-@ConditionalOnClass({DataSource.class, DSL.class})
+@AutoConfiguration(
+        afterName = {
+            "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration",
+            "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration"
+        })
+@ConditionalOnClass(DataSource.class)
 @EnableFluentRepositories
 public class FluentRepositoriesAutoConfiguration {
 
