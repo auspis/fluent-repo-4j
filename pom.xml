@@ -49,7 +49,7 @@
     <maven.spotless.plugin.version>3.4.0</maven.spotless.plugin.version>
     <maven.resource.plugin.version>3.5.0</maven.resource.plugin.version>
     <maven.exec.plugin.version>3.6.3</maven.exec.plugin.version>
-    <maven.sonar-scanner.plugin.version>5.5.0.6356</maven.sonar-scanner.plugin.version>
+    <maven.sonar-scanner.plugin.version>5.6.0.6792</maven.sonar-scanner.plugin.version>
     <maven.sonatype-central-publishing.plugin.version>0.10.0</maven.sonatype-central-publishing.plugin.version>
     <maven.source.plugin.version>3.4.0</maven.source.plugin.version>
     <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
@@ -61,9 +61,9 @@
     <argLine/>
     <central.autoPublish>false</central.autoPublish>
     <!-- Baseline for internal build; consumers bring their own Spring Boot version -->
-    <spring-boot.version>3.5.13</spring-boot.version>
+    <spring-boot.version>3.5.14</spring-boot.version>
     <fluent-sql-4j.version>1.4.0</fluent-sql-4j.version>
-    <testcontainers.version>2.0.4</testcontainers.version>
+    <testcontainers.version>2.0.5</testcontainers.version>
     <test.groups.slow>integration,e2e</test.groups.slow>
   </properties>
 
