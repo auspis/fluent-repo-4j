@@ -20,14 +20,15 @@ This document provides a comprehensive view of fluent-repo-4j's internal archite
    - [NamingUtils](#12-namingutils)
    - [DialectDetector](#13-dialectdetector)
    - [FluentRepositoriesAutoConfiguration](#14-fluentrepositoriesautoconfiguration)
-3. [Data Flow: Save Operation](#data-flow-save-operation)
-4. [Data Flow: FindById Operation](#data-flow-findbyid-operation)
-5. [Transaction Binding & Connection Lifecycle](#transaction-binding--connection-lifecycle)
-6. [Entity Metadata Caching](#entity-metadata-caching)
-7. [Exception Handling](#exception-handling)
-8. [Limitations & Design Decisions](#limitations--design-decisions)
-9. [Extension Points](#extension-points)
-10. [Testing & Debugging](#testing--debugging)
+3. [DSL Layer (fluent-sql-4j)](#dsl-layer-fluent-sql-4j)
+4. [Data Flow: Save Operation](#data-flow-save-operation)
+5. [Data Flow: FindById Operation](#data-flow-findbyid-operation)
+6. [Transaction Binding & Connection Lifecycle](#transaction-binding--connection-lifecycle)
+7. [Entity Metadata Caching](#entity-metadata-caching)
+8. [Exception Handling](#exception-handling)
+9. [Limitations & Design Decisions](#limitations--design-decisions)
+10. [Extension Points](#extension-points)
+11. [Testing & Debugging](#testing--debugging)
 
 ---
 
@@ -352,12 +353,14 @@ Parameters: [1, "Alice", "alice@example.com"]
 
 **Location**: `io.github.auspis.fluentrepo4j.dialect.DialectDetector`
 
-**Purpose**: Auto-detects the database dialect from DataSource metadata, used to configure fluent-sql-4j.
+**Purpose**: Auto-detects the database dialect from DataSource metadata and resolves the matching `DSL` instance from the `DSLRegistry`.
 
 **How it works**:
 1. Gets the database product name from `DataSource.getConnection().getMetaData().getDatabaseProductName()`
-2. Maps product name to fluent-sql-4j dialect (e.g., "MySQL" → `MySQL57Dialect`)
-3. Falls back to standard SQL 2008 if unknown
+2. Calls `registry.dslFor(productName)` — the registry resolves a dialect-specific `DSL` instance through its internal `SqlDialectResolver`, which injects the configured `BuildHookFactory` into the DSL at creation time
+3. Falls back to standard SQL 2008 if no dialect-specific plugin matches
+
+**Note**: `DialectDetector` lives in fluent-repo-4j (not in fluent-sql-4j) because reading `DatabaseMetaData` requires a JDBC connection; `DSLRegistry` itself is a pure-Java registry with no JDBC dependency.
 
 ---
 
@@ -365,11 +368,57 @@ Parameters: [1, "Alice", "alice@example.com"]
 
 **Location**: `io.github.auspis.fluentrepo4j.autoconfigure.FluentRepositoriesAutoConfiguration`
 
-**Purpose**: Spring Boot auto-configuration that enables repository scanning without explicit `@EnableFluentRepositories` annotation.
+**Purpose**: Spring Boot auto-configuration that enables repository scanning and creates the `DSLRegistry`, `DSL`, and `FluentConnectionProvider` beans.
 
 **How it works**:
-- Declares a conditional `@Configuration` that imports `EnableFluentRepositories` automatically
-- Only activates if Spring Data Commons and Spring JDBC are on the classpath
+- Annotated with `@ConditionalOnClass(DataSource.class)` and ordered after `DataSourceAutoConfiguration`
+- `DSLRegistry` bean: `@ConditionalOnMissingBean` — uses `DSLRegistry.createWithServiceLoader()` by default, which discovers both dialect plugins and build hook providers via the Java ServiceLoader SPI
+- `DSL` bean: `@ConditionalOnMissingBean` + `@ConditionalOnSingleCandidate(DataSource.class)` — resolved via `DialectDetector.detect()`
+- `FluentConnectionProvider` bean: `@ConditionalOnMissingBean` + `@ConditionalOnSingleCandidate(DataSource.class)`
+
+**Customisation via bean override**: Because `DSLRegistry` is declared with `@ConditionalOnMissingBean`, users can fully replace it by defining their own `DSLRegistry` bean. This is the recommended way to inject a custom `BuildHookFactory` (see [USAGE_EXAMPLES.md — Build Hooks](USAGE_EXAMPLES.md#12-build-hooks)).
+
+---
+
+## DSL Layer (fluent-sql-4j)
+
+fluent-repo-4j delegates all SQL generation to fluent-sql-4j. Understanding this layer is useful when customising dialect or hook behaviour.
+
+### Layered architecture (since fluent-sql-4j 1.4.0)
+
+```
+SqlDialectPluginRegistry    — plugin discovery only (metadata, no DSL instantiation)
+        ↓
+SqlDialectResolver          — bridges plugin registry with BuildHookFactory;
+                              creates DSL instances with the configured hook policy
+        ↓
+DSLRegistry                 — caches DSL instances per dialect/version;
+                              exposes dslFor(dialect) to callers
+```
+
+### Build Hook lifecycle
+
+Each SQL statement build goes through `PreparedStatementSpecFactory`, which wraps rendering in a hook lifecycle:
+
+```
+hookFactory.create()        — obtains a BuildHook instance for this statement
+hook.onStart(statement)     — before rendering
+rendering (AST → SQL)       — dialect-specific visitor transforms the AST
+hook.onSuccess(spec)        — spec contains final SQL string + bound parameters
+   or
+hook.onError(exception)     — rendering failed (hook error does not suppress original exception)
+```
+
+Hooks are fail-safe: an exception in hook methods is caught internally and does not propagate to the caller unless `fluentsql.hooks.build.internal-errors.enabled=true`.
+
+### DSLRegistry construction
+
+|                 Method                  |    Plugin discovery    |                          Hook policy                           |
+|-----------------------------------------|------------------------|----------------------------------------------------------------|
+| `DSLRegistry.createWithServiceLoader()` | Java ServiceLoader SPI | `ServiceLoaderBuildHookFactory` reads `System.getProperties()` |
+| `DSLRegistry.create(BuildHookFactory)`  | Java ServiceLoader SPI | Explicit factory supplied by caller                            |
+
+fluent-repo-4j auto-configuration uses `createWithServiceLoader()` by default.
 
 ---
 
@@ -548,6 +597,7 @@ The library is designed for extensibility:
 2. **Entity Metadata**: Subclass `FluentEntityInformation` to customize metadata extraction.
 3. **Row Mapping**: Subclass `FluentEntityRowMapper` to add custom type converters.
 4. **Connection Provider**: Implement `ConnectionProvider` interface for alternative connection strategies (though Spring's `DataSourceUtils` is recommended).
+5. **Build Hook injection**: Override the `DSLRegistry` bean using `DSLRegistry.create(BuildHookFactory)` to intercept SQL statement preparation events (e.g., logging, metrics, audit). See [USAGE_EXAMPLES.md — Build Hooks](USAGE_EXAMPLES.md#12-build-hooks).
 
 ---
 
