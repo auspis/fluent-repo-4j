@@ -48,6 +48,10 @@ Write type-safe, declarative database queries without ORM overhead.
 
 Other patch and minor releases within the same major lines are expected to be compatible.
 
+### fluent-sql-4j
+
+`fluent-repo-4j` bundles `fluent-sql-4j` as a direct dependency. The bundled version is **1.4.0**, which introduces the Build Hook architecture for SQL statement preparation events. See [Build Hooks](data/wiki/USAGE_EXAMPLES.md#12-build-hooks) for usage examples.
+
 ### How It Works
 
 `fluent-repo-4j` declares Spring dependencies as **`provided`** — they compile against a baseline version

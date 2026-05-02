@@ -15,6 +15,7 @@ Concrete examples for common use cases. All examples assume H2 (test) or any sta
 9. [Multi-DataSource Repository Groups](#9-multi-datasource-repository-groups)
 10. [Custom Query Fragments](#10-custom-query-fragments)
 11. [Integration Test Setup (H2)](#11-integration-test-setup-h2)
+12. [Build Hooks](#12-build-hooks)
 
 ---
 
@@ -557,4 +558,152 @@ class UserRepositoryIT {
     }
 }
 ```
+
+---
+
+## 12. Build Hooks
+
+Build hooks let you observe or react to SQL statement preparation events — before a statement is rendered, after it succeeds, and on rendering failure. Hooks are a feature of fluent-sql-4j and integrate with fluent-repo-4j through the `DSLRegistry`.
+
+A hook receives three events per SQL statement build:
+
+- `onStart(Statement)` — before rendering begins
+- `onSuccess(PreparedStatementSpec)` — after rendering completes (SQL + parameters available)
+- `onError(Exception)` — if rendering throws
+
+### Built-in: LoggingBuildHook
+
+fluent-sql-4j ships `LoggingBuildHook` which logs SQL build events via SLF4J. It is **disabled by default** and must be explicitly opted in.
+
+#### Option A — JVM system property (zero code change)
+
+Pass the property as a JVM argument before the application starts. The hook is discovered automatically via the ServiceLoader SPI.
+
+```
+-Dfluentsql.hooks.build.logging.enabled=true
+```
+
+Additional properties (all optional):
+
+|                   Property                    | Default |                     Description                      |
+|-----------------------------------------------|---------|------------------------------------------------------|
+| `fluentsql.hooks.build.logging.enabled`       | `false` | Enable the logging hook                              |
+| `fluentsql.hooks.build.logging.level`         | `DEBUG` | Log level: `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE` |
+| `fluentsql.hooks.build.logging.includeParams` | `false` | Also log the bound parameter values                  |
+
+> **Note:** `application.properties` and `application.yml` values are **not** read from
+> `System.getProperties()`. JVM args (`-D`) are the correct way to set these properties when
+> using the default auto-configuration.
+
+#### Option B — Spring bean override (idiomatic for Spring Boot, supports `application.yml`)
+
+Override the `DSLRegistry` bean in your application configuration. This is the recommended approach when you want to configure the hook programmatically or drive it from Spring's environment.
+
+```java
+import io.github.auspis.fluentsql4j.dsl.DSLRegistry;
+import io.github.auspis.fluentsql4j.hook.build.BuildHookFactory;
+import io.github.auspis.fluentsql4j.hook.build.logging.LoggingBuildHookProvider;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration(proxyBeanMethods = false)
+public class FluentSqlHookConfiguration {
+
+    @Bean
+    public DSLRegistry fluentDslRegistry() {
+        BuildHookFactory loggingFactory = () -> new LoggingBuildHookProvider(
+                LoggerFactory.getLogger("fluentsql.build"),
+                Level.DEBUG,
+                false,   // includeParams
+                true     // enabled
+        ).create();
+        return DSLRegistry.create(loggingFactory);
+    }
+}
+```
+
+Because `FluentRepositoriesAutoConfiguration` declares its `DSLRegistry` bean with
+`@ConditionalOnMissingBean`, your bean takes precedence automatically.
+
+### Custom hook via SPI
+
+For application-wide hooks (e.g., metrics, audit), implement `BuildHook` and `BuildHookProvider`,
+then register the provider via the ServiceLoader SPI.
+
+**1. Implement the hook:**
+
+```java
+import io.github.auspis.fluentsql4j.ast.core.statement.Statement;
+import io.github.auspis.fluentsql4j.ast.visitor.ps.PreparedStatementSpec;
+import io.github.auspis.fluentsql4j.hook.build.BuildHook;
+
+public final class AuditBuildHook extends BuildHook {
+
+    @Override
+    protected void doBefore(Statement statement) {
+        // record query start time, emit start event, etc.
+    }
+
+    @Override
+    protected void doOnSuccess(PreparedStatementSpec spec) {
+        // emit metric, log audit record, etc.
+    }
+
+    @Override
+    protected void doOnError(Exception error) {
+        // emit error metric, alert, etc.
+    }
+}
+```
+
+**2. Implement the provider:**
+
+```java
+import io.github.auspis.fluentsql4j.hook.build.BuildHook;
+import io.github.auspis.fluentsql4j.hook.build.BuildHookProvider;
+import java.util.Properties;
+
+public final class AuditBuildHookProvider implements BuildHookProvider {
+
+    private boolean enabled;
+
+    @Override
+    public String id() { return "audit"; }
+
+    @Override
+    public int order() { return 200; }
+
+    @Override
+    public BuildHookProvider configure(Properties properties) {
+        this.enabled = Boolean.parseBoolean(
+                properties.getProperty("myapp.hooks.audit.enabled", "false"));
+        return this;
+    }
+
+    @Override
+    public boolean isEnabled() { return enabled; }
+
+    @Override
+    public BuildHook create() { return new AuditBuildHook(); }
+}
+```
+
+**3. Register the provider:**
+
+Create `META-INF/services/io.github.auspis.fluentsql4j.hook.build.BuildHookProvider`:
+
+```
+com.example.hooks.AuditBuildHookProvider
+```
+
+For JPMS modules add to `module-info.java`:
+
+```java
+provides io.github.auspis.fluentsql4j.hook.build.BuildHookProvider
+    with com.example.hooks.AuditBuildHookProvider;
+```
+
+With the default auto-configuration (`DSLRegistry.createWithServiceLoader()`), the provider is discovered automatically at startup and configured via `System.getProperties()`.
 
