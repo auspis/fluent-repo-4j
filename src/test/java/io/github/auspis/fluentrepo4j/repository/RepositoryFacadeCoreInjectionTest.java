@@ -5,7 +5,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.github.auspis.fluentrepo4j.functional.RepositoryResult;
+import io.github.auspis.fluentrepo4j.functional.read.ReadResult;
+import io.github.auspis.fluentrepo4j.functional.read.ReadResult.Found;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 
 import java.util.Optional;
@@ -28,16 +29,17 @@ class RepositoryFacadeCoreInjectionTest {
     }
 
     @Test
-    void functionalRepository_canBeConstructedWithInjectedCore() {
+    void functionalReadRepository_canBeConstructedWithInjectedCore() {
         CoreRepositoryOperations<User, Long> core = mock(CoreRepositoryOperations.class);
-        FunctionalFluentRepository<User, Long> repository = new FunctionalFluentRepository<>(core);
+        FunctionalReadFluentRepository<User, Long> repository = new FunctionalReadFluentRepository<>(core);
         User user = new User("B", "b@test.com").withId(2L);
 
         when(core.findByIdRaw(2L)).thenReturn(Optional.of(user));
 
-        RepositoryResult<Optional<User>> found = repository.findById(2L);
+        ReadResult<User> found = repository.findById(2L);
 
-        assertThat(found.orElseThrow()).contains(user);
+        assertThat(found).isInstanceOf(Found.class);
+        assertThat(found.orElseThrow()).isEqualTo(user);
         verify(core).findByIdRaw(2L);
     }
 }

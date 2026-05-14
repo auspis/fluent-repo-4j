@@ -181,6 +181,16 @@ public interface UserRepository extends CrudRepository<User, Long>,
 | `boolean` / `Boolean` | For `existsBy…` methods.                                                 |
 | `void`                | For `deleteBy…` methods when no return value is needed.                  |
 
+### Functional return types (v1.4.0+)
+
+- Read-derived methods use `ReadResult<T>` wrappers:
+  - Single-result find methods: `ReadResult<Entity>` (`NotFound` when no row)
+  - Multi-result find methods: `ReadResult<List<Entity>>` (`Found(empty)` when no rows)
+  - Count methods: `ReadResult<Long>`
+  - Exists methods: `ReadResult<Boolean>`
+- Write-derived delete methods use `WriteResult<T>` wrappers:
+  - `WriteResult<Long>`, `WriteResult<Integer>`, or `WriteResult<Boolean>`
+
 ---
 
 ## Pagination and Sorting
