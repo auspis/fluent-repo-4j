@@ -8,6 +8,7 @@ import io.github.auspis.fluentrepo4j.functional.read.ReadResult.Error;
 import io.github.auspis.fluentrepo4j.functional.read.ReadResult.Found;
 import io.github.auspis.fluentrepo4j.functional.read.ReadResult.NotFound;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
@@ -74,5 +75,89 @@ class ReadResultTest {
         assertThat(found).isEqualTo("found:abc");
         assertThat(missing).isEqualTo("not found");
         assertThat(failed).isEqualTo("error:boom");
+    }
+
+    @Test
+    void orElseGetFoundUsesFoundValue() {
+        String value = new Found<>("found-value").orElseGet(() -> "fallback");
+
+        assertThat(value).isEqualTo("found-value");
+    }
+
+    @Test
+    void orElseGetNotFoundUsesSupplierValue() {
+        String value = new NotFound<String>().orElseGet(() -> "fallback");
+
+        assertThat(value).isEqualTo("fallback");
+    }
+
+    @Test
+    void orElseGetErrorUsesSupplierValue() {
+        String value = new Error<String>("boom").orElseGet(() -> "fallback");
+
+        assertThat(value).isEqualTo("fallback");
+    }
+
+    @Test
+    void orElseErrorReturnsDefaultValue() {
+        String value = new Error<String>("boom").orElse("default");
+
+        assertThat(value).isEqualTo("default");
+    }
+
+    @Test
+    void orElseThrowOnNotFoundThrowsNoSuchElementException() {
+        assertThatThrownBy(() -> new NotFound<String>().orElseThrow())
+                .isInstanceOf(java.util.NoSuchElementException.class)
+                .hasMessageContaining("No result found");
+    }
+
+    @Test
+    void orElseThrowOnErrorThrowsIllegalStateException() {
+        RuntimeException cause = new RuntimeException("db");
+
+        Error<String> error = new Error<>("boom", cause);
+        assertThatThrownBy(error::orElseThrow)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("boom")
+                .hasCause(cause);
+    }
+
+    @Test
+    void peekFoundInvokesConsumer() {
+        AtomicInteger counter = new AtomicInteger();
+
+        ReadResult<String> result = new Found<>("value").peek(v -> counter.incrementAndGet());
+
+        assertThat(counter.get()).isEqualTo(1);
+        assertThat(result).isInstanceOf(Found.class);
+    }
+
+    @Test
+    void peekNotFoundDoesNotInvokeConsumer() {
+        AtomicInteger counter = new AtomicInteger();
+
+        ReadResult<String> result = new NotFound<String>().peek(v -> counter.incrementAndGet());
+
+        assertThat(counter.get()).isZero();
+        assertThat(result).isInstanceOf(NotFound.class);
+    }
+
+    @Test
+    void peekErrorDoesNotInvokeConsumer() {
+        AtomicInteger counter = new AtomicInteger();
+
+        ReadResult<String> result = new Error<String>("boom").peek(v -> counter.incrementAndGet());
+
+        assertThat(counter.get()).isZero();
+        assertThat(result).isInstanceOf(Error.class);
+    }
+
+    @Test
+    void isErrorAndIsNotFoundPredicatesMatchState() {
+        assertThat(new Error<String>("boom").isError()).isTrue();
+        assertThat(new Error<String>("boom").isNotFound()).isFalse();
+        assertThat(new NotFound<String>().isNotFound()).isTrue();
+        assertThat(new NotFound<String>().isError()).isFalse();
     }
 }

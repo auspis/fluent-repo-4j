@@ -7,6 +7,7 @@ import io.github.auspis.fluentrepo4j.functional.write.WriteResult;
 import io.github.auspis.fluentrepo4j.functional.write.WriteResult.Error;
 import io.github.auspis.fluentrepo4j.functional.write.WriteResult.Success;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 
@@ -57,5 +58,57 @@ class WriteResultTest {
         String foldedError = new Error<String>("boom").fold(onSuccess, onError);
 
         assertThat(foldedError).isEqualTo("error:boom");
+    }
+
+    @Test
+    void orElseOnSuccessReturnsValue() {
+        String value = new Success<>("ok").orElse("default");
+
+        assertThat(value).isEqualTo("ok");
+    }
+
+    @Test
+    void orElseOnErrorReturnsDefault() {
+        String value = new Error<String>("boom").orElse("default");
+
+        assertThat(value).isEqualTo("default");
+    }
+
+    @Test
+    void orElseThrowOnErrorThrowsIllegalStateException() {
+        RuntimeException cause = new RuntimeException("db");
+
+        Error<String> error = new Error<>("boom", cause);
+        assertThatThrownBy(error::orElseThrow)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("boom")
+                .hasCause(cause);
+    }
+
+    @Test
+    void peekOnSuccessInvokesConsumer() {
+        AtomicInteger counter = new AtomicInteger();
+
+        WriteResult<String> result = new Success<>("ok").peek(v -> counter.incrementAndGet());
+
+        assertThat(counter.get()).isEqualTo(1);
+        assertThat(result).isInstanceOf(Success.class);
+    }
+
+    @Test
+    void peekOnErrorDoesNotInvokeConsumer() {
+        AtomicInteger counter = new AtomicInteger();
+
+        WriteResult<String> result = new Error<String>("boom").peek(v -> counter.incrementAndGet());
+
+        assertThat(counter.get()).isZero();
+        assertThat(result).isInstanceOf(Error.class);
+    }
+
+    @Test
+    void isErrorPredicateMatchesState() {
+        assertThat(new Error<String>("boom").isError()).isTrue();
+        assertThat(new Error<String>("boom").isSuccess()).isFalse();
+        assertThat(new Success<>("ok").isError()).isFalse();
     }
 }
