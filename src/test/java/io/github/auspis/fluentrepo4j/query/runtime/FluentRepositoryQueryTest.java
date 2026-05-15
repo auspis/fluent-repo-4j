@@ -14,6 +14,8 @@ import io.github.auspis.fluentrepo4j.functional.read.ReadResult.NotFound;
 import io.github.auspis.fluentrepo4j.functional.write.FunctionalWriteRepository;
 import io.github.auspis.fluentrepo4j.functional.write.WriteResult;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
+import io.github.auspis.fluentrepo4j.query.runtime.FluentRepositoryQueryTest.FoundReadFunctionalCase.ListEntityFoundReadFunctionalCase;
+import io.github.auspis.fluentrepo4j.query.runtime.FluentRepositoryQueryTest.FoundReadFunctionalCase.SingleEntityFoundReadFunctionalCase;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.dsl.DSL;
 
@@ -21,7 +23,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.stream.Stream;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.data.repository.core.RepositoryMetadata;
 import org.springframework.data.repository.core.support.DefaultRepositoryMetadata;
@@ -88,11 +94,13 @@ class FluentRepositoryQueryTest {
         assertDoesNotThrow(() -> queryFor(CrudProbeRepository.class, "deleteByEmail", String.class));
     }
 
-    @Test
-    void adaptReadSingleResultReturnsNotFoundForEmptyResults() throws Exception {
-        FluentRepositoryQuery<User, Long> query = queryFor(ReadProbeRepository.class, "findByEmail", String.class);
+    @ParameterizedTest
+    @ValueSource(strings = {"findByEmail", "findByName", "findStreamByName"})
+    void adaptReadSingleResultFunctionalOnResultWithEmptyInputReturnsNotFound(String repositoryMethod)
+            throws Exception {
+        FluentRepositoryQuery<User, Long> query = queryFor(ReadProbeRepository.class, repositoryMethod, String.class);
 
-        Object result = invokePrivate(
+        Object result = invoke(
                 query,
                 "adaptSelectResultReadFunctional",
                 new Class[] {List.class, Object[].class},
@@ -102,64 +110,52 @@ class FluentRepositoryQueryTest {
         assertThat(result).isInstanceOf(NotFound.class);
     }
 
-    @Test
-    void adaptReadSingleResultReturnsFoundForFirstResult() throws Exception {
-        FluentRepositoryQuery<User, Long> query = queryFor(ReadProbeRepository.class, "findByEmail", String.class);
-        User user = new User("User", "u@test.com").withId(10L);
+    @ParameterizedTest
+    @MethodSource("foundReadFunctionalCases")
+    @SuppressWarnings("unchecked")
+    void adaptReadSingleResultFunctionalOnResultWithOneElementReturnsFound(FoundReadFunctionalCase testCase)
+            throws Exception {
+        FluentRepositoryQuery<User, Long> query =
+                queryFor(ReadProbeRepository.class, testCase.repositoryMethod(), String.class);
 
-        Object result = invokePrivate(
+        Object result = invoke(
                 query,
                 "adaptSelectResultReadFunctional",
                 new Class[] {List.class, Object[].class},
-                List.of(user),
+                List.of(testCase.user()),
                 new Object[0]);
 
-        assertThat(result).isInstanceOf(Found.class);
-        assertThat(((Found<User>) result).value()).isEqualTo(user);
+        switch (testCase) {
+            case SingleEntityFoundReadFunctionalCase singleEntityCase ->
+                assertThat(result)
+                        .isInstanceOf(Found.class)
+                        .extracting(r -> ((Found<User>) r).value())
+                        .isEqualTo(singleEntityCase.user());
+            case ListEntityFoundReadFunctionalCase listEntityCase ->
+                assertThat(result)
+                        .isInstanceOf(Found.class)
+                        .extracting(r -> ((Found<List<User>>) r).value(), InstanceOfAssertFactories.LIST)
+                        .hasSize(1)
+                        .containsExactly(listEntityCase.user());
+        }
     }
 
-    @Test
-    void adaptReadListResultReturnsFoundList() throws Exception {
-        FluentRepositoryQuery<User, Long> query = queryFor(ReadProbeRepository.class, "findByName", String.class);
-        User user = new User("List", "list@test.com").withId(11L);
-
-        Object result = invokePrivate(
-                query,
-                "adaptSelectResultReadFunctional",
-                new Class[] {List.class, Object[].class},
-                List.of(user),
-                new Object[0]);
-
-        assertThat(result).isInstanceOf(Found.class);
-        assertThat(((Found<List<User>>) result).value()).hasSize(1);
+    private static Stream<FoundReadFunctionalCase> foundReadFunctionalCases() {
+        return Stream.of(
+                new SingleEntityFoundReadFunctionalCase("findByEmail", new User("User", "u@test.com").withId(10L)),
+                new ListEntityFoundReadFunctionalCase("findByName", new User("List", "list@test.com").withId(11L)));
     }
 
-    @Test
-    void adaptReadListReturnsNotFoundForEmptyResults() throws Exception {
-        FluentRepositoryQuery<User, Long> query = queryFor(ReadProbeRepository.class, "findByName", String.class);
+    sealed interface FoundReadFunctionalCase {
+        String repositoryMethod();
 
-        Object result = invokePrivate(
-                query,
-                "adaptSelectResultReadFunctional",
-                new Class[] {List.class, Object[].class},
-                List.of(),
-                new Object[0]);
+        User user();
 
-        assertThat(result).isInstanceOf(NotFound.class);
-    }
+        record SingleEntityFoundReadFunctionalCase(String repositoryMethod, User user)
+                implements FoundReadFunctionalCase {}
 
-    @Test
-    void adaptReadStreamReturnsNotFoundForEmptyResults() throws Exception {
-        FluentRepositoryQuery<User, Long> query = queryFor(ReadProbeRepository.class, "findStreamByName", String.class);
-
-        Object result = invokePrivate(
-                query,
-                "adaptSelectResultReadFunctional",
-                new Class[] {List.class, Object[].class},
-                List.of(),
-                new Object[0]);
-
-        assertThat(result).isInstanceOf(NotFound.class);
+        record ListEntityFoundReadFunctionalCase(String repositoryMethod, User user)
+                implements FoundReadFunctionalCase {}
     }
 
     @Test
@@ -169,8 +165,8 @@ class FluentRepositoryQueryTest {
         FluentRepositoryQuery<User, Long> boolDelete =
                 queryFor(WriteProbeRepository.class, "deleteByName", String.class);
 
-        Object longResult = invokePrivate(longDelete, "adaptDeleteResultWriteFunctional", new Class[] {int.class}, 3);
-        Object boolResult = invokePrivate(boolDelete, "adaptDeleteResultWriteFunctional", new Class[] {int.class}, 0);
+        Object longResult = invoke(longDelete, "adaptDeleteResultWriteFunctional", new Class[] {int.class}, 3);
+        Object boolResult = invoke(boolDelete, "adaptDeleteResultWriteFunctional", new Class[] {int.class}, 0);
 
         assertThat(longResult).isEqualTo(3L);
         assertThat(boolResult).isEqualTo(false);
@@ -190,8 +186,7 @@ class FluentRepositoryQueryTest {
     }
 
     @SuppressWarnings("unchecked")
-    private <R> R invokePrivate(Object target, String methodName, Class<?>[] parameterTypes, Object... args)
-            throws Exception {
+    private <R> R invoke(Object target, String methodName, Class<?>[] parameterTypes, Object... args) throws Exception {
         try {
             Method method = target.getClass().getDeclaredMethod(methodName, parameterTypes);
             method.setAccessible(true);
