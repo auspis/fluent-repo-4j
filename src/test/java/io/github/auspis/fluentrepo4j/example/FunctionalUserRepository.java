@@ -2,24 +2,23 @@ package io.github.auspis.fluentrepo4j.example;
 
 import io.github.auspis.fluentrepo4j.functional.FunctionalCrudRepository;
 import io.github.auspis.fluentrepo4j.functional.FunctionalPagingAndSortingRepository;
-import io.github.auspis.fluentrepo4j.functional.RepositoryResult;
+import io.github.auspis.fluentrepo4j.functional.read.ReadResult;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Functional repository for User entity.
- * Uses {@link RepositoryResult} wrappers instead of exceptions for domain-level outcomes.
+ * Uses split read/write wrappers with explicit found/not-found/error semantics on reads.
  */
 public interface FunctionalUserRepository
         extends FunctionalCrudRepository<User, Long>, FunctionalPagingAndSortingRepository<User, Long> {
 
-    RepositoryResult<Optional<User>> findByEmail(String email);
+    ReadResult<User> findByEmail(String email);
 
-    RepositoryResult<List<User>> findByName(String name);
+    ReadResult<List<User>> findByName(String name);
 
-    RepositoryResult<Long> countByActive(Boolean active);
+    ReadResult<Long> countByActive(Boolean active);
 
-    RepositoryResult<Boolean> existsByEmail(String email);
+    ReadResult<Boolean> existsByEmail(String email);
 }

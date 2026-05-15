@@ -1,8 +1,9 @@
 package io.github.auspis.fluentrepo4j.repository;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
-import io.github.auspis.fluentrepo4j.functional.FunctionalCrudRepository;
 import io.github.auspis.fluentrepo4j.functional.FunctionalPagingAndSortingRepository;
+import io.github.auspis.fluentrepo4j.functional.read.FunctionalReadRepository;
+import io.github.auspis.fluentrepo4j.functional.write.FunctionalWriteRepository;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityRowMapper;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityWriter;
@@ -95,7 +96,7 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
         FluentEntityInformation entityInformation = new FluentEntityInformation<>(information.getDomainType());
         CoreRepositoryOperations core = new CoreRepositoryOperations<>(entityInformation, connectionProvider, dsl);
         if (isFunctionalRepository(information.getRepositoryInterface())) {
-            return new FunctionalFluentRepository<>(core);
+            return new FunctionalReadWriteFluentRepository<>(core);
         }
         return new FluentRepository<>(core);
     }
@@ -103,7 +104,7 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
     @Override
     protected Class<?> getRepositoryBaseClass(RepositoryMetadata metadata) {
         if (isFunctionalRepository(metadata.getRepositoryInterface())) {
-            return FunctionalFluentRepository.class;
+            return FunctionalReadWriteFluentRepository.class;
         }
         return FluentRepository.class;
     }
@@ -131,7 +132,8 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
     }
 
     static boolean isFunctionalRepository(Class<?> repositoryInterface) {
-        return FunctionalCrudRepository.class.isAssignableFrom(repositoryInterface)
-                || FunctionalPagingAndSortingRepository.class.isAssignableFrom(repositoryInterface);
+        return FunctionalReadRepository.class.isAssignableFrom(repositoryInterface)
+                || FunctionalPagingAndSortingRepository.class.isAssignableFrom(repositoryInterface)
+                || FunctionalWriteRepository.class.isAssignableFrom(repositoryInterface);
     }
 }

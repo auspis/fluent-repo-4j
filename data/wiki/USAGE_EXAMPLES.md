@@ -16,6 +16,7 @@ Concrete examples for common use cases. All examples assume H2 (test) or any sta
 10. [Custom Query Fragments](#10-custom-query-fragments)
 11. [Integration Test Setup (H2)](#11-integration-test-setup-h2)
 12. [Build Hooks](#12-build-hooks)
+13. [Split Functional API (v1.4.0+)](#13-split-functional-api-v140)
 
 ---
 
@@ -706,4 +707,81 @@ provides io.github.auspis.fluentsql4j.hook.build.BuildHookProvider
 ```
 
 With the default auto-configuration (`DSLRegistry.createWithServiceLoader()`), the provider is discovered automatically at startup and configured via `System.getProperties()`.
+
+---
+
+## 13. Split Functional API (v1.4.0+)
+
+From v1.4.0, functional repositories are split into read and write contracts, with Spring-style high-level interfaces.
+
+```java
+public interface UserRepository
+    extends FunctionalCrudRepository<User, Long>,
+        FunctionalPagingAndSortingRepository<User, Long> {
+
+    ReadResult<User> findByEmail(String email);
+    ReadResult<List<User>> findByName(String name);
+    ReadResult<Long> countByActive(Boolean active);
+    ReadResult<Boolean> existsByEmail(String email);
+}
+```
+
+Read single-result example:
+
+```java
+ReadResult<User> result = repository.findByEmail("alice@example.com");
+
+result.fold(
+        user -> {
+            System.out.println("Found user " + user.getId());
+            return null;
+        },
+        () -> {
+            System.out.println("User not found");
+            return null;
+        },
+        error -> {
+            System.err.println("Read failed: " + error.message());
+            return null;
+        }
+);
+```
+
+Read multi-result example (`NotFound` is the empty case):
+
+```java
+ReadResult<List<User>> result = repository.findByName("Alice");
+
+result.fold(
+        users -> {
+            System.out.println("Found " + users.size() + " user(s)");
+            return null;
+        },
+        () -> {
+            System.out.println("No users found");
+            return null;
+        },
+        error -> {
+            System.err.println("Read failed: " + error.message());
+            return null;
+        }
+);
+```
+
+Write example:
+
+```java
+WriteResult<Boolean> deleted = repository.deleteById(42L);
+
+deleted.fold(
+        ok -> {
+            System.out.println("Deleted: " + ok);
+            return null;
+        },
+        error -> {
+            System.err.println("Delete failed: " + error.message());
+            return null;
+        }
+);
+```
 

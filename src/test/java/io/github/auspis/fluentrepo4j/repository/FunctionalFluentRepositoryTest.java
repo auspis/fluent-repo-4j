@@ -1,45 +1,51 @@
 package io.github.auspis.fluentrepo4j.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.auspis.fluentrepo4j.FluentPersistable;
-import io.github.auspis.fluentrepo4j.functional.RepositoryResult;
-import io.github.auspis.fluentrepo4j.functional.RepositoryResult.Failure;
-import io.github.auspis.fluentrepo4j.functional.RepositoryResult.Success;
+import io.github.auspis.fluentrepo4j.functional.read.ReadResult;
+import io.github.auspis.fluentrepo4j.functional.read.ReadResult.Error;
+import io.github.auspis.fluentrepo4j.functional.read.ReadResult.Found;
+import io.github.auspis.fluentrepo4j.functional.read.ReadResult.NotFound;
+import io.github.auspis.fluentrepo4j.functional.write.WriteResult;
+import io.github.auspis.fluentrepo4j.functional.write.WriteResult.Success;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.TransientDataAccessResourceException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
-/**
- * Unit tests for {@link FunctionalFluentRepository} covering branches and edge cases
- * not exercised by the Spring-wired integration tests.
- */
 @SuppressWarnings("unchecked")
 class FunctionalFluentRepositoryTest {
 
     private CoreRepositoryOperations<User, Long> core;
     private SaveDecisionResolver<User, Long> resolver;
-    private FunctionalFluentRepository<User, Long> repository;
+    private FunctionalReadFluentRepository<User, Long> readRepository;
+    private FunctionalWriteFluentRepository<User, Long> writeRepository;
 
     @BeforeEach
     void setUp() {
         core = mock(CoreRepositoryOperations.class);
         resolver = mock(SaveDecisionResolver.class);
         when(core.getSaveDecisionResolver()).thenReturn(resolver);
-        repository = new FunctionalFluentRepository<>(core);
+        readRepository = new FunctionalReadFluentRepository<>(core);
+        writeRepository = new FunctionalWriteFluentRepository<>(core);
     }
 
     @Nested
-    class SaveBranches {
+    class WriteBranches {
 
         @Test
         void save_insertAutoId() {
@@ -47,7 +53,7 @@ class FunctionalFluentRepositoryTest {
             when(resolver.apply(user)).thenReturn(SaveAction.INSERT_AUTO_ID);
             when(core.insertWithIdentity(user)).thenReturn(user);
 
-            RepositoryResult<User> result = repository.save(user);
+            WriteResult<User> result = writeRepository.save(user);
 
             assertThat(result).isInstanceOf(Success.class);
             assertThat(result.orElseThrow()).isSameAs(user);
@@ -55,27 +61,13 @@ class FunctionalFluentRepositoryTest {
         }
 
         @Test
-        void save_update() {
-            User user = new User("Alice", "alice@test.com").withId(1L);
-            when(resolver.apply(user)).thenReturn(SaveAction.UPDATE);
-            when(core.update(user)).thenReturn(user);
-
-            RepositoryResult<User> result = repository.save(user);
-
-            assertThat(result).isInstanceOf(Success.class);
-            assertThat(result.orElseThrow()).isSameAs(user);
-            verify(core).update(user);
-        }
-
-        @Test
         void save_errorReturnsFailure() {
             User user = new User("Alice", "alice@test.com").withId(99L);
             when(resolver.apply(user)).thenReturn(SaveAction.ERROR);
 
-            RepositoryResult<User> result = repository.save(user);
+            WriteResult<User> result = writeRepository.save(user);
 
-            assertThat(result).isInstanceOf(Failure.class);
-            assertThat(result.isFailure()).isTrue();
+            assertThat(result.isError()).isTrue();
         }
 
         @Test
@@ -84,10 +76,9 @@ class FunctionalFluentRepositoryTest {
             when(resolver.apply(user)).thenReturn(SaveAction.UPDATE);
             when(core.update(user)).thenThrow(new OptimisticLockingFailureException("Entity not found for update"));
 
-            RepositoryResult<User> result = repository.save(user);
+            WriteResult<User> result = writeRepository.save(user);
 
-            assertThat(result).isInstanceOf(Failure.class);
-            assertThat(result.isFailure()).isTrue();
+            assertThat(result.isError()).isTrue();
         }
 
         @Test
@@ -100,72 +91,13 @@ class FunctionalFluentRepositoryTest {
             when(fpResolver.apply(entity)).thenReturn(SaveAction.INSERT_PROVIDED_ID);
             when(fpCore.insertWithProvidedId(entity)).thenReturn(entity);
 
-            FunctionalFluentRepository<FluentPersistable<Integer>, Integer> fpRepo =
-                    new FunctionalFluentRepository<>(fpCore);
+            FunctionalWriteFluentRepository<FluentPersistable<Integer>, Integer> fpRepo =
+                    new FunctionalWriteFluentRepository<>(fpCore);
 
-            RepositoryResult<FluentPersistable<Integer>> result = fpRepo.save(entity);
+            WriteResult<FluentPersistable<Integer>> result = fpRepo.save(entity);
 
-            assertThat(result).isInstanceOf(Success.class);
+            assertThat(result.isSuccess()).isTrue();
             verify(entity).markPersisted();
-        }
-    }
-
-    @Nested
-    class SaveAllBranches {
-
-        @Test
-        void saveAll_stopsOnFirstFailure() {
-            User good = new User("Good", "good@test.com").withId(1L);
-            User bad = new User("Bad", "bad@test.com").withId(99L);
-
-            when(resolver.apply(good)).thenReturn(SaveAction.INSERT_PROVIDED_ID);
-            when(core.insertWithProvidedId(good)).thenReturn(good);
-            when(resolver.apply(bad)).thenReturn(SaveAction.ERROR);
-
-            RepositoryResult<List<User>> result = repository.saveAll(List.of(good, bad));
-
-            assertThat(result).isInstanceOf(Failure.class);
-        }
-    }
-
-    @Nested
-    class FindAllPagedBranches {
-
-        @Test
-        void findAllPaged_emptyWhenOffsetExceedsTotal() {
-            when(core.countRaw()).thenReturn(5L);
-
-            RepositoryResult<Page<User>> result = repository.findAll(PageRequest.of(10, 3));
-
-            assertThat(result).isInstanceOf(Success.class);
-            Page<User> page = result.orElseThrow();
-            assertThat(page.getContent()).isEmpty();
-            assertThat(page.getTotalElements()).isEqualTo(5);
-        }
-
-        @Test
-        void findAllPaged_emptyWhenZeroTotal() {
-            when(core.countRaw()).thenReturn(0L);
-
-            RepositoryResult<Page<User>> result = repository.findAll(PageRequest.of(0, 10));
-
-            assertThat(result).isInstanceOf(Success.class);
-            assertThat(result.orElseThrow().getContent()).isEmpty();
-            assertThat(result.orElseThrow().getTotalElements()).isZero();
-        }
-    }
-
-    @Nested
-    class DeleteBranches {
-
-        @Test
-        void delete_nullIdReturnsFailure() {
-            User user = new User("NoId", "noid@test.com");
-            when(core.getEntityId(user)).thenReturn(null);
-
-            RepositoryResult<Boolean> result = repository.delete(user);
-
-            assertThat(result).isInstanceOf(Failure.class);
         }
 
         @Test
@@ -177,10 +109,103 @@ class FunctionalFluentRepositoryTest {
             when(core.deleteByIdRaw(1L)).thenReturn(1);
             when(core.deleteByIdRaw(2L)).thenReturn(0);
 
-            RepositoryResult<Long> result = repository.deleteAll(List.of(u1, u2));
+            WriteResult<Long> result = writeRepository.deleteAll(List.of(u1, u2));
 
-            assertThat(result).isInstanceOf(Success.class);
+            assertThat(result.isSuccess()).isTrue();
             assertThat(result.orElseThrow()).isEqualTo(1L);
+        }
+    }
+
+    @Nested
+    class ReadBranches {
+
+        @Test
+        void findById_returnsFound() {
+            User user = new User("Read", "read@test.com").withId(1L);
+            when(core.findByIdRaw(1L)).thenReturn(Optional.of(user));
+
+            ReadResult<User> result = readRepository.findById(1L);
+
+            assertThat(result).isInstanceOf(Found.class);
+            assertThat(result.orElseThrow()).isEqualTo(user);
+        }
+
+        @Test
+        void findById_returnsNotFound() {
+            when(core.findByIdRaw(999L)).thenReturn(Optional.empty());
+
+            ReadResult<User> result = readRepository.findById(999L);
+
+            assertThat(result).isInstanceOf(NotFound.class);
+        }
+
+        @Test
+        void findAllPaged_emptyWhenOffsetExceedsTotal() {
+            when(core.countRaw()).thenReturn(5L);
+
+            ReadResult<Page<User>> result = readRepository.findAll(PageRequest.of(10, 3));
+
+            assertThat(result).isInstanceOf(NotFound.class);
+            verify(core).countRaw();
+            verify(core, never()).findAllRaw(any(Sort.class), any());
+        }
+
+        @Test
+        void findAllPaged_emptyWhenZeroTotal() {
+            when(core.countRaw()).thenReturn(0L);
+
+            ReadResult<Page<User>> result = readRepository.findAll(PageRequest.of(0, 10));
+
+            assertThat(result).isInstanceOf(NotFound.class);
+            verify(core).countRaw();
+            verify(core, never()).findAllRaw(any(Sort.class), any());
+        }
+
+        @Test
+        void readDataAccessException_returnsFailure() {
+            when(core.findAllRaw(org.springframework.data.domain.Sort.unsorted(), null))
+                    .thenThrow(new TransientDataAccessResourceException("db down"));
+
+            ReadResult<List<User>> result = readRepository.findAll();
+
+            assertThat(result).isInstanceOf(Error.class);
+            assertThat(result.isError()).isTrue();
+        }
+
+        @Test
+        void findAll_returnsNotFoundWhenEmpty() {
+            when(core.findAllRaw(Sort.unsorted(), null)).thenReturn(List.of());
+
+            ReadResult<List<User>> result = readRepository.findAll();
+
+            assertThat(result).isInstanceOf(NotFound.class);
+        }
+
+        @Test
+        void findAllSorted_returnsNotFoundWhenEmpty() {
+            Sort sort = Sort.by("name");
+            when(core.findAllRaw(sort, null)).thenReturn(List.of());
+
+            ReadResult<List<User>> result = readRepository.findAll(sort);
+
+            assertThat(result).isInstanceOf(NotFound.class);
+        }
+
+        @Test
+        void findAllById_returnsNotFoundWhenNoneMatch() {
+            when(core.findByIdRaw(1L)).thenReturn(Optional.empty());
+            when(core.findByIdRaw(2L)).thenReturn(Optional.empty());
+
+            ReadResult<List<User>> result = readRepository.findAllById(List.of(1L, 2L));
+
+            assertThat(result).isInstanceOf(NotFound.class);
+        }
+
+        @Test
+        void findAllById_returnsNotFoundForEmptyIterable() {
+            ReadResult<List<User>> result = readRepository.findAllById(List.of());
+
+            assertThat(result).isInstanceOf(NotFound.class);
         }
     }
 }

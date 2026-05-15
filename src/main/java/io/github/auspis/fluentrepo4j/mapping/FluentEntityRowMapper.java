@@ -8,7 +8,10 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
 import org.springframework.beans.BeanUtils;
 import org.springframework.jdbc.core.RowMapper;
 
@@ -23,6 +26,37 @@ import org.springframework.jdbc.core.RowMapper;
  * @param <T> the entity type
  */
 public class FluentEntityRowMapper<T> implements RowMapper<T> {
+
+    private record ConversionStrategy(BiPredicate<Object, Class<?>> predicate, Function<Object, Object> converter) {}
+
+    private static final List<ConversionStrategy> CONVERSION_STRATEGIES = List.of(
+            new ConversionStrategy(
+                    (v, tt) -> v instanceof Number && (tt == Long.class || tt == long.class),
+                    v -> ((Number) v).longValue()),
+            new ConversionStrategy(
+                    (v, tt) -> v instanceof Number && (tt == Integer.class || tt == int.class),
+                    v -> ((Number) v).intValue()),
+            new ConversionStrategy(
+                    (v, tt) -> v instanceof Number && (tt == Double.class || tt == double.class),
+                    v -> ((Number) v).doubleValue()),
+            new ConversionStrategy(
+                    (v, tt) -> v instanceof Number && (tt == Float.class || tt == float.class),
+                    v -> ((Number) v).floatValue()),
+            new ConversionStrategy(
+                    (v, tt) -> v instanceof Number && (tt == Short.class || tt == short.class),
+                    v -> ((Number) v).shortValue()),
+            new ConversionStrategy(
+                    (v, tt) -> v instanceof Number && (tt == Byte.class || tt == byte.class),
+                    v -> ((Number) v).byteValue()),
+            new ConversionStrategy(
+                    (v, tt) -> v instanceof java.sql.Timestamp && tt == LocalDateTime.class,
+                    v -> ((java.sql.Timestamp) v).toLocalDateTime()),
+            new ConversionStrategy(
+                    (v, tt) -> v instanceof java.sql.Date && tt == LocalDate.class,
+                    v -> ((java.sql.Date) v).toLocalDate()),
+            new ConversionStrategy(
+                    (v, tt) -> v instanceof byte[] && tt == String.class,
+                    v -> new String((byte[]) v, java.nio.charset.StandardCharsets.UTF_8)));
 
     private final Class<T> domainType;
     private final Map<String, Field> columnToField;
@@ -73,40 +107,12 @@ public class FluentEntityRowMapper<T> implements RowMapper<T> {
      * JDBC drivers return a different numeric type than the entity field expects.
      */
     private Object convertIfNeeded(Object value, Class<?> targetType) {
-        if (value == null) {
-            return null;
-        }
-        if (targetType.isInstance(value)) {
-            return value;
-        }
-        if (value instanceof Number number) {
-            if (targetType == Long.class || targetType == long.class) {
-                return number.longValue();
+        if (value == null || targetType.isInstance(value)) return value;
+
+        for (ConversionStrategy entry : CONVERSION_STRATEGIES) {
+            if (entry.predicate().test(value, targetType)) {
+                return entry.converter().apply(value);
             }
-            if (targetType == Integer.class || targetType == int.class) {
-                return number.intValue();
-            }
-            if (targetType == Double.class || targetType == double.class) {
-                return number.doubleValue();
-            }
-            if (targetType == Float.class || targetType == float.class) {
-                return number.floatValue();
-            }
-            if (targetType == Short.class || targetType == short.class) {
-                return number.shortValue();
-            }
-            if (targetType == Byte.class || targetType == byte.class) {
-                return number.byteValue();
-            }
-        }
-        if (value instanceof java.sql.Timestamp timestamp && targetType == LocalDateTime.class) {
-            return timestamp.toLocalDateTime();
-        }
-        if (value instanceof java.sql.Date sqlDate && targetType == LocalDate.class) {
-            return sqlDate.toLocalDate();
-        }
-        if (value instanceof byte[] bytes && targetType == String.class) {
-            return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
         }
         return value;
     }

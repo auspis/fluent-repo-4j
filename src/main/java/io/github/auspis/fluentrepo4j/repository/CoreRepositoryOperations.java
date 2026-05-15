@@ -31,7 +31,7 @@ import org.springframework.jdbc.support.SQLExceptionTranslator;
 
 /**
  * Core JDBC operations shared by {@link FluentRepository} and
- * {@link FunctionalFluentRepository}.
+ * split functional repositories.
  *
  * <p>Encapsulates all low-level database interactions: query building via fluent-sql-4j,
  * entity mapping, connection management, and SQL exception translation. This class is
@@ -40,7 +40,8 @@ import org.springframework.jdbc.support.SQLExceptionTranslator;
  * <p>This class follows the <em>opaque handle</em> pattern: it is publicly constructable
  * so that callers can create instances and pass them to repository facades, but all
  * operational methods remain package-private. External consumers should never invoke
- * operations directly — use {@link FluentRepository} or {@link FunctionalFluentRepository}
+ * operations directly — use {@link FluentRepository}, {@link FunctionalReadFluentRepository},
+ * or {@link FunctionalWriteFluentRepository}
  * instead.
  *
  * @param <T>  the entity type

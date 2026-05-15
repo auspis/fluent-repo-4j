@@ -2,9 +2,11 @@ package io.github.auspis.fluentrepo4j.example;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.auspis.fluentrepo4j.functional.RepositoryResult;
-import io.github.auspis.fluentrepo4j.functional.RepositoryResult.Success;
-import io.github.auspis.fluentrepo4j.repository.FunctionalFluentRepository;
+import io.github.auspis.fluentrepo4j.functional.read.ReadResult;
+import io.github.auspis.fluentrepo4j.functional.read.ReadResult.Found;
+import io.github.auspis.fluentrepo4j.functional.read.ReadResult.NotFound;
+import io.github.auspis.fluentrepo4j.functional.write.WriteResult;
+import io.github.auspis.fluentrepo4j.functional.write.WriteResult.Success;
 import io.github.auspis.fluentrepo4j.test.domain.User;
 import io.github.auspis.fluentsql4j.test.util.annotation.IntegrationTest;
 import io.github.auspis.fluentsql4j.test.util.database.TestDatabaseUtil;
@@ -12,7 +14,6 @@ import io.github.auspis.fluentsql4j.test.util.database.TestDatabaseUtil;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Optional;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -26,8 +27,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Integration test for functional repository operations.
- * Verifies that {@link FunctionalFluentRepository} correctly wraps outcomes
- * in {@link RepositoryResult}.
+ * Verifies split read/write wrappers and explicit found/not-found behavior.
  */
 @IntegrationTest
 @SpringBootTest
@@ -36,6 +36,9 @@ class FunctionalUserRepositoryIntegrationTest {
 
     @Autowired
     private FunctionalUserRepository repository;
+
+    @Autowired
+    private FunctionalUserCrudRepository crudRepository;
 
     @Autowired
     private DataSource dataSource;
@@ -51,6 +54,27 @@ class FunctionalUserRepositoryIntegrationTest {
     @Test
     void repositoryIsAutomaticallyRegistered() {
         assertThat(repository).isNotNull();
+        assertThat(crudRepository).isNotNull();
+    }
+
+    @Test
+    void crudOnlyRepositorySupportsCoreCrudOperations() {
+        User created = new User("Crud User", "crud@test.com").withId(777L);
+
+        WriteResult<User> saveResult = crudRepository.save(created);
+        assertThat(saveResult).isInstanceOf(Success.class);
+        assertThat(saveResult.orElseThrow().getId()).isEqualTo(777L);
+
+        ReadResult<User> foundResult = crudRepository.findById(777L);
+        assertThat(foundResult).isInstanceOf(Found.class);
+        assertThat(foundResult.orElseThrow().getEmail()).isEqualTo("crud@test.com");
+
+        WriteResult<Boolean> deleteResult = crudRepository.deleteById(777L);
+        assertThat(deleteResult).isInstanceOf(Success.class);
+        assertThat(deleteResult.orElseThrow()).isTrue();
+
+        ReadResult<User> deletedLookup = crudRepository.findById(777L);
+        assertThat(deletedLookup).isInstanceOf(NotFound.class);
     }
 
     @Nested
@@ -59,7 +83,7 @@ class FunctionalUserRepositoryIntegrationTest {
         @Test
         void saveReturnsSuccess() {
             User user = new User("Functional User", "func@example.com").withId(20L);
-            RepositoryResult<User> result = repository.save(user);
+            WriteResult<User> result = repository.save(user);
 
             assertThat(result).isInstanceOf(Success.class);
             assertThat(result.orElseThrow().getName()).isEqualTo("Functional User");
@@ -71,7 +95,7 @@ class FunctionalUserRepositoryIntegrationTest {
                     new User("Batch1", "batch1@test.com").withId(30L),
                     new User("Batch2", "batch2@test.com").withId(31L));
 
-            RepositoryResult<List<User>> result = repository.saveAll(users);
+            WriteResult<List<User>> result = repository.saveAll(users);
             assertThat(result).isInstanceOf(Success.class);
             assertThat(result.orElseThrow()).hasSize(2);
         }
@@ -82,52 +106,52 @@ class FunctionalUserRepositoryIntegrationTest {
 
         @Test
         void findByIdReturnsSuccessWithValue() {
-            RepositoryResult<Optional<User>> result = repository.findById(1L);
-            assertThat(result).isInstanceOf(Success.class);
-            assertThat(result.orElseThrow()).isPresent().hasValueSatisfying(user -> {
+            ReadResult<User> result = repository.findById(1L);
+            assertThat(result).isInstanceOf(Found.class);
+            assertThat(result.orElseThrow()).satisfies(user -> {
                 assertThat(user.getName()).isEqualTo("John Doe");
             });
         }
 
         @Test
-        void findByIdReturnsSuccessWithEmptyOptional() {
-            RepositoryResult<Optional<User>> result = repository.findById(999L);
-            assertThat(result).isInstanceOf(Success.class);
-            assertThat(result.orElseThrow()).isEmpty();
+        void findByIdReturnsNotFound() {
+            ReadResult<User> result = repository.findById(999L);
+            assertThat(result).isInstanceOf(NotFound.class);
+            assertThat(result.isNotFound()).isTrue();
         }
 
         @Test
         void findAllReturnsSuccess() {
-            RepositoryResult<List<User>> result = repository.findAll();
-            assertThat(result).isInstanceOf(Success.class);
+            ReadResult<List<User>> result = repository.findAll();
+            assertThat(result).isInstanceOf(Found.class);
             assertThat(result.orElseThrow()).hasSize(10);
         }
 
         @Test
         void findAllByIdReturnsSuccess() {
-            RepositoryResult<List<User>> result = repository.findAllById(List.of(1L, 2L, 999L));
-            assertThat(result).isInstanceOf(Success.class);
+            ReadResult<List<User>> result = repository.findAllById(List.of(1L, 2L, 999L));
+            assertThat(result).isInstanceOf(Found.class);
             assertThat(result.orElseThrow()).hasSize(2);
         }
 
         @Test
         void existsByIdReturnsTrue() {
-            RepositoryResult<Boolean> result = repository.existsById(1L);
-            assertThat(result).isInstanceOf(Success.class);
+            ReadResult<Boolean> result = repository.existsById(1L);
+            assertThat(result).isInstanceOf(Found.class);
             assertThat(result.orElseThrow()).isTrue();
         }
 
         @Test
         void existsByIdReturnsFalse() {
-            RepositoryResult<Boolean> result = repository.existsById(999L);
-            assertThat(result).isInstanceOf(Success.class);
+            ReadResult<Boolean> result = repository.existsById(999L);
+            assertThat(result).isInstanceOf(Found.class);
             assertThat(result.orElseThrow()).isFalse();
         }
 
         @Test
         void countReturnsSuccess() {
-            RepositoryResult<Long> result = repository.count();
-            assertThat(result).isInstanceOf(Success.class);
+            ReadResult<Long> result = repository.count();
+            assertThat(result).isInstanceOf(Found.class);
             assertThat(result.orElseThrow()).isEqualTo(10L);
         }
     }
@@ -137,38 +161,38 @@ class FunctionalUserRepositoryIntegrationTest {
 
         @Test
         void deleteByIdReturnsTrueWhenExists() {
-            RepositoryResult<Boolean> result = repository.deleteById(1L);
+            WriteResult<Boolean> result = repository.deleteById(1L);
             assertThat(result).isInstanceOf(Success.class);
             assertThat(result.orElseThrow()).isTrue();
 
-            assertThat(repository.findById(1L).orElseThrow()).isEmpty();
+            assertThat(repository.findById(1L)).isInstanceOf(NotFound.class);
         }
 
         @Test
         void deleteByIdReturnsFalseWhenNotFound() {
-            RepositoryResult<Boolean> result = repository.deleteById(999L);
+            WriteResult<Boolean> result = repository.deleteById(999L);
             assertThat(result).isInstanceOf(Success.class);
             assertThat(result.orElseThrow()).isFalse();
         }
 
         @Test
         void deleteReturnsSuccess() {
-            User user = repository.findById(1L).orElseThrow().orElseThrow();
-            RepositoryResult<Boolean> result = repository.delete(user);
+            User user = repository.findById(1L).orElseThrow();
+            WriteResult<Boolean> result = repository.delete(user);
             assertThat(result).isInstanceOf(Success.class);
             assertThat(result.orElseThrow()).isTrue();
         }
 
         @Test
         void deleteAllByIdReturnsCount() {
-            RepositoryResult<Long> result = repository.deleteAllById(List.of(1L, 2L, 999L));
+            WriteResult<Long> result = repository.deleteAllById(List.of(1L, 2L, 999L));
             assertThat(result).isInstanceOf(Success.class);
             assertThat(result.orElseThrow()).isEqualTo(2L);
         }
 
         @Test
         void deleteAllReturnsCount() {
-            RepositoryResult<Long> result = repository.deleteAll();
+            WriteResult<Long> result = repository.deleteAll();
             assertThat(result).isInstanceOf(Success.class);
             assertThat(result.orElseThrow()).isEqualTo(10L);
         }
@@ -179,8 +203,8 @@ class FunctionalUserRepositoryIntegrationTest {
 
         @Test
         void findAllSortedReturnsSuccess() {
-            RepositoryResult<List<User>> result = repository.findAll(Sort.by("name"));
-            assertThat(result).isInstanceOf(Success.class);
+            ReadResult<List<User>> result = repository.findAll(Sort.by("name"));
+            assertThat(result).isInstanceOf(Found.class);
             List<User> users = result.orElseThrow();
             assertThat(users).hasSize(10);
             assertThat(users.get(0).getName()).isLessThanOrEqualTo(users.get(1).getName());
@@ -188,8 +212,8 @@ class FunctionalUserRepositoryIntegrationTest {
 
         @Test
         void findAllPagedReturnsSuccess() {
-            RepositoryResult<Page<User>> result = repository.findAll(PageRequest.of(0, 3, Sort.by("name")));
-            assertThat(result).isInstanceOf(Success.class);
+            ReadResult<Page<User>> result = repository.findAll(PageRequest.of(0, 3, Sort.by("name")));
+            assertThat(result).isInstanceOf(Found.class);
             Page<User> page = result.orElseThrow();
             assertThat(page.getContent()).hasSize(3);
             assertThat(page.getTotalElements()).isEqualTo(10);
@@ -202,44 +226,48 @@ class FunctionalUserRepositoryIntegrationTest {
 
         @Test
         void findByEmailReturnsSuccess() {
-            RepositoryResult<Optional<User>> result = repository.findByEmail("john@example.com");
-            assertThat(result).isInstanceOf(Success.class);
-            assertThat(result.orElseThrow()).isPresent().hasValueSatisfying(user -> assertThat(user.getName())
-                    .isEqualTo("John Doe"));
+            ReadResult<User> result = repository.findByEmail("john@example.com");
+            assertThat(result).isInstanceOf(Found.class);
+            assertThat(result.orElseThrow().getName()).isEqualTo("John Doe");
         }
 
         @Test
-        void findByEmailReturnsEmptyOptional() {
-            RepositoryResult<Optional<User>> result = repository.findByEmail("nonexistent@example.com");
-            assertThat(result).isInstanceOf(Success.class);
-            assertThat(result.orElseThrow()).isEmpty();
+        void findByEmailReturnsNotFound() {
+            ReadResult<User> result = repository.findByEmail("nonexistent@example.com");
+            assertThat(result).isInstanceOf(NotFound.class);
         }
 
         @Test
-        void findByNameReturnsSuccess() {
-            RepositoryResult<List<User>> result = repository.findByName("John Doe");
-            assertThat(result).isInstanceOf(Success.class);
+        void findByNameFound() {
+            ReadResult<List<User>> result = repository.findByName("John Doe");
+            assertThat(result).isInstanceOf(Found.class);
             assertThat(result.orElseThrow()).isNotEmpty();
         }
 
         @Test
+        void findByNameNotFound() {
+            ReadResult<List<User>> result = repository.findByName("Unknown");
+            assertThat(result).isInstanceOf(NotFound.class);
+        }
+
+        @Test
         void countByActiveReturnsSuccess() {
-            RepositoryResult<Long> result = repository.countByActive(true);
-            assertThat(result).isInstanceOf(Success.class);
+            ReadResult<Long> result = repository.countByActive(true);
+            assertThat(result).isInstanceOf(Found.class);
             assertThat(result.orElseThrow()).isGreaterThan(0L);
         }
 
         @Test
         void existsByEmailReturnsSuccess() {
-            RepositoryResult<Boolean> result = repository.existsByEmail("john@example.com");
-            assertThat(result).isInstanceOf(Success.class);
+            ReadResult<Boolean> result = repository.existsByEmail("john@example.com");
+            assertThat(result).isInstanceOf(Found.class);
             assertThat(result.orElseThrow()).isTrue();
         }
 
         @Test
         void existsByEmailReturnsFalse() {
-            RepositoryResult<Boolean> result = repository.existsByEmail("nobody@example.com");
-            assertThat(result).isInstanceOf(Success.class);
+            ReadResult<Boolean> result = repository.existsByEmail("nobody@example.com");
+            assertThat(result).isInstanceOf(Found.class);
             assertThat(result.orElseThrow()).isFalse();
         }
     }
