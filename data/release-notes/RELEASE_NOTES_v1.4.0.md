@@ -6,16 +6,20 @@ Release date: 2026-05-12
 
 Functional repository API has been redesigned with an intentional **BREAKING** change:
 
-- Read operations now use `ReadResult<T>` with explicit states: `Found`, `NotFound`, `Failure`.
-- Write operations now use `WriteResult<T>` with states: `Success`, `Failure`.
-- Legacy functional API based on `RepositoryResult<T>`, `FunctionalCrudRepository`, and `FunctionalPagingAndSortingRepository` has been removed from the public functional path.
+- Read operations now use `ReadResult<T>` with explicit states: `Found`, `NotFound`, `Error`.
+- Multi-result read methods (`List`, `Page`, `Slice`, `Stream`) return `NotFound` when no rows match, consistent with single-result behavior.
+- Write operations now use `WriteResult<T>` with states: `Success`, `Error`.
+- High-level functional interfaces are available and aligned with Spring Data naming:
+  - `FunctionalCrudRepository<T, ID>`
+  - `FunctionalPagingAndSortingRepository<T, ID>`
+- Low-level split contracts remain available:
+  - `FunctionalReadRepository<T, ID>`
+  - `FunctionalWriteRepository<T, ID>`
 
 ## BREAKING CHANGES
 
 - Removed functional API types:
   - `io.github.auspis.fluentrepo4j.functional.RepositoryResult`
-  - `io.github.auspis.fluentrepo4j.functional.FunctionalCrudRepository`
-  - `io.github.auspis.fluentrepo4j.functional.FunctionalPagingAndSortingRepository`
 - Removed monolithic functional implementation class:
   - `io.github.auspis.fluentrepo4j.repository.FunctionalFluentRepository`
 
@@ -39,9 +43,8 @@ After (v1.4.0+):
 
 ```java
 public interface UserRepository
-        extends FunctionalReadRepository<User, Long>,
-                FunctionalReadPagingAndSortingRepository<User, Long>,
-                FunctionalWriteRepository<User, Long> {
+  extends FunctionalCrudRepository<User, Long>,
+    FunctionalPagingAndSortingRepository<User, Long> {
 
     ReadResult<User> findByEmail(String email);
     ReadResult<List<User>> findByName(String name);
@@ -66,7 +69,7 @@ Result handling now distinguishes explicitly:
 
 - `Found<User>`
 - `NotFound<User>`
-- `Failure<User>`
+- `Error<User>`
 
 ### 3) Write semantics
 
@@ -85,7 +88,8 @@ WriteResult<Boolean> deleted = repository.deleteById(id);
 ## Additional Notes
 
 - Derived query support remains available for functional repositories with new wrapper mapping rules.
-- Read-side infrastructure failures are surfaced as `ReadResult.Failure`.
+- Read-side infrastructure failures are surfaced as `ReadResult.Error`.
+- Write-side failures are surfaced as `WriteResult.Error`.
 
 ## Full Changelog
 

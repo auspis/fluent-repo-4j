@@ -1,7 +1,9 @@
 package io.github.auspis.fluentrepo4j.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +25,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.dao.TransientDataAccessResourceException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @SuppressWarnings("unchecked")
 class FunctionalFluentRepositoryTest {
@@ -142,10 +145,9 @@ class FunctionalFluentRepositoryTest {
 
             ReadResult<Page<User>> result = readRepository.findAll(PageRequest.of(10, 3));
 
-            assertThat(result).isInstanceOf(Found.class);
-            Page<User> page = result.orElseThrow();
-            assertThat(page.getContent()).isEmpty();
-            assertThat(page.getTotalElements()).isEqualTo(5);
+            assertThat(result).isInstanceOf(NotFound.class);
+            verify(core).countRaw();
+            verify(core, never()).findAllRaw(any(Sort.class), any());
         }
 
         @Test
@@ -154,9 +156,9 @@ class FunctionalFluentRepositoryTest {
 
             ReadResult<Page<User>> result = readRepository.findAll(PageRequest.of(0, 10));
 
-            assertThat(result).isInstanceOf(Found.class);
-            assertThat(result.orElseThrow().getContent()).isEmpty();
-            assertThat(result.orElseThrow().getTotalElements()).isZero();
+            assertThat(result).isInstanceOf(NotFound.class);
+            verify(core).countRaw();
+            verify(core, never()).findAllRaw(any(Sort.class), any());
         }
 
         @Test
@@ -168,6 +170,42 @@ class FunctionalFluentRepositoryTest {
 
             assertThat(result).isInstanceOf(Error.class);
             assertThat(result.isError()).isTrue();
+        }
+
+        @Test
+        void findAll_returnsNotFoundWhenEmpty() {
+            when(core.findAllRaw(Sort.unsorted(), null)).thenReturn(List.of());
+
+            ReadResult<List<User>> result = readRepository.findAll();
+
+            assertThat(result).isInstanceOf(NotFound.class);
+        }
+
+        @Test
+        void findAllSorted_returnsNotFoundWhenEmpty() {
+            Sort sort = Sort.by("name");
+            when(core.findAllRaw(sort, null)).thenReturn(List.of());
+
+            ReadResult<List<User>> result = readRepository.findAll(sort);
+
+            assertThat(result).isInstanceOf(NotFound.class);
+        }
+
+        @Test
+        void findAllById_returnsNotFoundWhenNoneMatch() {
+            when(core.findByIdRaw(1L)).thenReturn(Optional.empty());
+            when(core.findByIdRaw(2L)).thenReturn(Optional.empty());
+
+            ReadResult<List<User>> result = readRepository.findAllById(List.of(1L, 2L));
+
+            assertThat(result).isInstanceOf(NotFound.class);
+        }
+
+        @Test
+        void findAllById_returnsNotFoundForEmptyIterable() {
+            ReadResult<List<User>> result = readRepository.findAllById(List.of());
+
+            assertThat(result).isInstanceOf(NotFound.class);
         }
     }
 }

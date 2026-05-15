@@ -712,13 +712,12 @@ With the default auto-configuration (`DSLRegistry.createWithServiceLoader()`), t
 
 ## 13. Split Functional API (v1.4.0+)
 
-From v1.4.0, functional repositories are split into read and write contracts.
+From v1.4.0, functional repositories are split into read and write contracts, with Spring-style high-level interfaces.
 
 ```java
 public interface UserRepository
-        extends FunctionalReadRepository<User, Long>,
-                FunctionalReadPagingAndSortingRepository<User, Long>,
-                FunctionalWriteRepository<User, Long> {
+    extends FunctionalCrudRepository<User, Long>,
+        FunctionalPagingAndSortingRepository<User, Long> {
 
     ReadResult<User> findByEmail(String email);
     ReadResult<List<User>> findByName(String name);
@@ -741,8 +740,29 @@ result.fold(
             System.out.println("User not found");
             return null;
         },
-        failure -> {
-            System.err.println("Read failed: " + failure.message());
+        error -> {
+            System.err.println("Read failed: " + error.message());
+            return null;
+        }
+);
+```
+
+Read multi-result example (`NotFound` is the empty case):
+
+```java
+ReadResult<List<User>> result = repository.findByName("Alice");
+
+result.fold(
+        users -> {
+            System.out.println("Found " + users.size() + " user(s)");
+            return null;
+        },
+        () -> {
+            System.out.println("No users found");
+            return null;
+        },
+        error -> {
+            System.err.println("Read failed: " + error.message());
             return null;
         }
 );
@@ -758,8 +778,8 @@ deleted.fold(
             System.out.println("Deleted: " + ok);
             return null;
         },
-        failure -> {
-            System.err.println("Delete failed: " + failure.message());
+        error -> {
+            System.err.println("Delete failed: " + error.message());
             return null;
         }
 );

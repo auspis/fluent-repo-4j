@@ -17,7 +17,7 @@
 A lightweight Spring Boot library for the **Repository Pattern** with pure JDBC and the [fluent-sql-4j](https://github.com/auspis/fluent-sql-4j) DSL.
 Write type-safe, declarative database queries without ORM overhead.
 
-> ✨ **New from version 1.4.0 (BREAKING):** Functional repositories are split into read and write contracts. Read operations return `ReadResult<T>` (`Found`, `NotFound`, `Failure`) and write operations return `WriteResult<T>` (`Success`, `Failure`). See [FUNCTIONAL_REPOSITORY documentation](data/wiki/FUNCTIONAL_REPOSITORY.md).
+> ✨ **New from version 1.4.0 (BREAKING):** Functional repositories are split into read and write contracts. Read operations return `ReadResult<T>` (`Found`, `NotFound`, `Error`) and write operations return `WriteResult<T>` (`Success`, `Error`). For Spring-style convenience, use `FunctionalCrudRepository` and compose with `FunctionalPagingAndSortingRepository` when paging is needed. See [FUNCTIONAL_REPOSITORY documentation](data/wiki/FUNCTIONAL_REPOSITORY.md).
 
 ## Features
 
@@ -31,7 +31,7 @@ Write type-safe, declarative database queries without ORM overhead.
 ✅ **Dynamic Query Derivation** — Spring Data–style method-name queries (`findByName`, `findByAgeGreaterThan`, …)  
 ✅ **Custom Query Fragments** — Fluent-sql-4j DSL in Spring Data fragment implementations; multi-datasource safe  
 ✅ **Multi-DataSource Support** — Bind repository groups to different `DataSource` beans with explicit Spring-style refs  
-✅ **Split Functional Repositories** — dedicated read/write interfaces with explicit read states (`Found`, `NotFound`, `Failure`) and write states (`Success`, `Failure`)
+✅ **Split Functional Repositories** — dedicated read/write interfaces with explicit read states (`Found`, `NotFound`, `Error`) and write states (`Success`, `Error`)
 
 ---
 
@@ -179,22 +179,22 @@ The library auto-detects the database dialect, scans for `CrudRepository` interf
 
 ## Supported Features
 
-|                           Feature                            |    Status    |                                                Notes                                                |
-|--------------------------------------------------------------|--------------|-----------------------------------------------------------------------------------------------------|
-| CRUD (`save`, `findById`, `findAll`, `count`, `deleteById`)  | ✅ Supported  | Core built-in operations                                                                            |
-| `@Transactional` integration                                 | ✅ Supported  | Automatic connection binding via Spring                                                             |
-| `@GeneratedValue(IDENTITY)`                                  | ✅ Supported  | Database auto-increment IDs                                                                         |
-| Application-provided IDs                                     | ✅ Supported  | Set ID before `save()`                                                                              |
-| `FluentPersistable<ID>` for custom `isNew()` logic           | ✅ Supported  | Fine-grained control over insert/update                                                             |
-| Simple entity mapping (Jakarta Persistence annotations)      | ✅ Supported  | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient`                                         |
-| Exception translation to `DataAccessException`               | ✅ Supported  | Automatic SQL exception handling                                                                    |
-| Dynamic query derivation (Spring Data PartTree-style)        | ✅ Supported  | `findBy…`, `countBy…`, `existsBy…`, `deleteBy…`, pagination/sort                                    |
-| Custom query fragments via `FluentRepositoryContextAware<T>` | ✅ Supported  | DSL-powered custom queries with type-safe mapping                                                   |
-| Multi-datasource repository groups                           | ✅ Supported  | One `@EnableFluentRepositories` block per group                                                     |
-| Functional repositories (split read/write results)           | ✅ Supported  | `FunctionalReadRepository`, `FunctionalReadPagingAndSortingRepository`, `FunctionalWriteRepository` |
-| Object relationships (one-to-many, many-to-many)             | ⚙️ By Design | Keep it simple: use separate repositories and explicit queries                                      |
-| `@GeneratedValue(SEQUENCE)`                                  | 🔜 Planned   | Planned for a future release                                                                        |
-| Persistence context / first-level cache                      | ⚙️ By Design | Not applicable to JDBC; each query returns fresh objects                                            |
+|                           Feature                            |    Status    |                                                                       Notes                                                                        |
+|--------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| CRUD (`save`, `findById`, `findAll`, `count`, `deleteById`)  | ✅ Supported  | Core built-in operations                                                                                                                           |
+| `@Transactional` integration                                 | ✅ Supported  | Automatic connection binding via Spring                                                                                                            |
+| `@GeneratedValue(IDENTITY)`                                  | ✅ Supported  | Database auto-increment IDs                                                                                                                        |
+| Application-provided IDs                                     | ✅ Supported  | Set ID before `save()`                                                                                                                             |
+| `FluentPersistable<ID>` for custom `isNew()` logic           | ✅ Supported  | Fine-grained control over insert/update                                                                                                            |
+| Simple entity mapping (Jakarta Persistence annotations)      | ✅ Supported  | `@Table`, `@Column`, `@Id`, `@GeneratedValue`, `@Transient`                                                                                        |
+| Exception translation to `DataAccessException`               | ✅ Supported  | Automatic SQL exception handling                                                                                                                   |
+| Dynamic query derivation (Spring Data PartTree-style)        | ✅ Supported  | `findBy…`, `countBy…`, `existsBy…`, `deleteBy…`, pagination/sort                                                                                   |
+| Custom query fragments via `FluentRepositoryContextAware<T>` | ✅ Supported  | DSL-powered custom queries with type-safe mapping                                                                                                  |
+| Multi-datasource repository groups                           | ✅ Supported  | One `@EnableFluentRepositories` block per group                                                                                                    |
+| Functional repositories (split read/write results)           | ✅ Supported  | High-level: `FunctionalCrudRepository`, `FunctionalPagingAndSortingRepository`; low-level: `FunctionalReadRepository`, `FunctionalWriteRepository` |
+| `@GeneratedValue(SEQUENCE)`                                  | 🔜 Planned   | Planned for a future release                                                                                                                       |
+| Object relationships (one-to-many, many-to-many)             | ⚙️ By Design | Keep it simple: use separate repositories and explicit queries                                                                                     |
+| Persistence context / first-level cache                      | ⚙️ By Design | Not applicable to JDBC; each query returns fresh objects                                                                                           |
 
 ---
 

@@ -35,7 +35,9 @@ class ReadResultTest {
 
     @Test
     void errorWithBlankMessage() {
-        assertThatThrownBy(() -> new Error<String>(" ")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Error<String>(" "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Error message must not be null or blank");
     }
 
     @Test

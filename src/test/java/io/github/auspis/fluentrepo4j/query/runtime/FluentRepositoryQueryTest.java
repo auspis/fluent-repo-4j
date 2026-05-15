@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.mock;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
+import io.github.auspis.fluentrepo4j.functional.FunctionalCrudRepository;
 import io.github.auspis.fluentrepo4j.functional.read.FunctionalReadRepository;
 import io.github.auspis.fluentrepo4j.functional.read.ReadResult;
 import io.github.auspis.fluentrepo4j.functional.read.ReadResult.Found;
@@ -19,6 +20,7 @@ import io.github.auspis.fluentsql4j.dsl.DSL;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.data.repository.core.RepositoryMetadata;
@@ -30,6 +32,8 @@ class FluentRepositoryQueryTest {
         ReadResult<User> findByEmail(String email);
 
         ReadResult<List<User>> findByName(String name);
+
+        ReadResult<Stream<User>> findStreamByName(String name);
 
         ReadResult<Long> countByActive(Boolean active);
 
@@ -44,6 +48,12 @@ class FluentRepositoryQueryTest {
         WriteResult<Long> deleteByEmail(String email);
 
         WriteResult<Boolean> deleteByName(String name);
+    }
+
+    interface CrudProbeRepository extends FunctionalCrudRepository<User, Long> {
+        ReadResult<User> findByEmail(String email);
+
+        WriteResult<Long> deleteByEmail(String email);
     }
 
     interface InvalidWriteProbeRepository extends FunctionalWriteRepository<User, Long> {
@@ -70,6 +80,12 @@ class FluentRepositoryQueryTest {
         assertThatThrownBy(() -> queryFor(InvalidWriteProbeRepository.class, "findByEmail", String.class))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("WriteResult is supported only for delete-derived query methods");
+    }
+
+    @Test
+    void validCrudWrapperConstructs() {
+        assertDoesNotThrow(() -> queryFor(CrudProbeRepository.class, "findByEmail", String.class));
+        assertDoesNotThrow(() -> queryFor(CrudProbeRepository.class, "deleteByEmail", String.class));
     }
 
     @Test
@@ -116,6 +132,34 @@ class FluentRepositoryQueryTest {
 
         assertThat(result).isInstanceOf(Found.class);
         assertThat(((Found<List<User>>) result).value()).hasSize(1);
+    }
+
+    @Test
+    void adaptReadListReturnsNotFoundForEmptyResults() throws Exception {
+        FluentRepositoryQuery<User, Long> query = queryFor(ReadProbeRepository.class, "findByName", String.class);
+
+        Object result = invokePrivate(
+                query,
+                "adaptSelectResultReadFunctional",
+                new Class[] {List.class, Object[].class},
+                List.of(),
+                new Object[0]);
+
+        assertThat(result).isInstanceOf(NotFound.class);
+    }
+
+    @Test
+    void adaptReadStreamReturnsNotFoundForEmptyResults() throws Exception {
+        FluentRepositoryQuery<User, Long> query = queryFor(ReadProbeRepository.class, "findStreamByName", String.class);
+
+        Object result = invokePrivate(
+                query,
+                "adaptSelectResultReadFunctional",
+                new Class[] {List.class, Object[].class},
+                List.of(),
+                new Object[0]);
+
+        assertThat(result).isInstanceOf(NotFound.class);
     }
 
     @Test

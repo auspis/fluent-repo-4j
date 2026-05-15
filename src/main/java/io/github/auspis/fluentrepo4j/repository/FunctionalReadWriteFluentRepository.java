@@ -1,9 +1,8 @@
 package io.github.auspis.fluentrepo4j.repository;
 
-import io.github.auspis.fluentrepo4j.functional.read.FunctionalReadPagingAndSortingRepository;
-import io.github.auspis.fluentrepo4j.functional.read.FunctionalReadRepository;
+import io.github.auspis.fluentrepo4j.functional.FunctionalCrudRepository;
+import io.github.auspis.fluentrepo4j.functional.FunctionalPagingAndSortingRepository;
 import io.github.auspis.fluentrepo4j.functional.read.ReadResult;
-import io.github.auspis.fluentrepo4j.functional.write.FunctionalWriteRepository;
 import io.github.auspis.fluentrepo4j.functional.write.WriteResult;
 
 import java.util.List;
@@ -12,9 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 public class FunctionalReadWriteFluentRepository<T, ID>
-        implements FunctionalReadRepository<T, ID>,
-                FunctionalReadPagingAndSortingRepository<T, ID>,
-                FunctionalWriteRepository<T, ID> {
+        implements FunctionalCrudRepository<T, ID>, FunctionalPagingAndSortingRepository<T, ID> {
 
     private final FunctionalReadFluentRepository<T, ID> readRepository;
     private final FunctionalWriteFluentRepository<T, ID> writeRepository;

@@ -1,6 +1,6 @@
 package io.github.auspis.fluentrepo4j.repository;
 
-import io.github.auspis.fluentrepo4j.functional.read.FunctionalReadPagingAndSortingRepository;
+import io.github.auspis.fluentrepo4j.functional.FunctionalPagingAndSortingRepository;
 import io.github.auspis.fluentrepo4j.functional.read.FunctionalReadRepository;
 import io.github.auspis.fluentrepo4j.functional.read.ReadResult;
 import io.github.auspis.fluentrepo4j.functional.read.ReadResult.Error;
@@ -17,7 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 public class FunctionalReadFluentRepository<T, ID>
-        implements FunctionalReadRepository<T, ID>, FunctionalReadPagingAndSortingRepository<T, ID> {
+        implements FunctionalReadRepository<T, ID>, FunctionalPagingAndSortingRepository<T, ID> {
 
     @FunctionalInterface
     private interface ReadSupplier<R> {
@@ -48,12 +48,18 @@ public class FunctionalReadFluentRepository<T, ID>
 
     @Override
     public ReadResult<List<T>> findAll() {
-        return withRead("findAll", () -> new Found<>(core.findAllRaw(Sort.unsorted(), null)));
+        return withRead("findAll", () -> {
+            List<T> results = core.findAllRaw(Sort.unsorted(), null);
+            return results.isEmpty() ? new NotFound<>() : new Found<>(results);
+        });
     }
 
     @Override
     public ReadResult<List<T>> findAll(Sort sort) {
-        return withRead("findAllSorted", () -> new Found<>(core.findAllRaw(sort, null)));
+        return withRead("findAllSorted", () -> {
+            List<T> results = core.findAllRaw(sort, null);
+            return results.isEmpty() ? new NotFound<>() : new Found<>(results);
+        });
     }
 
     @Override
@@ -61,8 +67,7 @@ public class FunctionalReadFluentRepository<T, ID>
         return withRead("findAllPaged", () -> {
             long totalElements = core.countRaw();
             if (totalElements == 0 || pageable.getOffset() >= totalElements) {
-                Page<T> page = new PageImpl<>(List.of(), pageable, totalElements);
-                return new Found<>(page);
+                return new NotFound<>();
             }
             List<T> content = core.findAllRaw(pageable.getSort(), pageable);
             return new Found<>(new PageImpl<>(content, pageable, totalElements));
@@ -76,7 +81,7 @@ public class FunctionalReadFluentRepository<T, ID>
             for (ID id : ids) {
                 core.findByIdRaw(id).ifPresent(results::add);
             }
-            return new Found<>(results);
+            return results.isEmpty() ? new NotFound<>() : new Found<>(results);
         });
     }
 

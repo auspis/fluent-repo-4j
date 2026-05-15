@@ -42,10 +42,12 @@ fluent-repo-4j is a Spring Boot integration layer for **pure JDBC-based reposito
 - Spring transaction integration via `DataSourceUtils`
 - SQL generation using the fluent-sql-4j DSL
 
-From v1.4.0 onward, functional repositories are split into dedicated read/write contracts:
+From v1.4.0 onward, functional repositories are split into dedicated read/write contracts with a Spring-aligned high-level API:
 
-- Read: `FunctionalReadRepository` + `FunctionalReadPagingAndSortingRepository` with `ReadResult<T>`
-- Write: `FunctionalWriteRepository` with `WriteResult<T>`
+- High-level: `FunctionalCrudRepository` (CRUD) + `FunctionalPagingAndSortingRepository` (paging/sorting)
+- Low-level split: `FunctionalReadRepository` + `FunctionalWriteRepository`
+- Read results: `ReadResult<T>` (`Found`, `NotFound`, `Error`)
+- Write results: `WriteResult<T>` (`Success`, `Error`)
 
 This replaces the previous monolithic `RepositoryResult<T>` functional contract.
 

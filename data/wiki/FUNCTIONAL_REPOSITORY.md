@@ -1,26 +1,41 @@
-# Functional Repository (Split Read/Write API)
+# Functional Repository (Split Results + Spring-Aligned Interfaces)
 
 ## Breaking change in v1.4.0
 
-Starting from v1.4.0, functional repositories are split into dedicated read and write contracts.
+From v1.4.0 onward, functional repositories use split read/write result wrappers:
 
-- Read contract returns `ReadResult<T>` with three explicit states:
+- Read operations return `ReadResult<T>`:
   - `Found<T>`
   - `NotFound<T>`
-  - `Failure<T>`
-- Write contract returns `WriteResult<T>` with two states:
+  - `Error<T>`
+- Write operations return `WriteResult<T>`:
   - `Success<T>`
-  - `Failure<T>`
+  - `Error<T>`
 
-Legacy `RepositoryResult<T>`, `FunctionalCrudRepository`, and `FunctionalPagingAndSortingRepository` are no longer part of the functional public API.
+`RepositoryResult<T>` and the old monolithic functional API are removed.
 
-## Why this change
+## High-level interfaces (recommended)
 
-The old model represented not-found reads as `Success(Optional.empty())`, which made signatures and calling code verbose.
+The API is aligned with Spring Data conventions where CRUD and paging are separate concerns.
 
-The new model makes read outcomes explicit without `Optional` wrappers for single-item queries.
+```java
+public interface FunctionalCrudRepository<T, ID>
+        extends FunctionalReadRepository<T, ID>, FunctionalWriteRepository<T, ID> {
+}
 
-## New interfaces
+public interface FunctionalPagingAndSortingRepository<T, ID> extends Repository<T, ID> {
+    ReadResult<List<T>> findAll(Sort sort);
+    ReadResult<Page<T>> findAll(Pageable pageable);
+}
+```
+
+Recommended composition:
+
+- CRUD only: `FunctionalCrudRepository<T, ID>`
+- CRUD + paging/sorting: `FunctionalCrudRepository<T, ID>` + `FunctionalPagingAndSortingRepository<T, ID>`
+- Advanced split usage: `FunctionalReadRepository<T, ID>` and/or `FunctionalWriteRepository<T, ID>` directly
+
+## Low-level split interfaces (advanced)
 
 ```java
 public interface FunctionalReadRepository<T, ID> extends Repository<T, ID> {
@@ -29,11 +44,6 @@ public interface FunctionalReadRepository<T, ID> extends Repository<T, ID> {
     ReadResult<List<T>> findAll();
     ReadResult<List<T>> findAllById(Iterable<ID> ids);
     ReadResult<Long> count();
-}
-
-public interface FunctionalReadPagingAndSortingRepository<T, ID> extends Repository<T, ID> {
-    ReadResult<List<T>> findAll(Sort sort);
-    ReadResult<Page<T>> findAll(Pageable pageable);
 }
 
 public interface FunctionalWriteRepository<T, ID> extends Repository<T, ID> {
@@ -49,65 +59,46 @@ public interface FunctionalWriteRepository<T, ID> extends Repository<T, ID> {
 
 ## Derived query return type rules
 
-For repository methods derived from method names (`findBy...`, `countBy...`, `existsBy...`, `deleteBy...`):
+For method-name-derived queries (`findBy...`, `countBy...`, `existsBy...`, `deleteBy...`):
 
-- `findBy...` on read repositories:
-  - Single result type: `ReadResult<Entity>` (`NotFound` when empty)
-  - Multi result type: `ReadResult<List<Entity>>` (empty list is `Found(empty)`)
-- `countBy...` on read repositories:
-  - `ReadResult<Long>`
-- `existsBy...` on read repositories:
-  - `ReadResult<Boolean>`
-- `deleteBy...` on write repositories:
-  - `WriteResult<Long>`, `WriteResult<Integer>`, or `WriteResult<Boolean>`
+- `findBy...` on read contracts:
+  - Single result: `ReadResult<Entity>` (`NotFound` when empty)
+  - Multi result: `ReadResult<List<Entity>>` (`NotFound` when no rows match — use the `NotFound` branch to handle the empty case)
+- `countBy...` on read contracts: `ReadResult<Long>`
+- `existsBy...` on read contracts: `ReadResult<Boolean>`
+- `deleteBy...` on write contracts: `WriteResult<Long>`, `WriteResult<Integer>`, or `WriteResult<Boolean>`
 
 ## Error model
 
-- Read APIs map infrastructure errors (`DataAccessException`) to `ReadResult.Failure`.
-- Write APIs keep explicit domain-level failures in `WriteResult.Failure`.
+- Read-side infrastructure errors (`DataAccessException`) are mapped to `ReadResult.Error`.
+- Write-side infrastructure/domain errors are mapped to `WriteResult.Error`.
 
-## Before/After migration
+## Migration snapshot
 
 Before (v1.3.x):
 
 ```java
 RepositoryResult<Optional<User>> result = repository.findByEmail(email);
-result.fold(
-    value -> value.ifPresent(this::handleFound),
-    failure -> handleFailure(failure.message())
-);
 ```
 
 After (v1.4.0+):
 
 ```java
 ReadResult<User> result = repository.findByEmail(email);
+
 result.fold(
-    this::handleFound,
-    this::handleNotFound,
-    failure -> handleFailure(failure.message())
+        this::handleFound,
+        this::handleNotFound,
+        error -> handleError(error.message())
 );
-```
-
-Before (write):
-
-```java
-RepositoryResult<Boolean> deleted = repository.deleteById(id);
-```
-
-After (write):
-
-```java
-WriteResult<Boolean> deleted = repository.deleteById(id);
 ```
 
 ## Example repository
 
 ```java
 public interface UserRepository
-        extends FunctionalReadRepository<User, Long>,
-                FunctionalReadPagingAndSortingRepository<User, Long>,
-                FunctionalWriteRepository<User, Long> {
+        extends FunctionalCrudRepository<User, Long>,
+                FunctionalPagingAndSortingRepository<User, Long> {
 
     ReadResult<User> findByEmail(String email);
     ReadResult<List<User>> findByName(String name);

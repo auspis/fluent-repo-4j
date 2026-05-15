@@ -296,6 +296,9 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
     }
 
     private Object adaptSelectResultReadFunctional(List<T> results, Object[] args) {
+        if (results.isEmpty()) {
+            return new NotFound<>();
+        }
         if (Page.class.isAssignableFrom(functionalInnerType)) {
             return new Found<>(adaptAsPage(results, args));
         }
@@ -309,9 +312,6 @@ public class FluentRepositoryQuery<T, ID> implements RepositoryQuery {
         }
         if (Stream.class.isAssignableFrom(functionalInnerType)) {
             return new Found<>(results.stream());
-        }
-        if (results.isEmpty()) {
-            return new NotFound<>();
         }
         return new Found<>(results.get(0));
     }

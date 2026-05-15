@@ -185,7 +185,7 @@ public interface UserRepository extends CrudRepository<User, Long>,
 
 - Read-derived methods use `ReadResult<T>` wrappers:
   - Single-result find methods: `ReadResult<Entity>` (`NotFound` when no row)
-  - Multi-result find methods: `ReadResult<List<Entity>>` (`Found(empty)` when no rows)
+  - Multi-result find methods: `ReadResult<List<Entity>>` (`NotFound` when no rows)
   - Count methods: `ReadResult<Long>`
   - Exists methods: `ReadResult<Boolean>`
 - Write-derived delete methods use `WriteResult<T>` wrappers:

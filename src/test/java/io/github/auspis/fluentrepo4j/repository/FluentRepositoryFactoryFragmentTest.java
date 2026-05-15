@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
+import io.github.auspis.fluentrepo4j.functional.FunctionalCrudRepository;
+import io.github.auspis.fluentrepo4j.functional.FunctionalPagingAndSortingRepository;
 import io.github.auspis.fluentrepo4j.repository.context.FluentRepositoryContext;
 import io.github.auspis.fluentrepo4j.repository.context.FluentRepositoryContextAware;
 import io.github.auspis.fluentrepo4j.repository.context.FluentRepositoryContextFactory;
@@ -128,6 +130,30 @@ class FluentRepositoryFactoryFragmentTest {
                 .hasMessageContaining("shared across repository groups with different datasources");
     }
 
+    @Test
+    void detectsCrudOnlyFunctionalRepository() {
+        assertThat(FluentRepositoryFactory.isFunctionalRepository(CrudOnlyRepository.class))
+                .isTrue();
+    }
+
+    @Test
+    void detectsPagingOnlyFunctionalRepository() {
+        assertThat(FluentRepositoryFactory.isFunctionalRepository(PagingOnlyRepository.class))
+                .isTrue();
+    }
+
+    @Test
+    void detectsCombinedFunctionalRepository() {
+        assertThat(FluentRepositoryFactory.isFunctionalRepository(CombinedRepository.class))
+                .isTrue();
+    }
+
+    @Test
+    void doesNotDetectNonFunctionalRepository() {
+        assertThat(FluentRepositoryFactory.isFunctionalRepository(NonFunctionalRepository.class))
+                .isFalse();
+    }
+
     // -- Test helpers --
 
     static class AwareFragment implements FluentRepositoryContextAware<User> {
@@ -153,4 +179,13 @@ class FluentRepositoryFactoryFragmentTest {
     interface NonAwareFragment {
         void plainMethod();
     }
+
+    interface CrudOnlyRepository extends FunctionalCrudRepository<User, Long> {}
+
+    interface PagingOnlyRepository extends FunctionalPagingAndSortingRepository<User, Long> {}
+
+    interface CombinedRepository
+            extends FunctionalCrudRepository<User, Long>, FunctionalPagingAndSortingRepository<User, Long> {}
+
+    interface NonFunctionalRepository extends org.springframework.data.repository.Repository<User, Long> {}
 }

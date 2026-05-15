@@ -42,4 +42,19 @@ class RepositoryFacadeCoreInjectionTest {
         assertThat(found.orElseThrow()).isEqualTo(user);
         verify(core).findByIdRaw(2L);
     }
+
+    @Test
+    void functionalReadWriteRepository_canBeConstructedWithInjectedCore() {
+        CoreRepositoryOperations<User, Long> core = mock(CoreRepositoryOperations.class);
+        FunctionalReadWriteFluentRepository<User, Long> repository = new FunctionalReadWriteFluentRepository<>(core);
+        User user = new User("C", "c@test.com").withId(3L);
+
+        when(core.findByIdRaw(3L)).thenReturn(Optional.of(user));
+
+        ReadResult<User> found = repository.findById(3L);
+
+        assertThat(found).isInstanceOf(Found.class);
+        assertThat(found.orElseThrow()).isEqualTo(user);
+        verify(core).findByIdRaw(3L);
+    }
 }

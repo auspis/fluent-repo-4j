@@ -1,7 +1,7 @@
 package io.github.auspis.fluentrepo4j.repository;
 
 import io.github.auspis.fluentrepo4j.connection.FluentConnectionProvider;
-import io.github.auspis.fluentrepo4j.functional.read.FunctionalReadPagingAndSortingRepository;
+import io.github.auspis.fluentrepo4j.functional.FunctionalPagingAndSortingRepository;
 import io.github.auspis.fluentrepo4j.functional.read.FunctionalReadRepository;
 import io.github.auspis.fluentrepo4j.functional.write.FunctionalWriteRepository;
 import io.github.auspis.fluentrepo4j.mapping.FluentEntityInformation;
@@ -133,7 +133,7 @@ public class FluentRepositoryFactory extends RepositoryFactorySupport {
 
     static boolean isFunctionalRepository(Class<?> repositoryInterface) {
         return FunctionalReadRepository.class.isAssignableFrom(repositoryInterface)
-                || FunctionalReadPagingAndSortingRepository.class.isAssignableFrom(repositoryInterface)
+                || FunctionalPagingAndSortingRepository.class.isAssignableFrom(repositoryInterface)
                 || FunctionalWriteRepository.class.isAssignableFrom(repositoryInterface);
     }
 }

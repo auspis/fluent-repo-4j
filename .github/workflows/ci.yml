@@ -46,7 +46,7 @@ jobs:
 
     # SonarCloud analysis (runs only on baseline version to avoid duplicate scans)
     - name: SonarCloud Scan
-      if: matrix.spring-boot-version == '3.5.13'
+      if: matrix.spring-boot-version == '3.5.14'
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_QUBE }}
       run: ./mvnw org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=300

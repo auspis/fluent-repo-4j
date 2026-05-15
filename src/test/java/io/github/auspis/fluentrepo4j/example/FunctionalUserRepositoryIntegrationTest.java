@@ -38,6 +38,9 @@ class FunctionalUserRepositoryIntegrationTest {
     private FunctionalUserRepository repository;
 
     @Autowired
+    private FunctionalUserCrudRepository crudRepository;
+
+    @Autowired
     private DataSource dataSource;
 
     @BeforeEach
@@ -51,6 +54,27 @@ class FunctionalUserRepositoryIntegrationTest {
     @Test
     void repositoryIsAutomaticallyRegistered() {
         assertThat(repository).isNotNull();
+        assertThat(crudRepository).isNotNull();
+    }
+
+    @Test
+    void crudOnlyRepositorySupportsCoreCrudOperations() {
+        User created = new User("Crud User", "crud@test.com").withId(777L);
+
+        WriteResult<User> saveResult = crudRepository.save(created);
+        assertThat(saveResult).isInstanceOf(Success.class);
+        assertThat(saveResult.orElseThrow().getId()).isEqualTo(777L);
+
+        ReadResult<User> foundResult = crudRepository.findById(777L);
+        assertThat(foundResult).isInstanceOf(Found.class);
+        assertThat(foundResult.orElseThrow().getEmail()).isEqualTo("crud@test.com");
+
+        WriteResult<Boolean> deleteResult = crudRepository.deleteById(777L);
+        assertThat(deleteResult).isInstanceOf(Success.class);
+        assertThat(deleteResult.orElseThrow()).isTrue();
+
+        ReadResult<User> deletedLookup = crudRepository.findById(777L);
+        assertThat(deletedLookup).isInstanceOf(NotFound.class);
     }
 
     @Nested
@@ -214,10 +238,16 @@ class FunctionalUserRepositoryIntegrationTest {
         }
 
         @Test
-        void findByNameReturnsSuccess() {
+        void findByNameFound() {
             ReadResult<List<User>> result = repository.findByName("John Doe");
             assertThat(result).isInstanceOf(Found.class);
             assertThat(result.orElseThrow()).isNotEmpty();
+        }
+
+        @Test
+        void findByNameNotFound() {
+            ReadResult<List<User>> result = repository.findByName("Unknown");
+            assertThat(result).isInstanceOf(NotFound.class);
         }
 
         @Test

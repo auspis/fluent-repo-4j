@@ -20,7 +20,7 @@ public sealed interface ReadResult<T> {
     record Error<T>(String message, Throwable cause) implements ReadResult<T> {
         public Error {
             if (message == null || message.isBlank()) {
-                throw new IllegalArgumentException("Failure message must not be null or blank");
+                throw new IllegalArgumentException("Error message must not be null or blank");
             }
         }
 
