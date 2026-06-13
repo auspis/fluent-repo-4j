@@ -44,12 +44,12 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
-    <maven.surefire.plugin.version>3.5.5</maven.surefire.plugin.version>
-    <maven.failsafe.plugin.version>3.5.5</maven.failsafe.plugin.version>
-    <maven.spotless.plugin.version>3.4.0</maven.spotless.plugin.version>
+    <maven.surefire.plugin.version>3.5.6</maven.surefire.plugin.version>
+    <maven.failsafe.plugin.version>3.5.6</maven.failsafe.plugin.version>
+    <maven.spotless.plugin.version>3.6.0</maven.spotless.plugin.version>
     <maven.resource.plugin.version>3.5.0</maven.resource.plugin.version>
     <maven.exec.plugin.version>3.6.3</maven.exec.plugin.version>
-    <maven.sonar-scanner.plugin.version>5.6.0.6792</maven.sonar-scanner.plugin.version>
+    <maven.sonar-scanner.plugin.version>5.7.0.6970</maven.sonar-scanner.plugin.version>
     <maven.sonatype-central-publishing.plugin.version>0.10.0</maven.sonatype-central-publishing.plugin.version>
     <maven.source.plugin.version>3.4.0</maven.source.plugin.version>
     <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
@@ -57,12 +57,12 @@
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     <sonar.organization>auspis</sonar.organization>
     <sonar.projectKey>auspis_fluent-repo-4j</sonar.projectKey>
-    <jacoco.version>0.8.14</jacoco.version>
+    <jacoco.version>0.8.15</jacoco.version>
     <argLine/>
     <central.autoPublish>false</central.autoPublish>
     <!-- Baseline for internal build; consumers bring their own Spring Boot version -->
-    <spring-boot.version>3.5.14</spring-boot.version>
-    <fluent-sql-4j.version>1.4.0</fluent-sql-4j.version>
+    <spring-boot.version>3.5.15</spring-boot.version>
+    <fluent-sql-4j.version>1.4.1</fluent-sql-4j.version>
     <testcontainers.version>2.0.5</testcontainers.version>
     <test.groups.slow>integration,e2e</test.groups.slow>
   </properties>
