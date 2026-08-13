@@ -1,3 +1,5 @@
+
+
 <p align="center">
   <img src="data/wiki/assets/fluent-repo-4j-logo-no-bg.png" alt="Fluent Repo 4J" width="350">
 </p>
@@ -67,9 +69,9 @@ Add these dependencies to your application:
 ```xml
 <dependencies>
     <dependency>
-        <groupId>io.github.auspishttps://github.com/auspis/fluent-repo-4j-demo</groupId>
+        <groupId>io.github.auspis</groupId>
         <artifactId>fluent-repo-4j</artifactId>
-        <version>1.2.2</version>
+        <version>1.4.2</version>
     </dependency>
 
     <!-- Required at application level because fluent-repo-4j uses provided Spring dependencies -->
