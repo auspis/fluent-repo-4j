@@ -8,7 +8,7 @@
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
 #
-#    https://www.apache.org/licenses/LICENSE-2.0
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -32,28 +32,6 @@
 #       set MAVEN_OPTS=-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=8000
 #   MAVEN_SKIP_RC - flag to disable loading of mavenrc files
 # ----------------------------------------------------------------------------
-# Set default JAVA_HOME if not already set by environment (e.g., GitHub Actions)
-if [ -z "$JAVA_HOME" ]; then
-  # Try Amazon Corretto 25 first, then fallback to 21 and other available Java installations
-  #if [ -d "/usr/lib/jvm/java-25-amazon-corretto" ]; then
-  #  JAVA_HOME=/usr/lib/jvm/java-25-amazon-corretto
-  #elif [ -d "/usr/lib/jvm/amazon-corretto-25" ]; then
-  #  JAVA_HOME=/usr/lib/jvm/amazon-corretto-25
-  #elif [ -d "/usr/lib/jvm/temurin-25-jdk-amd64" ]; then
-  #  JAVA_HOME=/usr/lib/jvm/temurin-25-jdk-amd64
-  #  
-  #elif [ -d "/usr/lib/jvm/java-21-amazon-corretto" ]; then
-  if [ -d "/usr/lib/jvm/java-21-amazon-corretto" ]; then
-    JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto
-  elif [ -d "/usr/lib/jvm/amazon-corretto-21" ]; then
-    JAVA_HOME=/usr/lib/jvm/amazon-corretto-21
-  elif [ -d "/usr/lib/jvm/temurin-21-jdk-amd64" ]; then
-    JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64
-  else
-    # Last resort: use system default java
-    JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-  fi
-fi
 
 if [ -z "$MAVEN_SKIP_RC" ] ; then
 
