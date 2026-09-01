@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Java 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'corretto'
@@ -86,7 +86,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up JDK and configure Maven + GPG
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: 'corretto'
           java-version: '21'
