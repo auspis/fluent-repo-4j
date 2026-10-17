@@ -61,8 +61,8 @@
     <argLine/>
     <central.autoPublish>false</central.autoPublish>
     <!-- Baseline for internal build; consumers bring their own Spring Boot version -->
-    <spring-boot.version>3.5.15</spring-boot.version>
-    <fluent-sql-4j.version>1.4.2</fluent-sql-4j.version>
+    <spring-boot.version>4.1.1</spring-boot.version>
+    <fluent-sql-4j.version>1.4.3</fluent-sql-4j.version>
     <testcontainers.version>2.0.5</testcontainers.version>
     <test.groups.slow>integration,e2e</test.groups.slow>
   </properties>
