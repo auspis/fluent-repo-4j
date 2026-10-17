@@ -9,10 +9,47 @@ if [ ! -f "./mvnw" ]; then
   exit 1
 fi
 
-echo "\searching for dependency updates (stable versions only)...\n"
+printf '%s\n' 'Searching for dependency updates (stable versions only)...'
 
 ./mvnw versions:display-dependency-updates -DallowSnapshots=false -Dversions.displayAllVersions=true \
-  | grep -e '->' \
-  | awk 'BEGIN{IGNORECASE=1} {split($0, a, "-> "); if (a[2] !~ /-(M|RC|beta|alpha|cr|preview|ea)/) print $0}' \
+  -DprocessDependencies=true \
+  -DprocessDependencyManagement=false \
+  -DshowVersionless=true \
+  -DprocessPluginDependencies=false \
+  -DprocessPluginDependenciesInPluginManagement=false \
+  | awk 'BEGIN{IGNORECASE=1}
+    function trim(value) {
+      sub(/^[[:space:]]+/, "", value)
+      sub(/[[:space:]]+$/, "", value)
+      return value
+    }
+    {
+      line = $0
+      if (index(line, "->") == 0) {
+        previous = line
+        next
+      }
+
+      report = line
+      if (line ~ /^\[INFO\][[:space:]]+[0-9]/ &&
+          previous ~ /^\[INFO\][[:space:]]+[^[:space:]]+:[^[:space:]]+[[:space:]]+\.\.\./) {
+        report = previous " " line
+      }
+
+      split(report, versions, "->")
+      beforeArrow = trim(versions[1])
+      candidate = trim(versions[2])
+      sub(/[[:space:]].*$/, "", candidate)
+      current = beforeArrow
+      sub(/^.*[[:space:]]/, "", current)
+      artifact = beforeArrow
+      sub(/^\[INFO\][[:space:]]*/, "", artifact)
+      sub(/[[:space:]].*$/, "", artifact)
+
+      if (candidate !~ /-(M|RC|beta|alpha|cr|preview|ea)/) {
+        printf "[INFO] %-45s %s -> %s\n", artifact, current, candidate
+      }
+      previous = line
+    }' \
   | sort -u \
   || true

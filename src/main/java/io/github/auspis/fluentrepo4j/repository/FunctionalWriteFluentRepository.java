@@ -22,13 +22,12 @@ public class FunctionalWriteFluentRepository<T, ID> implements FunctionalWriteRe
     public <S extends T> WriteResult<S> save(S entity) {
         try {
             SaveAction action = core.getSaveDecisionResolver().apply(entity);
-            S saved =
-                    switch (action) {
-                        case INSERT_PROVIDED_ID -> core.insertWithProvidedId(entity);
-                        case INSERT_AUTO_ID -> core.insertWithIdentity(entity);
-                        case UPDATE -> core.update(entity);
-                        case ERROR -> null;
-                    };
+            S saved = switch (action) {
+                case INSERT_PROVIDED_ID -> core.insertWithProvidedId(entity);
+                case INSERT_AUTO_ID -> core.insertWithIdentity(entity);
+                case UPDATE -> core.update(entity);
+                case ERROR -> null;
+            };
             if (saved == null) {
                 return new Error<>(
                         "Entity " + entity.getClass().getSimpleName()
